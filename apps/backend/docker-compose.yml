@@ -1,0 +1,96 @@
+name: ragapp
+
+x-backend: &backend
+        build:
+                context: .
+        env_file:
+                - .env
+        environment:
+                DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+                SOURCE_STORAGE_DIR: /app/storage/sources
+        volumes:
+                - source_data:/app/storage/sources
+        depends_on:
+                db:
+                        condition: service_healthy
+
+services:
+        db:
+                image: pgvector/pgvector:pg17
+                environment:
+                        POSTGRES_DB: ${POSTGRES_DB}
+                        POSTGRES_USER: ${POSTGRES_USER}
+                        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+                ports:
+                        - '5433:5432'
+                volumes:
+                        - postgres_data:/var/lib/postgresql/data
+                        - ./src/migrations:/docker-entrypoint-initdb.d:ro
+                healthcheck:
+                        test:
+                                [
+                                        'CMD-SHELL',
+                                        'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}',
+                                ]
+                        interval: 5s
+                        timeout: 5s
+                        retries: 10
+
+        pgadmin:
+                image: dpage/pgadmin4:9
+                restart: unless-stopped
+                environment:
+                        PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@ragapp.com}
+                        PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-ragapp_admin}
+                        PGADMIN_CONFIG_SERVER_MODE: 'False'
+                        PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+                ports:
+                        - '${PGADMIN_PORT:-5050}:80'
+                volumes:
+                        - pgadmin_data:/var/lib/pgadmin
+                depends_on:
+                        db:
+                                condition: service_healthy
+
+        ollama:
+                profiles: ['local-ai']
+                image: ollama/ollama:latest
+                restart: unless-stopped
+                ports:
+                        - '${OLLAMA_PORT:-11434}:11434'
+                volumes:
+                        - ollama_data:/root/.ollama
+                healthcheck:
+                        test: ['CMD', 'ollama', 'list']
+                        interval: 5s
+                        timeout: 5s
+                        retries: 20
+
+        ollama-pull:
+                profiles: ['local-ai']
+                image: ollama/ollama:latest
+                environment:
+                        OLLAMA_HOST: http://ollama:11434
+                command: ['pull', '${EMBEDDING_MODEL:-nomic-embed-text}']
+                depends_on:
+                        ollama:
+                                condition: service_healthy
+
+        api:
+                <<: *backend
+                command: ragapp-api
+                ports:
+                        - '8000:8000'
+
+        worker:
+                <<: *backend
+                command: ragapp-worker
+                depends_on:
+                        db:
+                                condition: service_healthy
+
+volumes:
+        postgres_data:
+        source_data:
+        pgadmin_data:
+        ollama_data:

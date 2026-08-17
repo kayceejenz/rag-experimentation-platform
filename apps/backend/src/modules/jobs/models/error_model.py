@@ -1,0 +1,3 @@
+
+class JobNotFoundError(Exception):
+    pass
