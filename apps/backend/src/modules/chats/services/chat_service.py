@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from uuid import UUID
 
 from modules.chats.contracts.chat_repo_contract import (
@@ -70,6 +71,39 @@ class ChatService:
         return self.messages.list_for_chat(chat_id)
 
     def send_message(self, chat_id: UUID, user_id: UUID, content: str) -> Message:
+        chat, question, history, chunks, context = self._prepare_message(chat_id, user_id, content)
+        try:
+            answer = self.generator.generate(
+                question, context, [(message.role.value, message.content) for message in history[-10:]]
+            )
+        except Exception as error:
+            raise ChatGenerationError(str(error)) from error
+        assistant = Message(
+            chat_id=chat.id, role=MessageRole.ASSISTANT, content=answer,
+            citations=self._citations(chunks),
+        )
+        self.messages.add(assistant)
+        return assistant
+
+    def stream_message(self, chat_id: UUID, user_id: UUID, content: str) -> Iterator[dict]:
+        chat, question, history, chunks, context = self._prepare_message(chat_id, user_id, content)
+        parts: list[str] = []
+        try:
+            for token in self.generator.generate_stream(
+                question, context, [(message.role.value, message.content) for message in history[-10:]]
+            ):
+                parts.append(token)
+                yield {"type": "token", "content": token}
+        except Exception as error:
+            raise ChatGenerationError(str(error)) from error
+        assistant = Message(
+            chat_id=chat.id, role=MessageRole.ASSISTANT, content="".join(parts).strip(),
+            citations=self._citations(chunks),
+        )
+        self.messages.add(assistant)
+        yield {"type": "done", "message": assistant}
+
+    def _prepare_message(self, chat_id: UUID, user_id: UUID, content: str):
         chat, _ = self.get(chat_id, user_id)
         question = content.strip()
         history = self.messages.list_for_chat(chat_id)
@@ -83,15 +117,11 @@ class ChatService:
             + f"\n{chunk.text}"
             for index, chunk in enumerate(chunks, 1)
         )
-        try:
-            answer = self.generator.generate(
-                question,
-                context or "No relevant passages were found.",
-                [(message.role.value, message.content) for message in history[-10:]],
-            )
-        except Exception as error:
-            raise ChatGenerationError(str(error)) from error
-        citations = tuple(
+        return chat, question, history, chunks, context or "No relevant passages were found."
+
+    @staticmethod
+    def _citations(chunks) -> tuple[Citation, ...]:
+        return tuple(
             Citation(
                 chunk_id=chunk.chunk_id,
                 source_id=chunk.source_id,
@@ -103,14 +133,6 @@ class ChatService:
             )
             for chunk in chunks
         )
-        assistant = Message(
-            chat_id=chat_id,
-            role=MessageRole.ASSISTANT,
-            content=answer,
-            citations=citations,
-        )
-        self.messages.add(assistant)
-        return assistant
 
     @staticmethod
     def _require_editor(role: ProjectRole) -> None:

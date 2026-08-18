@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import Iterator, Protocol
 from uuid import UUID
 
 from modules.chats.models.message_model import Message
@@ -14,3 +14,6 @@ class ChatGenerator(Protocol):
         self, question: str, context: str, history: list[tuple[str, str]]
     ) -> str: ...
 
+    def generate_stream(
+        self, question: str, context: str, history: list[tuple[str, str]]
+    ) -> Iterator[str]: ...

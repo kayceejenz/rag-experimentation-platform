@@ -1,7 +1,11 @@
 from typing import Annotated
 from uuid import UUID
 
+import json
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.responses import StreamingResponse
 
 from api.dependencies import chat_service, current_user
 from modules.auth.models.auth_user_model import AuthenticatedUser
@@ -22,6 +26,7 @@ from modules.chats.services.chat_service import ChatService
 from modules.projects.models.project_model import ProjectNotFoundError, ProjectPermissionError
 
 router = APIRouter(tags=["chats"])
+logger = logging.getLogger(__name__)
 
 
 def message_response(message: Message) -> MessageResponse:
@@ -173,3 +178,28 @@ def send_message(
                 "message": "The chat model is temporarily unavailable; please try again",
             },
         ) from None
+
+
+@router.post("/chats/{chat_id}/messages/stream")
+def stream_message(
+    chat_id: UUID,
+    body: SendMessageRequest,
+    user: Annotated[AuthenticatedUser, Depends(current_user)],
+    service: Annotated[ChatService, Depends(chat_service)],
+):
+    def events():
+        try:
+            for event in service.stream_message(chat_id, user.id, body.content):
+                if event["type"] == "done":
+                    event["message"] = message_response(event["message"]).model_dump(mode="json")
+                yield f"data: {json.dumps(event)}\n\n"
+        except (ChatNotFoundError, ProjectNotFoundError):
+            yield f'data: {json.dumps({"type": "error", "message": "Chat not found"})}\n\n'
+        except ChatGenerationError as error:
+            logger.exception("Streaming chat generation failed", exc_info=error)
+            yield f'data: {json.dumps({"type": "error", "message": "The chat model is temporarily unavailable; please try again"})}\n\n'
+
+    return StreamingResponse(
+        events(), media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
+    )
