@@ -91,8 +91,8 @@ jobs:
                                           set -euo pipefail
 
                                           AWS_REGION="${{ secrets.AWS_REGION }}"
-                                          ECR_REPOSITORY_URI="${{ secrets.ECR_REPOSITORY_URI }}"
-                                          APP_IMAGE="${ECR_REPOSITORY_URI}:${{ github.sha }}"
+                                          ECR_REGISTRY="${{ secrets.ECR_REPOSITORY_URI }}"
+                                          APP_IMAGE="${ECR_REGISTRY}:${{ github.sha }}"
 
                                           echo "... Prepare Application Directory ..."
                                           sudo mkdir -p /opt/ragapp
@@ -105,7 +105,8 @@ jobs:
                                           sudo chmod 600 /opt/ragapp/.env
 
                                           echo "... Write docker-compose.production.yml ..."
-                                          sudo tee /opt/ragapp/docker-compose.production.yml > /dev/null << 'EOF'
+                                          # Note: Unquoted EOF allows bash to substitute $APP_IMAGE directly into the YAML file
+                                          cat << EOF | sudo tee /opt/ragapp/docker-compose.production.yml > /dev/null
                                           name: ragapp-production
 
                                           services:
@@ -128,7 +129,7 @@ jobs:
                                                 API_HOST: 0.0.0.0
                                                 API_PORT: 8000
                                               ports:
-                                                - '${API_BIND_ADDRESS:-127.0.0.1}:${API_PUBLIC_PORT:-8000}:8000'
+                                                - '\${API_BIND_ADDRESS:-127.0.0.1}:\${API_PUBLIC_PORT:-8000}:8000'
                                               healthcheck:
                                                 test:
                                                   - CMD
@@ -171,14 +172,14 @@ jobs:
                                           EOF
 
                                           echo "... Login To ECR ..."
-                                          aws ecr get-login-password --region "$AWS_REGION" | sudo docker login --username AWS --password-stdin "$ECR_REPOSITORY_URI"
+                                          aws ecr get-login-password --region "$AWS_REGION" | sudo docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
                                           echo "... Pull Image ..."
                                           sudo docker pull "$APP_IMAGE"
 
                                           echo "... Start Api and Worker Services ..."
                                           cd /opt/ragapp
-                                          APP_IMAGE="$APP_IMAGE" sudo -E docker compose -f docker-compose.production.yml up -d --remove-orphans api worker
+                                          sudo docker compose -f docker-compose.production.yml up -d --remove-orphans api worker
 
                                           echo "... Verify Health ..."
                                           sleep 10
