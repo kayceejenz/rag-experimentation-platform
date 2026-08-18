@@ -1,0 +1,190 @@
+name: Deploy Backend (Production)
+
+on:
+        push:
+                branches:
+                        - main
+                paths:
+                        - 'apps/backend/**'
+                        - '.github/workflows/deploy-backend.yml'
+        workflow_dispatch:
+
+concurrency:
+        group: aws-backend-production
+        cancel-in-progress: false
+
+permissions:
+        id-token: write
+        contents: read
+
+jobs:
+        validate:
+                name: Validate Python Package
+                runs-on: ubuntu-latest
+                timeout-minutes: 10
+                steps:
+                        - name: Check out repository
+                          uses: actions/checkout@v4
+
+                        - name: Set up Python
+                          uses: actions/setup-python@v5
+                          with:
+                                  python-version: '3.13'
+                                  cache: pip
+                                  cache-dependency-path: apps/backend/pyproject.toml
+
+                        - name: Install backend dependencies
+                          run: python -m pip install ./apps/backend
+
+                        - name: Compile Python bytecode
+                          run: python -m compileall -q apps/backend/src
+
+        build-and-push:
+                name: Build and Push Image to ECR
+                needs: validate
+                runs-on: ubuntu-latest
+                timeout-minutes: 15
+                steps:
+                        - name: Check out repository
+                          uses: actions/checkout@v4
+
+                        - name: Set up Docker Build
+                          uses: docker/setup-buildx-action@v3
+
+                        - name: Configure AWS credentials via OIDC
+                          uses: aws-actions/configure-aws-credentials@v4
+                          with:
+                                  role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+                                  aws-region: ${{ secrets.AWS_REGION }}
+
+                        - name: Log in to Amazon ECR
+                          id: login-ecr
+                          uses: aws-actions/amazon-ecr-login@v2
+
+                        - name: Build and push Docker image
+                          uses: docker/build-push-action@v6
+                          with:
+                                  context: ./apps/backend
+                                  file: ./apps/backend/Dockerfile
+                                  push: true
+                                  tags: |
+                                          ${{ secrets.ECR_REPOSITORY_URI }}:${{ github.sha }}
+                                          ${{ secrets.ECR_REPOSITORY_URI }}:latest
+                                  cache-from: type=gha
+                                  cache-to: type=gha,mode=max
+
+        deploy:
+                name: Deploy API and Worker
+                needs: build-and-push
+                runs-on: ubuntu-latest
+                timeout-minutes: 15
+                environment: production
+                steps:
+                        - name: Deploy to EC2 via SSH
+                          uses: appleboy/ssh-action@v1.0.3
+                          with:
+                                  host: ${{ secrets.AWS_EC2_HOST }}
+                                  username: ${{ secrets.AWS_EC2_USER }}
+                                  key: ${{ secrets.AWS_EC2_SSH_KEY }}
+                                  port: 22
+                                  script: |
+                                          set -euo pipefail
+
+                                          AWS_REGION="${{ secrets.AWS_REGION }}"
+                                          ECR_REPOSITORY_URI="${{ secrets.ECR_REPOSITORY_URI }}"
+                                          APP_IMAGE="${ECR_REPOSITORY_URI}:${{ github.sha }}"
+
+                                          echo "... Prepare Application Directory ..."
+                                          sudo mkdir -p /opt/ragapp
+                                          sudo chmod 700 /opt/ragapp
+
+                                          echo "... Write secrets to root .env file ..."
+                                          sudo tee /opt/ragapp/.env > /dev/null << 'EOF'
+                                          ${{ secrets.PRODUCTION_ENV }}
+                                          EOF
+                                          sudo chmod 600 /opt/ragapp/.env
+
+                                          echo "... Write docker-compose.production.yml ..."
+                                          sudo tee /opt/ragapp/docker-compose.production.yml > /dev/null << 'EOF'
+                                          name: ragapp-production
+
+                                          services:
+                                            api:
+                                              image: ${APP_IMAGE}
+                                              env_file:
+                                                - .env
+                                              command: ragapp-api
+                                              init: true
+                                              restart: unless-stopped
+                                              security_opt:
+                                                - no-new-privileges:true
+                                              cap_drop:
+                                                - ALL
+                                              read_only: true
+                                              tmpfs:
+                                                - /tmp:size=256m,mode=1777
+                                              environment:
+                                                APP_ENV: production
+                                                API_HOST: 0.0.0.0
+                                                API_PORT: 8000
+                                              ports:
+                                                - '${API_BIND_ADDRESS:-127.0.0.1}:${API_PUBLIC_PORT:-8000}:8000'
+                                              healthcheck:
+                                                test:
+                                                  - CMD
+                                                  - python
+                                                  - -c
+                                                  - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).read()"
+                                                interval: 20s
+                                                timeout: 5s
+                                                retries: 5
+                                                start_period: 20s
+                                              stop_grace_period: 30s
+                                              logging:
+                                                driver: json-file
+                                                options:
+                                                  max-size: 10m
+                                                  max-file: '3'
+
+                                            worker:
+                                              image: ${APP_IMAGE}
+                                              env_file:
+                                                - .env
+                                              command: ragapp-worker
+                                              init: true
+                                              restart: unless-stopped
+                                              security_opt:
+                                                - no-new-privileges:true
+                                              cap_drop:
+                                                - ALL
+                                              read_only: true
+                                              tmpfs:
+                                                - /tmp:size=256m,mode=1777
+                                              environment:
+                                                APP_ENV: production
+                                              stop_grace_period: 45s
+                                              logging:
+                                                driver: json-file
+                                                options:
+                                                  max-size: 10m
+                                                  max-file: '3'
+                                          EOF
+
+                                          echo "... Login To ECR ..."
+                                          aws ecr get-login-password --region "$AWS_REGION" | sudo docker login --username AWS --password-stdin "$ECR_REPOSITORY_URI"
+
+                                          echo "... Pull Image ..."
+                                          sudo docker pull "$APP_IMAGE"
+
+                                          echo "... Start Api and Worker Services ..."
+                                          cd /opt/ragapp
+                                          APP_IMAGE="$APP_IMAGE" sudo -E docker compose -f docker-compose.production.yml up -d --remove-orphans api worker
+
+                                          echo "... Verify Health ..."
+                                          sleep 10
+                                          sudo docker compose -f docker-compose.production.yml ps
+
+                                          echo "... Cleanup unused images ..."
+                                          sudo docker image prune -af
+
+                                          echo "... Deployment completed ..."

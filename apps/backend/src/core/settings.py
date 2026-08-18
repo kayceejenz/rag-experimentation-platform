@@ -51,8 +51,8 @@ class Settings(BaseSettings):
     gemini_api_url: str = Field(
         default="https://generativelanguage.googleapis.com/v1beta", alias="GEMINI_API_URL"
     )
-    ollama_base_url: str = Field(default="http://localhost:11434", alias="OLLAMA_BASE_URL")
     r2_account_id: str | None = Field(default=None, alias="R2_ACCOUNT_ID")
+    r2_api: str | None = Field(default=None, alias="R2_API")
     r2_bucket_name: str | None = Field(default=None, alias="R2_BUCKET_NAME")
     r2_access_key_id: str | None = Field(default=None, alias="R2_ACCESS_KEY_ID")
     r2_secret_access_key: str | None = Field(default=None, alias="R2_SECRET_ACCESS_KEY")
