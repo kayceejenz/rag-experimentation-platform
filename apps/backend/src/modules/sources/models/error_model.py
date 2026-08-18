@@ -5,3 +5,7 @@ class SourceNotFoundError(Exception):
 
 class SourcePermissionError(Exception):
     pass
+
+
+class SourceTooLargeError(Exception):
+    pass

@@ -2,7 +2,7 @@ import hashlib
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from modules.sources.models.error_model import SourceNotFoundError, SourcePermissionError
+from modules.sources.models.error_model import SourceNotFoundError, SourcePermissionError, SourceTooLargeError
 from modules.sources.models.source_model import (
     Source,
 )
@@ -10,6 +10,8 @@ from integrations.storage import delete_file, upload_file
 
 
 class SourceService:
+    MAX_FILE_SIZE = 5 * 1024 * 1024
+
     def __init__(self, repository, storage_dir: str) -> None:
         self.repository = repository
         self.storage_dir = storage_dir
@@ -21,7 +23,11 @@ class SourceService:
         if not project_id:
             raise SourceNotFoundError
 
-        source_id, version_id = uuid4(), uuid4()
+        filename = file.filename or "document"
+        target = self.repository.version_target(knowledge_base_id, filename)
+        source_id = target["id"] if target else uuid4()
+        version = target["next_version"] if target else 1
+        version_id = uuid4()
         suffix = Path(file.filename or "document.bin").suffix.lower()
         storage_key = f"{project_id}/{source_id}/{version_id}{suffix}"
         digest = hashlib.sha256()
@@ -30,8 +36,9 @@ class SourceService:
         while chunk := file.file.read(1024 * 1024):
             digest.update(chunk)
             byte_size += len(chunk)
+            if byte_size > self.MAX_FILE_SIZE:
+                raise SourceTooLargeError
         file.file.seek(0)
-
 
         stored_key = upload_file(
             storage_key,
@@ -44,10 +51,10 @@ class SourceService:
             project_id=project_id,
             knowledge_base_id=knowledge_base_id,
             uploaded_by=user_id,
-            display_name=file.filename or "document",
+            display_name=filename,
             version_id=version_id,
-            version=1,
-            filename=file.filename or "document",
+            version=version,
+            filename=filename,
             content_type=file.content_type or "application/octet-stream",
             storage_key=stored_key,
             byte_size=byte_size,
@@ -62,3 +69,16 @@ class SourceService:
         if not self.repository.has_read_access(knowledge_base_id, user_id):
             raise SourceNotFoundError
         return self.repository.list_for_user(knowledge_base_id, user_id)
+
+    def inspection(self, knowledge_base_id: UUID, source_id: UUID, user_id: UUID):
+        result = self.repository.inspection(knowledge_base_id, source_id, user_id)
+        if not result:
+            raise SourceNotFoundError
+        return result
+
+    def delete(self, knowledge_base_id: UUID, source_id: UUID, user_id: UUID) -> None:
+        storage_keys = self.repository.delete(knowledge_base_id, source_id, user_id)
+        if storage_keys is None:
+            raise SourceNotFoundError
+        for storage_key in storage_keys:
+            delete_file(storage_key, self.storage_dir)
