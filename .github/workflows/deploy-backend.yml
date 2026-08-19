@@ -110,7 +110,7 @@ jobs:
 
                                           echo "... Prepare Application Directory ..."
                                           sudo mkdir -p /opt/ragapp
-                                          sudo chmod 700 /opt/ragapp
+                                          sudo chmod 755 /opt/ragapp
 
                                           echo "... Write secrets to root .env file ..."
                                           sudo tee /opt/ragapp/.env > /dev/null << 'EOF'
