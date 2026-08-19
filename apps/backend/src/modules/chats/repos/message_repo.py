@@ -1,6 +1,6 @@
-import psycopg
+from psycopg import AsyncConnection
 from psycopg.rows import dict_row
-
+from psycopg.types.json import Json
 from modules.chats.models.citation_model import Citation
 from modules.chats.models.message_model import Message, MessageRole
 
@@ -9,15 +9,15 @@ class MessageRepository:
     def __init__(self, database_url: str) -> None:
         self.database_url = database_url
 
-    def add(self, message: Message) -> None:
-        with psycopg.connect(self.database_url) as db:
-            db.execute(
+    async def add(self, message: Message) -> None:
+        async with await AsyncConnection.connect(self.database_url) as db:
+            await db.execute(
                 "insert into ragapp.messages(id,chat_id,role,content,completed_at) "
                 "values(%s,%s,%s,%s,now())",
                 (message.id, message.chat_id, message.role.value, message.content),
             )
-            with db.cursor() as cursor:
-                cursor.executemany(
+            async with db.cursor() as cursor:
+                await cursor.executemany(
                     "insert into ragapp.message_citations(message_id,chunk_id,source_id,"
                     "citation_order,source_filename,excerpt,page_from,page_to,element_ids,coordinates) "
                     "values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb)",
@@ -32,24 +32,26 @@ class MessageRepository:
                             citation.page_number,
                             citation.page_number,
                             list(citation.element_ids),
-                            psycopg.types.json.Json(list(citation.coordinates)),
+                            Json(list(citation.coordinates)),
                         )
                         for order, citation in enumerate(message.citations)
                     ],
                 )
 
-    def list_for_chat(self, chat_id) -> list[Message]:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
-            rows = db.execute(
+    async def list_for_chat(self, chat_id) -> list[Message]:
+        async with await AsyncConnection.connect(self.database_url, row_factory=dict_row) as db:
+            msg_cur = await db.execute(
                 "select * from ragapp.messages where chat_id=%s and status='completed' "
                 "order by created_at,id",
                 (chat_id,),
-            ).fetchall()
-            citations = db.execute(
+            )
+            rows = await msg_cur.fetchall()
+            cita_cur = await db.execute(
                 "select mc.* from ragapp.message_citations mc join ragapp.messages m "
                 "on m.id=mc.message_id where m.chat_id=%s order by mc.citation_order",
                 (chat_id,),
-            ).fetchall()
+            )
+            citations = await cita_cur.fetchall()
         by_message = {}
         for row in citations:
             by_message.setdefault(row["message_id"], []).append(

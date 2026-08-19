@@ -1,5 +1,5 @@
 import time
-
+import math
 import httpx
 
 class GeminiEmbedder:
@@ -63,7 +63,8 @@ class GeminiEmbedder:
                 
             if response.status_code != 429 and response.status_code < 500:
                 response.raise_for_status()
-                return [item["values"] for item in response.json()["embeddings"]]
+                return [self._normalize(item["values"]) for item in response.json()["embeddings"]]
+            
             if attempt == self.max_retries:
                 response.raise_for_status()
             retry_after = response.headers.get("retry-after")
@@ -71,6 +72,11 @@ class GeminiEmbedder:
             time.sleep(delay)
         raise RuntimeError("Gemini embedding request failed")
 
+    @staticmethod
+    def _normalize(vectors: list[float]) -> list[float]:
+        norm = math.sqrt(sum(v*v for v in vectors))
+        return [ v/norm for v in vectors] if norm else vectors
+    
     @staticmethod
     def _is_depleted_billing(response: httpx.Response) -> bool:
         try:

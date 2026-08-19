@@ -41,36 +41,36 @@ def translate(error: Exception) -> HTTPException:
 
 
 @router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
-def create_project(
+async def create_project(
     body: CreateProjectRequest,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
     service: Annotated[ProjectService, Depends(project_service)],
 ):
-    return response(service.create(user.id, body.name, body.description))
+    return response(await service.create(user.id, body.name, body.description))
 
 
 @router.get("", response_model=ProjectListResponse)
-def list_projects(
+async def list_projects(
     user: Annotated[AuthenticatedUser, Depends(current_user)],
     service: Annotated[ProjectService, Depends(project_service)],
 ):
-    return ProjectListResponse(projects=[response(item) for item in service.list(user.id)])
+    return ProjectListResponse(projects=[response(item) for item in await service.list(user.id)])
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
-def get_project(
+async def get_project(
     project_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
     service: Annotated[ProjectService, Depends(project_service)],
 ):
     try:
-        return response(service.get(project_id, user.id))
+        return response(await service.get(project_id, user.id))
     except ProjectNotFoundError as error:
         raise translate(error) from None
 
 
 @router.patch("/{project_id}", response_model=ProjectResponse)
-def update_project(
+async def update_project(
     project_id: UUID,
     body: UpdateProjectRequest,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
@@ -78,7 +78,7 @@ def update_project(
 ):
     try:
         return response(
-            service.update(
+            await service.update(
                 project_id,
                 user.id,
                 body.name,
@@ -91,13 +91,13 @@ def update_project(
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_project(
+async def delete_project(
     project_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
     service: Annotated[ProjectService, Depends(project_service)],
 ) -> Response:
     try:
-        service.delete(project_id, user.id)
+        await service.delete(project_id, user.id)
     except (ProjectNotFoundError, ProjectPermissionError) as error:
         raise translate(error) from None
     return Response(status_code=status.HTTP_204_NO_CONTENT)

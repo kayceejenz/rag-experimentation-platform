@@ -79,12 +79,15 @@ def chat_service() -> ChatService:
     c = settings()
     if not c.database_url:
         raise RuntimeError("DATABASE_URL is required")
+    
     if c.llm_provider.lower() != "gemini" or c.embedding_provider.lower() != "gemini":
         raise RuntimeError("Chat currently requires Gemini for generation and embeddings")
+    
     api_key = c.llm_api_key or c.embedding_api_key
     embedding_key = c.embedding_api_key or c.llm_api_key
     if not api_key or not embedding_key or not c.llm_model:
         raise RuntimeError("LLM_API_KEY, EMBEDDING_API_KEY, and LLM_MODEL are required")
+    
     embedder = GeminiEmbedder(
         embedding_key,
         c.embedding_model,

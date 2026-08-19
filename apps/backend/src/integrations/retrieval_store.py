@@ -1,6 +1,8 @@
-import psycopg
-from psycopg.rows import dict_row
 from collections import OrderedDict
+import inspect
+
+from psycopg import AsyncConnection
+from psycopg.rows import dict_row
 
 from modules.chats.models.retrieval_model import RetrievedChunk
 
@@ -25,11 +27,11 @@ class PgVectorKnowledgeSearch:
         self.cache_size = cache_size
         self._query_cache: OrderedDict[str, list[float]] = OrderedDict()
 
-    def search(self, knowledge_base_id, query: str, limit: int = 8) -> list[RetrievedChunk]:
-        vector = self._query_vector(query)
+    async def search(self, knowledge_base_id, query: str, limit: int = 8) -> list[RetrievedChunk]:
+        vector = await self._query_vector(query)
         vector_literal = "[" + ",".join(str(float(value)) for value in vector) + "]"
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
-            rows = db.execute(
+        async with await AsyncConnection.connect(self.database_url, row_factory=dict_row) as db:
+            cur = await db.execute(
                 "with candidates as (select c.id chunk_id,c.source_id,c.source_version_id,"
                 "c.position,s.display_name source_filename,c.content,c.page_from,c.metadata,"
                 "1-(ce.embedding <=> %s::vector) vector_score,"
@@ -54,8 +56,10 @@ class PgVectorKnowledgeSearch:
                     self.min_score,
                     limit,
                 ),
-            ).fetchall()
-            rows = self._expand_neighbors(db, rows)
+            )
+            rows = await cur.fetchall()
+            rows = await self._expand_neighbors(db, rows)
+
         return [
             RetrievedChunk(
                 chunk_id=row["chunk_id"],
@@ -72,12 +76,12 @@ class PgVectorKnowledgeSearch:
         ]
 
     @staticmethod
-    def _expand_neighbors(db, seeds):
+    async def _expand_neighbors(db: AsyncConnection, seeds: list[dict]):
         if not seeds:
             return seeds
         seed_ids = [row["chunk_id"] for row in seeds]
         seed_scores = {row["chunk_id"]: float(row["score"]) for row in seeds}
-        rows = db.execute(
+        cur = await db.execute(
             "with seeds as (select * from unnest(%s::uuid[]) with ordinality "
             "as seed(chunk_id,seed_rank)), expanded as (select distinct on(c.id) "
             "c.id chunk_id,c.source_id,s.display_name source_filename,c.content,"
@@ -89,18 +93,24 @@ class PgVectorKnowledgeSearch:
             "order by c.id,seeds.seed_rank) select * from expanded "
             "order by seed_rank,position",
             (seed_ids,),
-        ).fetchall()
+        )
+        rows = await cur.fetchall()
         for row in rows:
             row["score"] = seed_scores[row["seed_id"]]
         return rows
 
-    def _query_vector(self, query: str) -> list[float]:
+    async def _query_vector(self, query: str) -> list[float]:
         key = " ".join(query.lower().split())
         cached = self._query_cache.get(key)
         if cached is not None:
             self._query_cache.move_to_end(key)
             return cached
-        vector = self.embedder.embed([query])[0]
+
+        res = self.embedder.embed([query])
+        if inspect.isawaitable(res):
+            res = await res
+        vector = res[0]
+
         self._query_cache[key] = vector
         self._query_cache.move_to_end(key)
         while len(self._query_cache) > self.cache_size:
