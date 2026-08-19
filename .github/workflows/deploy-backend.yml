@@ -80,17 +80,32 @@ jobs:
                 timeout-minutes: 15
                 environment: production
                 steps:
+                        - name: Configure AWS credentials via OIDC
+                          uses: aws-actions/configure-aws-credentials@v4
+                          with:
+                                  role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+                                  aws-region: ${{ secrets.AWS_REGION }}
+
+                        - name: Get ECR login password
+                          id: ecr-token
+                          run: |
+                                  TOKEN=$(aws ecr get-login-password --region ${{ secrets.AWS_REGION }})
+                                  echo "::add-mask::$TOKEN"
+                                  echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
                         - name: Deploy to EC2 via SSH
                           uses: appleboy/ssh-action@v1.0.3
+                          env:
+                                  ECR_TOKEN: ${{ steps.ecr-token.outputs.token }}
                           with:
                                   host: ${{ secrets.AWS_EC2_HOST }}
                                   username: ${{ secrets.AWS_EC2_USER }}
                                   key: ${{ secrets.AWS_EC2_SSH_KEY }}
                                   port: 22
+                                  envs: ECR_TOKEN
                                   script: |
                                           set -euo pipefail
 
-                                          AWS_REGION="${{ secrets.AWS_REGION }}"
                                           ECR_REGISTRY="${{ secrets.ECR_REPOSITORY_URI }}"
                                           APP_IMAGE="${ECR_REGISTRY}:${{ github.sha }}"
 
@@ -172,7 +187,7 @@ jobs:
                                           EOF
 
                                           echo "... Login To ECR ..."
-                                          aws ecr get-login-password --region "$AWS_REGION" | sudo docker login --username AWS --password-stdin "$ECR_REGISTRY"
+                                          echo "$ECR_TOKEN" | sudo docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
                                           echo "... Pull Image ..."
                                           sudo docker pull "$APP_IMAGE"
