@@ -78,7 +78,6 @@ jobs:
                 needs: build-and-push
                 runs-on: ubuntu-latest
                 timeout-minutes: 15
-                environment: production
                 steps:
                         - name: Configure AWS credentials via OIDC
                           uses: aws-actions/configure-aws-credentials@v4
