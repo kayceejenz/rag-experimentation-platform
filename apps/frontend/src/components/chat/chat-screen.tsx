@@ -280,9 +280,7 @@ export function ChatScreen({
 					`/api/knowledge-bases/${chat.knowledge_base_id}/sources`,
 				);
 				setSources(result.sources);
-			} catch {
-				// Keep the existing state; the next poll can recover from a transient failure.
-			}
+			} catch {}
 		}, 4000);
 		return () => window.clearInterval(timer);
 	}, [chat.knowledge_base_id, hasActiveIngestion]);
@@ -1100,7 +1098,7 @@ export function ChatScreen({
 																14
 															}
 														/>{' '}
-														Sources{' '}
+														Citations{' '}
 														<span>
 															{
 																message
@@ -1216,7 +1214,7 @@ export function ChatScreen({
 											source.status ===
 											'ready',
 									)
-										? 'Message RagApp…'
+										? 'Ask...'
 										: 'Upload a source or ask a question…'
 								}
 							/>

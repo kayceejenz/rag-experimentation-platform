@@ -12,4 +12,5 @@ export type AppShellProps = {
 	projects?: Project[];
 	chats?: Chat[];
 	activeProjectId?: string | null;
+	session?: Session | null;
 };

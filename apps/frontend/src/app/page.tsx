@@ -6,7 +6,6 @@ import { backendJson } from '@/lib/api/backend';
 import type { Chat, Project } from '@/types/workspace';
 import { PageProps } from '@/types/page';
 
-
 export default async function Home({ searchParams }: PageProps) {
 	const session = await getServerSession(authOptions);
 	const query = await searchParams;
@@ -58,6 +57,7 @@ export default async function Home({ searchParams }: PageProps) {
 			user={session?.user}
 			projects={projects}
 			chats={chats}
+			session={session}
 			activeProjectId={selectedProjectId}>
 			<ProjectWorkspace
 				key={`${selectedProjectId ?? 'none'}-${query.newProject ?? 'closed'}`}

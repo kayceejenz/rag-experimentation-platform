@@ -12,31 +12,43 @@ export default async function ChatPage({
 }: ChatPageProps) {
 	const session = await getServerSession(authOptions);
 	if (!session?.user?.id) return null;
-	const { chatId } = await params;
-	const { prompt } = await searchParams;
-	const chat = await backendJson<Chat>(session, `/chats/${chatId}`).catch(
-		() => null,
-	);
+
+	const [{ chatId }, { prompt }] = await Promise.all([
+		params,
+		searchParams,
+	]);
+
+	const [chat, projectsResult] = await Promise.all([
+		backendJson<Chat>(session, `/chats/${chatId}`).catch(
+			() => null,
+		),
+		backendJson<{ projects: Project[] }>(
+			session,
+			'/projects',
+		).catch(() => ({ projects: [] })),
+	]);
+
 	if (!chat) notFound();
-	const [messageResult, sourceResult, chatResult, projectResult] =
-		await Promise.all([
-			backendJson<{ messages: Message[] }>(
-				session,
-				`/chats/${chatId}/messages`,
-			).catch(() => ({ messages: [] })),
-			backendJson<{ sources: Source[] }>(
-				session,
-				`/knowledge-bases/${chat.knowledge_base_id}/sources`,
-			).catch(() => ({ sources: [] })),
-			backendJson<{ chats: Chat[] }>(
-				session,
-				`/projects/${chat.project_id}/chats`,
-			).catch(() => ({ chats: [chat] })),
-			backendJson<{ projects: Project[] }>(
-				session,
-				'/projects',
-			).catch(() => ({ projects: [] })),
-		]);
+
+	const [messageResult, sourceResult, chatResult] = await Promise.all([
+		backendJson<{ messages: Message[] }>(
+			session,
+			`/chats/${chatId}/messages`,
+		).catch(() => ({ messages: [] })),
+		backendJson<{ sources: Source[] }>(
+			session,
+			`/knowledge-bases/${chat.knowledge_base_id}/sources`,
+		).catch(() => ({ sources: [] })),
+		backendJson<{ chats: Chat[] }>(
+			session,
+			`/projects/${chat.project_id}/chats`,
+		).catch(() => ({ chats: [chat] })),
+	]);
+
+	const projectName =
+		projectsResult.projects.find(
+			project => project.id === chat.project_id,
+		)?.name ?? 'Current project';
 	return (
 		<ChatScreen
 			chat={chat}
@@ -44,12 +56,7 @@ export default async function ChatPage({
 			initialMessages={messageResult.messages}
 			initialSources={sourceResult.sources}
 			initialPrompt={prompt?.slice(0, 12000)}
-			projectName={
-				projectResult.projects.find(
-					project =>
-						project.id === chat.project_id,
-				)?.name ?? 'Current project'
-			}
+			projectName={projectName}
 		/>
 	);
 }
