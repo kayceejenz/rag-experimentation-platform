@@ -5,7 +5,7 @@ import { Moon, Sun } from 'lucide-react';
 
 type Theme = 'light' | 'dark';
 
-export function ThemeToggle() {
+export function ThemeToggle({ disabled }: { disabled?: boolean } = {}) {
 	const [theme, setTheme] = useState<Theme>('light');
 
 	useEffect(() => {
@@ -34,6 +34,7 @@ export function ThemeToggle() {
 			className='theme-toggle'
 			type='button'
 			onClick={toggleTheme}
+			disabled={disabled}
 			aria-label='Toggle color theme'>
 			{theme === 'light' ? (
 				<Moon size={18} aria-hidden />

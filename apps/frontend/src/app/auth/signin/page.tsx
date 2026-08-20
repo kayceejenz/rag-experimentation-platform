@@ -121,6 +121,7 @@ function SignInContent() {
 			<div className='signin-decoration' />
 			<section
 				className='signin-card'
+				aria-busy={loading || undefined}
 				aria-labelledby='signin-title'>
 				<div className='signin-card-header'>
 					<div className='signin-brand'>
@@ -128,7 +129,7 @@ function SignInContent() {
 							kayceejenz.ai
 						</span>
 					</div>
-					<ThemeToggle />
+					<ThemeToggle disabled={loading} />
 				</div>
 
 				<div className='signin-copy'>
@@ -194,59 +195,62 @@ function SignInContent() {
 					</div>
 				)}
 
-				<form className='auth-form' onSubmit={submit}>
-					{mode === 'register' && (
-						<label>
-							<span>
-								Display name
-							</span>
-							<input
-								autoComplete='name'
-								value={
-									displayName
-								}
-								onChange={event =>
-									setDisplayName(
-										event
-											.target
-											.value,
-									)
-								}
-								maxLength={160}
-								placeholder='Optional'
-							/>
-						</label>
-					)}
+			<form className='auth-form' onSubmit={submit}>
+				{mode === 'register' && (
 					<label>
-						<span>Email</span>
+						<span>
+							Display name
+						</span>
 						<input
-							type='email'
-							autoComplete='email'
-							value={email}
-							required
+							autoComplete='name'
+							value={
+								displayName
+							}
+							disabled={loading}
 							onChange={event =>
-								setEmail(
+								setDisplayName(
 									event
 										.target
 										.value,
 								)
 							}
-							placeholder='you@example.com'
+							maxLength={160}
+							placeholder='Optional'
 						/>
 					</label>
-					<label>
-						<span>Password</span>
-						<input
-							type='password'
-							autoComplete={
-								mode ===
-								'signin'
-									? 'current-password'
-									: 'new-password'
-							}
-							value={password}
-							required
-							minLength={
+				)}
+				<label>
+					<span>Email</span>
+					<input
+						type='email'
+						autoComplete='email'
+						value={email}
+						required
+						disabled={loading}
+						onChange={event =>
+							setEmail(
+								event
+									.target
+									.value,
+							)
+						}
+						placeholder='you@example.com'
+					/>
+				</label>
+				<label>
+					<span>Password</span>
+					<input
+						type='password'
+						autoComplete={
+							mode ===
+							'signin'
+								? 'current-password'
+								: 'new-password'
+						}
+						value={password}
+						required
+						disabled={loading}
+						minLength={
 								mode ===
 								'register'
 									? 12
