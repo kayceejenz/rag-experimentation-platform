@@ -360,7 +360,7 @@ html[data-navigation-transition="chat"]::view-transition-new(app-sidebar) { anim
 .chat-sidebar-reopen { position: fixed; z-index: 25; top: 18px; left: 14px; background: var(--panel); color: var(--muted); box-shadow: var(--shadow); }
 .mobile-chat-menu { display: none; background: var(--panel); color: var(--muted); }
 .chat-screen { min-width: 0; min-height: 100vh; padding: 22px 20px 18px 44px; }
-.chat-page-header { max-width: 768px; margin: 0 auto 18px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; }
+.chat-page-header { max-width: 768px; margin: 0 auto 18px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px 14px; padding: 0 4px; }
 .chat-page-header h1 { margin: 0; font-family: var(--font-app), "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-size: clamp(24px, 3vw, 32px); font-weight: 600; letter-spacing: -.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .editorial-chat-title { min-width: 0; overflow: hidden; }
 .header-sources-toggle { min-height: 36px; display: inline-flex; align-items: center; gap: 7px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--foreground); font-size: 12px; font-weight: 650; cursor: pointer; transition: border-color .15s ease, background .15s ease; white-space: nowrap; }
@@ -583,7 +583,8 @@ html[data-navigation-transition="chat"]::view-transition-new(app-sidebar) { anim
   .chat-screen { padding: calc(16px + env(safe-area-inset-top, 0px)) 14px calc(16px + env(safe-area-inset-bottom, 0px)); }
   .chat-history-sidebar { position: fixed; left: 0; top: 0; z-index: 50; padding: calc(16px + env(safe-area-inset-top, 0px)) 12px 16px; box-shadow: 12px 0 35px rgb(0 0 0 / .28); }
   .mobile-chat-menu { display: grid; }
-  .chat-page-header { grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; }
+  .chat-page-header { grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; padding: 0; }
+  .chat-page-header h1 { font-size: clamp(18px, 2.5vw, 28px); }
   .chat-column { height: calc(100vh - 100px); }
   .sources-drawer-panel { width: 340px; }
 }
@@ -668,8 +669,8 @@ html[data-navigation-transition="chat"]::view-transition-new(app-sidebar) { anim
   .citation-chips { gap: 6px; padding: 3px 0; }
   .citation-chip { min-height: 32px; padding: 5px 8px; font-size: 11px; }
   .sources-drawer-panel { width: 100%; max-width: 100vw; top: 0; padding-top: env(safe-area-inset-top, 0px); }
-  .sources-drawer-header { justify-content: center; position: relative; }
-  .sources-drawer-header button { position: absolute; left: 0; }
+  .sources-drawer-header { justify-content: center; position: relative; padding: 18px calc(18px + env(safe-area-inset-right, 0px)) 14px calc(18px + env(safe-area-inset-left, 0px)); }
+  .sources-drawer-header button { position: absolute; right: calc(18px + env(safe-area-inset-right, 0px)); }
   .sources-drawer-content { padding: 14px calc(14px + env(safe-area-inset-left, 0px)) 14px calc(14px + env(safe-area-inset-right, 0px)); }
   .workspace-modal { max-height: calc(100dvh - 20px); padding: 18px 14px; }
   .modal-backdrop:has(.create-project-modal) { place-items: center; padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)); }
