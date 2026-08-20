@@ -1,6 +1,12 @@
-import { Session } from 'next-auth';
 import { ReactNode } from 'react';
 import { Chat, Project } from './workspace';
+
+export type AppShellUser = {
+	id: string;
+	email?: string | null;
+	name?: string | null;
+	image?: string | null;
+};
 
 export type AppShellProps = {
 	title?: string;
@@ -8,9 +14,8 @@ export type AppShellProps = {
 	actions?: ReactNode;
 	tabs?: ReactNode;
 	children: ReactNode;
-	user?: Session['user'];
+	user?: AppShellUser;
 	projects?: Project[];
 	chats?: Chat[];
 	activeProjectId?: string | null;
-	session?: Session | null;
 };

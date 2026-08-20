@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Outfit } from 'next/font/google';
+import { ClientProviders } from '@/components/auth/client-providers';
 import './globals.css';
 
 const font = Outfit({
@@ -21,7 +22,11 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang='en' className={font.variable}>
-			<body>{children}</body>
+			<body>
+				<ClientProviders>
+					{children}
+				</ClientProviders>
+			</body>
 		</html>
 	);
 }

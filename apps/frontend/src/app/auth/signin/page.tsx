@@ -1,6 +1,5 @@
 'use client';
 
-import { getSession, signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { CircleAlert, LoaderCircle } from 'lucide-react';
@@ -8,7 +7,7 @@ import { ThemeToggle } from '@/components/theme/theme-toggle';
 
 const ERROR_COPY: Record<string, string> = {
 	SessionExpired: 'Your session expired. Sign in again to continue.',
-	CredentialsSignin: 'The email or password is incorrect.',
+	InvalidCredentials: 'The email or password is incorrect.',
 	Default: 'Something went wrong. Please try again.',
 };
 
@@ -33,10 +32,12 @@ function SignInContent() {
 	);
 
 	useEffect(() => {
-		void getSession().then(session => {
-			if (session && !session.error)
-				window.location.replace(callbackUrl);
-		});
+		void fetch('/api/auth/me')
+			.then(r => r.ok ? r.json() : null)
+			.then(data => {
+				if (data?.user) window.location.replace(callbackUrl);
+			})
+			.catch(() => undefined);
 	}, [callbackUrl]);
 
 	function changeMode(next: 'signin' | 'register') {
@@ -89,17 +90,21 @@ function SignInContent() {
 				}
 			}
 
-			const result = await signIn('credentials', {
-				email,
-				password,
-				callbackUrl: `${window.location.origin}${callbackUrl}`,
-				redirect: false,
+			const response = await fetch('/api/auth/login', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+				},
+				body: JSON.stringify({ email, password }),
 			});
-			if (!result?.ok)
+			const body = await response.json().catch(() => ({}));
+			if (!response.ok) {
 				throw new Error(
+					(body as { error?: string }).error ??
 					'The email or password is incorrect.',
 				);
-			window.location.replace(result.url ?? callbackUrl);
+			}
+			window.location.replace(callbackUrl);
 		} catch (cause) {
 			setError(
 				cause instanceof Error

@@ -1,6 +1,5 @@
 'use client';
 
-import { signOut } from 'next-auth/react';
 import { useState } from 'react';
 import { LogOut } from 'lucide-react';
 
@@ -10,13 +9,8 @@ export function SignOutButton() {
 	async function handleSignOut() {
 		if (signingOut) return;
 		setSigningOut(true);
-
-		const result = await signOut({
-			callbackUrl: '/auth/signin',
-			redirect: false,
-		});
-
-		window.location.assign(result.url || '/auth/signin');
+		await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
+		window.location.assign('/auth/signin');
 	}
 
 	return (

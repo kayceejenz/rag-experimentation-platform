@@ -1,6 +1,4 @@
-import type { ReactNode } from 'react';
 import { Folder, Menu, MessageSquareText, Plus, SquarePen } from 'lucide-react';
-import type { Session } from 'next-auth';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { SignOutButton } from '@/components/layout/sign-out-button';
 import { SessionSynchronizer } from '@/components/auth/session-synchronizer';

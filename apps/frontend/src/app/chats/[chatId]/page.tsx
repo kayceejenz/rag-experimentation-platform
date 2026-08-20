@@ -1,8 +1,7 @@
 import { notFound } from 'next/navigation';
-import { getServerSession } from 'next-auth/next';
 import { ChatScreen } from '@/components/chat/chat-screen';
+import { getAuthUser } from '@/lib/api/auth';
 import { backendJson } from '@/lib/api/backend';
-import { authOptions } from '@/lib/auth';
 import type { Chat, Message, Project, Source } from '@/types/workspace';
 import { ChatPageProps } from '@/types/chat-page';
 
@@ -10,8 +9,8 @@ export default async function ChatPage({
 	params,
 	searchParams,
 }: ChatPageProps) {
-	const session = await getServerSession(authOptions);
-	if (!session?.user?.id) return null;
+	const user = await getAuthUser();
+	if (!user) return null;
 
 	const [{ chatId }, { prompt }] = await Promise.all([
 		params,
@@ -19,11 +18,11 @@ export default async function ChatPage({
 	]);
 
 	const [chat, projectsResult] = await Promise.all([
-		backendJson<Chat>(session, `/chats/${chatId}`).catch(
+		backendJson<Chat>(user.accessToken, `/chats/${chatId}`).catch(
 			() => null,
 		),
 		backendJson<{ projects: Project[] }>(
-			session,
+			user.accessToken,
 			'/projects',
 		).catch(() => ({ projects: [] })),
 	]);
@@ -32,15 +31,15 @@ export default async function ChatPage({
 
 	const [messageResult, sourceResult, chatResult] = await Promise.all([
 		backendJson<{ messages: Message[] }>(
-			session,
+			user.accessToken,
 			`/chats/${chatId}/messages`,
 		).catch(() => ({ messages: [] })),
 		backendJson<{ sources: Source[] }>(
-			session,
+			user.accessToken,
 			`/knowledge-bases/${chat.knowledge_base_id}/sources`,
 		).catch(() => ({ sources: [] })),
 		backendJson<{ chats: Chat[] }>(
-			session,
+			user.accessToken,
 			`/projects/${chat.project_id}/chats`,
 		).catch(() => ({ chats: [chat] })),
 	]);

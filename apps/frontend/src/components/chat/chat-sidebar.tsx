@@ -58,7 +58,7 @@ export function ChatSidebar({
 					<SmoothLink
 						href='/'
 						aria-label='Projects'>
-						<strong>kayceejenz.ai</strong>
+						<strong className='editorial-brand-text'>kayceejenz.ai</strong>
 					</SmoothLink>
 					<button
 						type='button'

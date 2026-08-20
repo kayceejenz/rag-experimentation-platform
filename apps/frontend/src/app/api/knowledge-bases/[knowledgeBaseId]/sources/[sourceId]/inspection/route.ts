@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { getAuthUser } from '@/lib/api/auth';
 import { backendFetch } from '@/lib/api/backend';
 import { apiError, proxyResponse } from '@/lib/api/proxy-response';
 
@@ -9,8 +8,8 @@ type Params = {
 };
 
 export async function GET(_request: Request, { params }: Params) {
-	const session = await getServerSession(authOptions);
-	if (!session?.user?.id)
+	const user = await getAuthUser();
+	if (!user)
 		return NextResponse.json(
 			{ error: 'Unauthorized' },
 			{ status: 401 },
@@ -19,7 +18,7 @@ export async function GET(_request: Request, { params }: Params) {
 		const { knowledgeBaseId, sourceId } = await params;
 		return proxyResponse(
 			await backendFetch(
-				session,
+				user.accessToken,
 				`/knowledge-bases/${knowledgeBaseId}/sources/${sourceId}/inspection`,
 			),
 		);

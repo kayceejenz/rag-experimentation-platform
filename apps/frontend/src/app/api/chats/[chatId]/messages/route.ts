@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { getAuthUser } from '@/lib/api/auth';
 import { backendFetch } from '@/lib/api/backend';
 import { apiError, proxyResponse } from '@/lib/api/proxy-response';
 
@@ -11,8 +10,8 @@ async function forward(
 	params: Params['params'],
 	method: 'GET' | 'POST',
 ) {
-	const session = await getServerSession(authOptions);
-	if (!session?.user?.id)
+	const user = await getAuthUser();
+	if (!user)
 		return NextResponse.json(
 			{ error: 'Unauthorized' },
 			{ status: 401 },
@@ -24,7 +23,7 @@ async function forward(
 			: undefined;
 		return proxyResponse(
 			await backendFetch(
-				session,
+				user.accessToken,
 				`/chats/${chatId}/messages`,
 				{ method, body },
 			),

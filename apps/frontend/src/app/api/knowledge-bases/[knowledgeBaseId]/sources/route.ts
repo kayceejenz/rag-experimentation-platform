@@ -1,20 +1,18 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { getAuthUser } from '@/lib/api/auth';
 import { backendFetch } from '@/lib/api/backend';
 import { apiError, proxyResponse } from '@/lib/api/proxy-response';
 
 type Params = { params: Promise<{ knowledgeBaseId: string }> };
 
-async function sessionOrUnauthorized() {
-	const session = await getServerSession(authOptions);
-	if (!session?.user?.id) return null;
-	return session;
+async function userOrUnauthorized() {
+	const user = await getAuthUser();
+	return user;
 }
 
 export async function GET(_request: Request, { params }: Params) {
-	const session = await sessionOrUnauthorized();
-	if (!session)
+	const user = await userOrUnauthorized();
+	if (!user)
 		return NextResponse.json(
 			{ error: 'Unauthorized' },
 			{ status: 401 },
@@ -23,7 +21,7 @@ export async function GET(_request: Request, { params }: Params) {
 		const { knowledgeBaseId } = await params;
 		return proxyResponse(
 			await backendFetch(
-				session,
+				user.accessToken,
 				`/knowledge-bases/${knowledgeBaseId}/sources`,
 			),
 		);
@@ -33,8 +31,8 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 export async function POST(request: Request, { params }: Params) {
-	const session = await sessionOrUnauthorized();
-	if (!session)
+	const user = await userOrUnauthorized();
+	if (!user)
 		return NextResponse.json(
 			{ error: 'Unauthorized' },
 			{ status: 401 },
@@ -59,7 +57,7 @@ export async function POST(request: Request, { params }: Params) {
 		upstream.set('file', file);
 		return proxyResponse(
 			await backendFetch(
-				session,
+				user.accessToken,
 				`/knowledge-bases/${knowledgeBaseId}/sources`,
 				{
 					method: 'POST',

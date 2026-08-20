@@ -92,6 +92,12 @@ html[data-navigation-transition="chat"]::view-transition-new(app-sidebar) { anim
 .signin-page { position: relative; min-height: 100vh; display: grid; place-items: center; padding: 24px; overflow: hidden; }
 .signin-decoration { position: absolute; top: -20%; left: 50%; width: 600px; height: 600px; transform: translateX(-50%); background: radial-gradient(circle, color-mix(in srgb, var(--accent) 6%, transparent) 0%, transparent 70%); pointer-events: none; }
 .signin-card { position: relative; width: min(400px, 100%); display: grid; gap: 24px; padding: 36px 32px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); box-shadow: 0 20px 60px rgb(0 0 0 / .08); }
+.session-expired-modal { width: min(400px, 100%); display: grid; gap: 18px; padding: 32px; text-align: center; }
+.session-expired-icon { width: 56px; height: 56px; margin: 0 auto; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.session-expired-modal .modal-title { text-align: center; }
+.session-expired-modal .modal-title h2 { font-size: 20px; }
+.session-expired-desc { margin: 6px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.session-expired-modal .project-form-actions { justify-items: center; }
 .signin-card-header { display: flex; align-items: center; justify-content: space-between; }
 .signin-brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; }
 .signin-brand-text { font-family: var(--font-app), "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-size: 20px; font-weight: 850; letter-spacing: -.02em; color: var(--accent); }
@@ -305,7 +311,7 @@ html[data-navigation-transition="chat"]::view-transition-new(app-sidebar) { anim
 /* Chat and sources */
 .chat-app { min-height: 100vh; display: grid; grid-template-columns: 255px minmax(0, 1fr); background: var(--background); transition: grid-template-columns .22s ease; }
 .chat-app.chat-sidebar-collapsed { grid-template-columns: 0 minmax(0, 1fr); }
-.chat-history-sidebar { position: sticky; top: 0; z-index: 20; width: 260px; height: 100vh; display: grid; grid-template-rows: auto auto auto 1fr auto; gap: 6px; overflow: hidden; padding: 16px 12px; border-right: 1px solid var(--nav-border); background: var(--nav-background); color: var(--nav-foreground); transition: opacity .16s ease, transform .22s ease; }
+.chat-history-sidebar { position: sticky; top: 0; z-index: 20; width: 260px; height: 100vh; display: grid; grid-template-rows: auto auto auto 1fr auto; gap: 6px; overflow: hidden; padding: calc(16px + env(safe-area-inset-top, 0px)) 12px 16px; border-right: 1px solid var(--nav-border); background: var(--nav-background); color: var(--nav-foreground); transition: opacity .16s ease, transform .22s ease; }
 .chat-sidebar-collapsed .chat-history-sidebar { opacity: 0; pointer-events: none; transform: translateX(-100%); }
 .chat-sidebar-brand { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 6px; }
 .chat-sidebar-brand a { display: flex; align-items: center; gap: 0; color: var(--nav-foreground); font-family: var(--font-app), "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-size: 18px; font-weight: 700; text-decoration: none; }
@@ -342,7 +348,7 @@ html[data-navigation-transition="chat"]::view-transition-new(app-sidebar) { anim
 .chat-delete-confirm > div { display: flex; justify-content: flex-end; gap: 5px; margin-top: 8px; }
 .chat-delete-confirm button { min-height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: var(--subtle); color: var(--foreground); font-size: 11px; cursor: pointer; }
 .chat-delete-confirm button.danger { background: var(--danger); color: white; }
-.chat-sidebar-footer { display: grid; grid-template-columns: minmax(0, 1fr) 34px; align-items: center; gap: 4px; border-top: 1px solid var(--nav-border); padding-top: 8px; }
+.chat-sidebar-footer { display: grid; grid-template-columns: minmax(0, 1fr) 34px; align-items: center; gap: 4px; border-top: 1px solid var(--nav-border); padding-top: 8px; padding-bottom: env(safe-area-inset-bottom, 0px); }
 .chat-sidebar-projects { display: flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 10px; border-radius: 7px; color: var(--nav-muted); font-size: 12px; font-weight: 500; text-decoration: none; transition: background .12s, color .12s; }
 .chat-sidebar-projects:hover { background: var(--nav-hover); color: var(--nav-foreground); }
 .chat-sidebar-reopen { position: fixed; z-index: 25; top: 18px; left: 14px; background: var(--panel); color: var(--muted); box-shadow: var(--shadow); }
@@ -568,8 +574,8 @@ html[data-navigation-transition="chat"]::view-transition-new(app-sidebar) { anim
   .recent-chat-panel { position: static; max-height: none; }
   .recent-chat-list { max-height: 320px; }
   .chat-app, .chat-app.chat-sidebar-collapsed { display: block; }
-  .chat-screen { padding: 18px 14px; }
-  .chat-history-sidebar { position: fixed; left: 0; top: 0; z-index: 50; box-shadow: 12px 0 35px rgb(0 0 0 / .28); }
+  .chat-screen { padding: calc(16px + env(safe-area-inset-top, 0px)) 14px calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .chat-history-sidebar { position: fixed; left: 0; top: 0; z-index: 50; padding: calc(16px + env(safe-area-inset-top, 0px)) 12px 16px; box-shadow: 12px 0 35px rgb(0 0 0 / .28); }
   .mobile-chat-menu { display: grid; }
   .chat-page-header { grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; }
   .chat-column { height: calc(100vh - 100px); }
@@ -615,10 +621,10 @@ html[data-navigation-transition="chat"]::view-transition-new(app-sidebar) { anim
   .app-navigation { display: none; }
   .rail-projects, .rail-chats { display: none; }
   .chat-grid { grid-template-columns: 1fr; }
-  .ai-launchpad { min-height: 0; padding: 20px 0 16px; }
+  .ai-launchpad { min-height: 0; padding: 20px 12px 16px; width: 100%; }
   .ai-launchpad h1 { font-size: clamp(28px, 10vw, 38px); line-height: 1.1; }
   .ai-launchpad > p { font-size: 14px; }
-  .ai-starter-grid { grid-template-columns: 1fr; gap: 8px; margin: 20px 0; }
+  .ai-starter-grid { grid-template-columns: 1fr; gap: 8px; margin: 20px 0; width: 100%; }
   .ai-starter-grid > button { min-height: 60px; padding: 10px; }
   .composer-tools { flex-wrap: wrap; gap: 8px; padding: 4px 6px 6px 10px; }
   .composer-tools > span { display: none; }
@@ -626,13 +632,13 @@ html[data-navigation-transition="chat"]::view-transition-new(app-sidebar) { anim
   .composer-source-button { width: 100%; justify-content: center; }
   .composer-project-control { flex: 1; min-width: 0; height: 38px; }
   .composer-tools button[type='submit'] { width: 40px; height: 40px; border-radius: 50%; }
-  .ai-start-composer { border-radius: 14px; }
+  .ai-start-composer { border-radius: 14px; width: 100%; }
   .ai-start-composer > textarea { min-height: 72px; padding: 12px; font-size: 16px; }
   .recent-project-grid { grid-template-columns: 1fr; }
   .recent-chat-panel { display: none; }
   .project-heading { flex-direction: column; align-items: stretch; }
-  .chat-screen { padding: 10px 8px calc(10px + env(safe-area-inset-bottom, 0px)); }
-  .chat-page-header { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; padding: 0 4px; }
+  .chat-screen { padding: calc(10px + env(safe-area-inset-top, 0px)) 8px calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .chat-page-header { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; padding: 8px 4px; }
   .chat-page-header h1 { font-size: 17px; }
   .editorial-chat-title p { display: none; }
   .header-sources-toggle { font-size: 0; gap: 0; padding: 0; width: 36px; height: 36px; justify-content: center; }

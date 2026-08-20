@@ -1,26 +1,23 @@
-import { withAuth } from 'next-auth/middleware';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export default withAuth(
-	function middleware(req) {
-		const token = req.nextauth.token;
+function hasAccessToken(request: NextRequest): boolean {
+	return !!request.cookies.get('access_token')?.value;
+}
 
-		if (token?.error === 'RefreshAccessTokenError') {
-			return NextResponse.redirect(new URL('/auth/signin?error=SessionExpired', req.url));
+export function middleware(request: NextRequest) {
+	if (!hasAccessToken(request)) {
+		const url = request.nextUrl.clone();
+		url.pathname = '/auth/signin';
+		if (request.nextUrl.pathname !== '/') {
+			url.searchParams.set('callbackUrl', request.nextUrl.pathname);
 		}
-
-		return NextResponse.next();
-	},
-	{
-		callbacks: {
-			authorized: ({ token }) => !!token,
-		},
-		pages: { signIn: '/auth/signin' },
-	},
-);
+		return NextResponse.redirect(url);
+	}
+	return NextResponse.next();
+}
 
 export const config = {
 	matcher: [
-		'/((?!auth/|_next/static|_next/image|favicon.ico|api/auth|api/account/register).*)',
+		'/((?!auth/|_next/static|_next/image|favicon.ico|api/auth).*)',
 	],
 };

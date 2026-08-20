@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { getAuthUser } from '@/lib/api/auth';
 import { backendFetch } from '@/lib/api/backend';
 import { apiError } from '@/lib/api/proxy-response';
 
 type Params = { params: Promise<{ chatId: string }> };
 
 export async function POST(request: Request, { params }: Params) {
-	const session = await getServerSession(authOptions);
-	if (!session?.user?.id || session.error) {
+	const user = await getAuthUser();
+	if (!user) {
 		return NextResponse.json(
 			{ error: 'Your session expired. Sign in again.' },
 			{ status: 401 },
@@ -17,7 +16,7 @@ export async function POST(request: Request, { params }: Params) {
 	try {
 		const { chatId } = await params;
 		const response = await backendFetch(
-			session,
+			user.accessToken,
 			`/chats/${chatId}/messages/stream`,
 			{
 				method: 'POST',

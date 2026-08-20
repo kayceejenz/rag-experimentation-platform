@@ -1,6 +1,5 @@
 import 'server-only';
 
-import type { Session } from 'next-auth';
 import { serverEnv } from '@/lib/env';
 
 type BackendRequest = Omit<RequestInit, 'headers'> & {
@@ -8,18 +7,18 @@ type BackendRequest = Omit<RequestInit, 'headers'> & {
 };
 
 export async function backendFetch(
-	session: Session,
+	accessToken: string,
 	path: string,
 	req: BackendRequest = {},
 ): Promise<Response> {
-	if (!session.user?.id || !session.accessToken) {
+	if (!accessToken) {
 		throw new Error(
 			'An authenticated user is required for backend requests.',
 		);
 	}
 
 	const headers = new Headers(req.headers);
-	headers.set('authorization', `Bearer ${session.accessToken}`);
+	headers.set('authorization', `Bearer ${accessToken}`);
 	if (
 		req.body &&
 		!(req.body instanceof FormData) &&
@@ -36,11 +35,11 @@ export async function backendFetch(
 }
 
 export async function backendJson<T>(
-	session: Session,
+	accessToken: string,
 	path: string,
 	init: BackendRequest = {},
 ): Promise<T> {
-	const response = await backendFetch(session, path, init);
+	const response = await backendFetch(accessToken, path, init);
 	const body = (await response.json().catch(() => ({}))) as T & {
 		detail?: string;
 		error?: { message?: string };

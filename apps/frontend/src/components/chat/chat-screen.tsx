@@ -20,6 +20,7 @@ import type {
 	SourceInspection,
 } from '@/types/workspace';
 import { SessionSynchronizer } from '@/components/auth/session-synchronizer';
+import { useSessionExpired } from '@/components/auth/session-expired-provider';
 import { useSmoothNavigation } from '@/components/navigation/smooth-link';
 import { ChatScreenProps } from '@/types/chat-screen';
 import { ChatSidebar } from './chat-sidebar';
@@ -189,6 +190,7 @@ export function ChatScreen({
 	projectName,
 }: ChatScreenProps) {
 	const navigate = useSmoothNavigation();
+	const { showSessionExpired } = useSessionExpired();
 	const [chats, setChats] = useState(projectChats);
 	const [messages, setMessages] =
 		useState(initialMessages);
@@ -515,9 +517,7 @@ export function ChatScreen({
 				},
 			);
 			if (response.status === 401) {
-				window.location.assign(
-					`/auth/signin?error=SessionExpired&callbackUrl=${encodeURIComponent(`/chats/${chat.id}`)}`,
-				);
+				showSessionExpired();
 				return;
 			}
 			if (!response.ok || !response.body) {

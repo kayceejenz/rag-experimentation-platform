@@ -1,19 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { getAuthUser } from '@/lib/api/auth';
 import { backendFetch } from '@/lib/api/backend';
 import { apiError, proxyResponse } from '@/lib/api/proxy-response';
 
 type Params = { params: Promise<{ chatId: string }> };
 
-async function sessionOrUnauthorized() {
-	const session = await getServerSession(authOptions);
-	return session?.user?.id && !session.error ? session : null;
+async function userOrUnauthorized() {
+	return getAuthUser();
 }
 
 export async function PATCH(request: Request, { params }: Params) {
-	const session = await sessionOrUnauthorized();
-	if (!session)
+	const user = await userOrUnauthorized();
+	if (!user)
 		return NextResponse.json(
 			{ error: 'Unauthorized' },
 			{ status: 401 },
@@ -21,7 +19,7 @@ export async function PATCH(request: Request, { params }: Params) {
 	try {
 		const { chatId } = await params;
 		return proxyResponse(
-			await backendFetch(session, `/chats/${chatId}`, {
+			await backendFetch(user.accessToken, `/chats/${chatId}`, {
 				method: 'PATCH',
 				body: JSON.stringify(await request.json()),
 			}),
@@ -32,8 +30,8 @@ export async function PATCH(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
-	const session = await sessionOrUnauthorized();
-	if (!session)
+	const user = await userOrUnauthorized();
+	if (!user)
 		return NextResponse.json(
 			{ error: 'Unauthorized' },
 			{ status: 401 },
@@ -41,7 +39,7 @@ export async function DELETE(_request: Request, { params }: Params) {
 	try {
 		const { chatId } = await params;
 		const response = await backendFetch(
-			session,
+			user.accessToken,
 			`/chats/${chatId}`,
 			{ method: 'DELETE' },
 		);
