@@ -3,40 +3,14 @@
 import {
 	ChangeEvent,
 	FormEvent,
-	KeyboardEvent,
 	useEffect,
 	useRef,
 	useState,
 } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import {
-	ArrowLeft,
-	ArrowUp,
-	Check,
-	ChevronDown,
-	ChevronRight,
 	CircleAlert,
-	CircleCheck,
-	Copy,
-	Ellipsis,
-	FileText,
-	Files,
-	Folder,
 	LoaderCircle,
-	Menu,
-	MessageSquareText,
-	PanelLeftClose,
-	PanelLeftOpen,
-	PanelRightOpen,
-	Paperclip,
-	PencilLine,
-	Plus,
-	ScanEye,
-	Square,
 	Trash,
-	Upload,
-	User,
 	X,
 } from 'lucide-react';
 import type {
@@ -45,15 +19,19 @@ import type {
 	Source,
 	SourceInspection,
 } from '@/types/workspace';
-import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { SessionSynchronizer } from '@/components/auth/session-synchronizer';
-import {
-	SmoothLink,
-	useSmoothNavigation,
-} from '@/components/navigation/smooth-link';
+import { useSmoothNavigation } from '@/components/navigation/smooth-link';
 import { ChatScreenProps } from '@/types/chat-screen';
+import { ChatSidebar } from './chat-sidebar';
+import { ChatHeader } from './chat-header';
+import { MessageList } from './message-list';
+import { MessageComposer } from './message-composer';
+import { SourcesPanel } from './sources-panel';
 
-async function json<T>(url: string, init?: RequestInit): Promise<T> {
+async function json<T>(
+	url: string,
+	init?: RequestInit,
+): Promise<T> {
 	const response = await fetch(url, init);
 	const body = (await response.json().catch(() => ({}))) as T & {
 		error?: string | { message?: string };
@@ -77,14 +55,12 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
 	return body;
 }
 
-const activeStatuses = new Set(['uploaded', 'queued', 'processing']);
+const activeStatuses = new Set([
+	'uploaded',
+	'queued',
+	'processing',
+]);
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-
-function formatBytes(bytes: number) {
-	if (bytes < 1024) return `${bytes} B`;
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 function OcrElementCard({
 	element,
@@ -136,7 +112,9 @@ function OcrElementCard({
 			)}
 			{element.table_html && (
 				<div className='record-metadata'>
-					<strong>Extracted table HTML</strong>
+					<strong>
+						Extracted table HTML
+					</strong>
 					<pre>{element.table_html}</pre>
 				</div>
 			)}
@@ -150,7 +128,8 @@ function RagChunkCard({
 	chunk: SourceInspection['chunks'][number];
 }) {
 	const approximateTokens =
-		chunk.token_count ?? Math.ceil(chunk.content.length / 4);
+		chunk.token_count ??
+		Math.ceil(chunk.content.length / 4);
 	return (
 		<article className='chunk-record'>
 			<header>
@@ -169,7 +148,8 @@ function RagChunkCard({
 						{chunk.token_count == null
 							? 'estimated '
 							: ''}
-						tokens · {chunk.content.length}{' '}
+						tokens ·{' '}
+						{chunk.content.length}{' '}
 						characters
 					</small>
 				</div>
@@ -210,36 +190,48 @@ export function ChatScreen({
 }: ChatScreenProps) {
 	const navigate = useSmoothNavigation();
 	const [chats, setChats] = useState(projectChats);
-	const [messages, setMessages] = useState(initialMessages);
-	const [sources, setSources] = useState(initialSources);
+	const [messages, setMessages] =
+		useState(initialMessages);
+	const [sources, setSources] =
+		useState(initialSources);
 	const [sending, setSending] = useState(false);
 	const [uploading, setUploading] = useState(false);
-	const [selectedUploadFile, setSelectedUploadFile] =
-		useState<File | null>(null);
-	const [sourcesOpen, setSourcesOpen] = useState(true);
-	const [streamingId, setStreamingId] = useState<string | null>(null);
-	const [copiedId, setCopiedId] = useState<string | null>(null);
-	const [chatSidebarOpen, setChatSidebarOpen] = useState(true);
-	const [menuChatId, setMenuChatId] = useState<string | null>(null);
-	const [editingChatId, setEditingChatId] = useState<string | null>(null);
-	const [deletingChatId, setDeletingChatId] = useState<string | null>(
-		null,
-	);
-	const [chatActionBusy, setChatActionBusy] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const [inspection, setInspection] = useState<SourceInspection | null>(
-		null,
-	);
-	const [inspectionLoading, setInspectionLoading] = useState<
+	const [selectedUploadFiles, setSelectedUploadFiles] =
+		useState<File[]>([]);
+	const [sourcesOpen, setSourcesOpen] = useState(false);
+	const [streamingId, setStreamingId] = useState<
 		string | null
 	>(null);
+	const [copiedId, setCopiedId] = useState<
+		string | null
+	>(null);
+	const [chatSidebarOpen, setChatSidebarOpen] =
+		useState(true);
+	const [menuChatId, setMenuChatId] = useState<
+		string | null
+	>(null);
+	const [editingChatId, setEditingChatId] = useState<
+		string | null
+	>(null);
+	const [deletingChatId, setDeletingChatId] = useState<
+		string | null
+	>(null);
+	const [chatActionBusy, setChatActionBusy] =
+		useState(false);
+	const [error, setError] = useState<string | null>(
+		null,
+	);
+	const [inspection, setInspection] =
+		useState<SourceInspection | null>(null);
+	const [, setInspectionLoading] =
+		useState<string | null>(null);
 	const [inspectionTab, setInspectionTab] = useState<
 		'elements' | 'chunks'
 	>('elements');
-	const [sourceToDelete, setSourceToDelete] = useState<Source | null>(
-		null,
-	);
-	const [deletingSource, setDeletingSource] = useState(false);
+	const [sourceToDelete, setSourceToDelete] =
+		useState<Source | null>(null);
+	const [deletingSource, setDeletingSource] =
+		useState(false);
 	const fileRef = useRef<HTMLInputElement>(null);
 	const composerRef = useRef<HTMLFormElement>(null);
 	const initialPromptSentRef = useRef(false);
@@ -250,11 +242,16 @@ export function ChatScreen({
 	);
 
 	useEffect(() => {
-		endRef.current?.scrollIntoView({ behavior: 'smooth' });
+		endRef.current?.scrollIntoView({
+			behavior: 'smooth',
+		});
 	}, [messages, sending]);
 
 	useEffect(() => {
-		if (window.matchMedia('(max-width: 900px)').matches)
+		if (
+			window.matchMedia('(max-width: 900px)')
+				.matches
+		)
 			setChatSidebarOpen(false);
 	}, []);
 
@@ -268,7 +265,11 @@ export function ChatScreen({
 			return;
 		initialPromptSentRef.current = true;
 		composerRef.current?.requestSubmit();
-	}, [hasActiveIngestion, initialMessages.length, initialPrompt]);
+	}, [
+		hasActiveIngestion,
+		initialMessages.length,
+		initialPrompt,
+	]);
 
 	useEffect(() => {
 		if (!hasActiveIngestion) return;
@@ -283,36 +284,76 @@ export function ChatScreen({
 			} catch {}
 		}, 4000);
 		return () => window.clearInterval(timer);
-	}, [chat.knowledge_base_id, hasActiveIngestion]);
+	}, [
+		chat.knowledge_base_id,
+		hasActiveIngestion,
+	]);
 
-	async function upload(event: FormEvent<HTMLFormElement>) {
+	useEffect(() => {
+		function handleKeyDown(event: KeyboardEvent) {
+			if (
+				event.key === 'Escape' &&
+				sourcesOpen
+			) {
+				setSourcesOpen(false);
+			}
+		}
+		document.addEventListener(
+			'keydown',
+			handleKeyDown,
+		);
+		return () =>
+			document.removeEventListener(
+				'keydown',
+				handleKeyDown,
+			);
+	}, [sourcesOpen]);
+
+	async function upload(
+		event: FormEvent<HTMLFormElement>,
+	) {
 		event.preventDefault();
 		const uploadForm = event.currentTarget;
-		const file = selectedUploadFile ?? fileRef.current?.files?.[0];
-		if (!file) return;
-		if (file.size > MAX_UPLOAD_BYTES) {
-			setError('File size must not exceed 5 MB.');
+		const files =
+			selectedUploadFiles.length > 0
+				? selectedUploadFiles
+				: fileRef.current?.files
+					? Array.from(fileRef.current.files)
+					: [];
+		if (files.length === 0) return;
+		const oversized = files.find(
+			f => f.size > MAX_UPLOAD_BYTES,
+		);
+		if (oversized) {
+			setError(
+				`"${oversized.name}" exceeds 5 MB limit.`,
+			);
 			uploadForm.reset();
-			setSelectedUploadFile(null);
+			setSelectedUploadFiles([]);
 			return;
 		}
 		setUploading(true);
 		setError(null);
 		try {
-			const form = new FormData();
-			form.set('file', file);
-			const source = await json<Source>(
-				`/api/knowledge-bases/${chat.knowledge_base_id}/sources`,
-				{ method: 'POST', body: form },
-			);
-			setSources(current => [
-				source,
-				...current.filter(
-					item => item.id !== source.id,
-				),
-			]);
+			for (const file of files) {
+				const form = new FormData();
+				form.set('file', file);
+				const source = await json<Source>(
+					`/api/knowledge-bases/${chat.knowledge_base_id}/sources`,
+					{
+						method: 'POST',
+						body: form,
+					},
+				);
+				setSources(current => [
+					source,
+					...current.filter(
+						item => item.id !== source.id,
+					),
+				]);
+			}
 			uploadForm.reset();
-			setSelectedUploadFile(null);
+			setSelectedUploadFiles([]);
 		} catch (caught) {
 			setError(
 				caught instanceof Error
@@ -324,30 +365,51 @@ export function ChatScreen({
 		}
 	}
 
-	function chooseUploadFile(event: ChangeEvent<HTMLInputElement>) {
-		const file = event.target.files?.[0] ?? null;
-		if (file && file.size > MAX_UPLOAD_BYTES) {
-			setError('File size must not exceed 5 MB.');
+	function chooseUploadFiles(
+		event: ChangeEvent<HTMLInputElement>,
+	) {
+		const incoming = Array.from(
+			event.target.files ?? [],
+		);
+		const combined = [
+			...selectedUploadFiles,
+			...incoming,
+		].slice(0, 5);
+		const oversized = combined.find(
+			f => f.size > MAX_UPLOAD_BYTES,
+		);
+		if (oversized) {
+			setError(
+				`"${oversized.name}" exceeds 5 MB limit.`,
+			);
 			event.target.value = '';
-			setSelectedUploadFile(null);
 			return;
 		}
 		setError(null);
-		setSelectedUploadFile(file);
+		setSelectedUploadFiles(combined);
+		event.target.value = '';
+	}
+
+	function removeSelectedFile(index: number) {
+		setSelectedUploadFiles(current =>
+			current.filter((_, i) => i !== index),
+		);
 	}
 
 	function clearSelectedUpload() {
-		setSelectedUploadFile(null);
-		if (fileRef.current) fileRef.current.value = '';
+		setSelectedUploadFiles([]);
+		if (fileRef.current)
+			fileRef.current.value = '';
 	}
 
 	async function inspectSource(source: Source) {
 		setInspectionLoading(source.id);
 		setError(null);
 		try {
-			const result = await json<SourceInspection>(
-				`/api/knowledge-bases/${chat.knowledge_base_id}/sources/${source.id}/inspection`,
-			);
+			const result =
+				await json<SourceInspection>(
+					`/api/knowledge-bases/${chat.knowledge_base_id}/sources/${source.id}/inspection`,
+				);
 			setInspection(result);
 			setInspectionTab('elements');
 		} catch (caught) {
@@ -362,7 +424,8 @@ export function ChatScreen({
 	}
 
 	async function deleteSource() {
-		if (!sourceToDelete || deletingSource) return;
+		if (!sourceToDelete || deletingSource)
+			return;
 		setDeletingSource(true);
 		setError(null);
 		try {
@@ -374,7 +437,9 @@ export function ChatScreen({
 				const body = (await response
 					.json()
 					.catch(() => ({}))) as {
-					error?: string | { message?: string };
+					error?: string | {
+						message?: string;
+					};
 				};
 				throw new Error(
 					typeof body.error === 'string'
@@ -386,10 +451,14 @@ export function ChatScreen({
 			setSources(current =>
 				current.filter(
 					source =>
-						source.id !== sourceToDelete.id,
+						source.id !==
+						sourceToDelete.id,
 				),
 			);
-			if (inspection?.source_id === sourceToDelete.id)
+			if (
+				inspection?.source_id ===
+				sourceToDelete.id
+			)
 				setInspection(null);
 			setSourceToDelete(null);
 		} catch (caught) {
@@ -403,10 +472,7 @@ export function ChatScreen({
 		}
 	}
 
-	async function send(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		const form = new FormData(event.currentTarget);
-		const content = String(form.get('content') ?? '').trim();
+	async function sendContent(content: string) {
 		if (!content || sending) return;
 		const optimistic: Message = {
 			id: `pending-${Date.now()}`,
@@ -430,7 +496,6 @@ export function ChatScreen({
 			optimistic,
 			assistantPlaceholder,
 		]);
-		event.currentTarget.reset();
 		setSending(true);
 		setStreamingId(assistantId);
 		setError(null);
@@ -468,15 +533,18 @@ export function ChatScreen({
 						'Could not start the response stream.',
 				);
 			}
-			const reader = response.body.getReader();
+			const reader =
+				response.body.getReader();
 			const decoder = new TextDecoder();
 			let buffer = '';
 			while (true) {
-				const { value, done } = await reader.read();
+				const { value, done } =
+					await reader.read();
 				buffer += decoder.decode(value, {
 					stream: !done,
 				});
-				const frames = buffer.split('\n\n');
+				const frames =
+					buffer.split('\n\n');
 				buffer = frames.pop() ?? '';
 				for (const frame of frames) {
 					const data = frame
@@ -502,7 +570,9 @@ export function ChatScreen({
 								type: 'error';
 								message: string;
 						  };
-					if (streamEvent.type === 'token') {
+					if (
+						streamEvent.type === 'token'
+					) {
 						setMessages(current =>
 							current.map(message =>
 								message.id ===
@@ -542,11 +612,13 @@ export function ChatScreen({
 			) {
 				setMessages(current =>
 					current.map(message =>
-						message.id === assistantId &&
+						message.id ===
+							assistantId &&
 						!message.content
 							? {
 									...message,
-									content: '_Response stopped._',
+									content:
+										'_Response stopped._',
 								}
 							: message,
 					),
@@ -572,25 +644,34 @@ export function ChatScreen({
 		}
 	}
 
-	function composerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-		if (
-			event.key === 'Enter' &&
-			!event.shiftKey &&
-			!event.nativeEvent.isComposing
-		) {
-			event.preventDefault();
-			event.currentTarget.form?.requestSubmit();
-		}
+	async function send(
+		event: FormEvent<HTMLFormElement>,
+	) {
+		event.preventDefault();
+		const form = event.currentTarget;
+		if (!form) return;
+		const content = String(
+			new FormData(form).get('content') ?? '',
+		).trim();
+		form.reset();
+		await sendContent(content);
 	}
 
-	async function copyMessage(message: Message) {
-		await navigator.clipboard.writeText(message.content);
+	function copyMessage(message: Message) {
+		navigator.clipboard.writeText(
+			message.content,
+		);
 		setCopiedId(message.id);
-		window.setTimeout(() => setCopiedId(null), 1500);
+		window.setTimeout(
+			() => setCopiedId(null),
+			1500,
+		);
 	}
 
 	function createChat() {
-		navigate(`/?project=${chat.project_id}`);
+		navigate(
+			`/?project=${chat.project_id}`,
+		);
 	}
 
 	async function renameChat(
@@ -599,7 +680,9 @@ export function ChatScreen({
 	) {
 		event.preventDefault();
 		const title = String(
-			new FormData(event.currentTarget).get('title') ?? '',
+			new FormData(event.currentTarget).get(
+				'title',
+			) ?? '',
 		).trim();
 		if (!title) return;
 		setChatActionBusy(true);
@@ -617,7 +700,9 @@ export function ChatScreen({
 			);
 			setChats(current =>
 				current.map(item =>
-					item.id === updated.id ? updated : item,
+					item.id === updated.id
+						? updated
+						: item,
 				),
 			);
 			setEditingChatId(null);
@@ -641,7 +726,9 @@ export function ChatScreen({
 				{ method: 'DELETE' },
 			);
 			if (!response.ok)
-				throw new Error('Could not delete chat.');
+				throw new Error(
+					'Could not delete chat.',
+				);
 			const remaining = chats.filter(
 				item => item.id !== target.id,
 			);
@@ -668,291 +755,43 @@ export function ChatScreen({
 		<div
 			className={`chat-app ${chatSidebarOpen ? '' : 'chat-sidebar-collapsed'}`}>
 			<SessionSynchronizer />
-			<aside className='chat-history-sidebar'>
-				<div className='chat-sidebar-brand'>
-					<SmoothLink
-						href='/'
-						aria-label='Projects'>
-						<span className='editorial-brand-mark'>
-							R
-						</span>
-						<strong>RagApp</strong>
-					</SmoothLink>
-					<button
-						type='button'
-						onClick={() =>
-							setChatSidebarOpen(
-								false,
-							)
-						}
-						aria-label='Collapse chat sidebar'>
-						<PanelLeftClose size={18} />
-					</button>
-				</div>
-				<button
-					className='new-chat-button'
-					type='button'
-					onClick={createChat}
-					disabled={chatActionBusy}>
-					<Plus size={17} />
-					<span>New chat</span>
-				</button>
-				<div className='chat-project-block'>
-					<div className='chat-history-label'>
-						Project
-					</div>
-					<SmoothLink
-						href={`/?project=${chat.project_id}`}>
-						<Folder size={16} />
-						<span>{projectName}</span>
-					</SmoothLink>
-				</div>
-				<div className='chat-history-label'>
-					Recent chats
-				</div>
-				<nav
-					className='chat-history-list'
-					aria-label='Chats'>
-					{chats.map(item => (
-						<div
-							className={`history-chat-wrap ${item.id === chat.id ? 'active' : ''}`}
-							key={item.id}>
-							{editingChatId ===
-							item.id ? (
-								<form
-									className='chat-rename-form'
-									onSubmit={event =>
-										renameChat(
-											event,
-											item,
-										)
-									}>
-									<input
-										name='title'
-										defaultValue={
-											item.title
-										}
-										maxLength={
-											240
-										}
-										autoFocus
-										onKeyDown={event => {
-											if (
-												event.key ===
-												'Escape'
-											)
-												setEditingChatId(
-													null,
-												);
-										}}
-									/>
-									<button
-										type='submit'
-										disabled={
-											chatActionBusy
-										}>
-										<Check
-											size={
-												14
-											}
-										/>
-									</button>
-									<button
-										type='button'
-										onClick={() =>
-											setEditingChatId(
-												null,
-											)
-										}>
-										<X
-											size={
-												14
-											}
-										/>
-									</button>
-								</form>
-							) : (
-								<>
-									<SmoothLink
-										href={`/chats/${item.id}`}>
-										<MessageSquareText
-											size={
-												15
-											}
-										/>
-										<span>
-											{
-												item.title
-											}
-										</span>
-									</SmoothLink>
-									<button
-										className='chat-options-trigger'
-										type='button'
-										onClick={() =>
-											setMenuChatId(
-												current =>
-													current ===
-													item.id
-														? null
-														: item.id,
-											)
-										}
-										aria-label={`Options for ${item.title}`}>
-										<Ellipsis
-											size={
-												17
-											}
-										/>
-									</button>
-									{menuChatId ===
-										item.id && (
-										<div className='chat-options-menu'>
-											<button
-												type='button'
-												onClick={() => {
-													setEditingChatId(
-														item.id,
-													);
-													setMenuChatId(
-														null,
-													);
-												}}>
-												<PencilLine
-													size={
-														14
-													}
-												/>{' '}
-												Rename
-											</button>
-											<button
-												className='danger'
-												type='button'
-												onClick={() => {
-													setDeletingChatId(
-														item.id,
-													);
-													setMenuChatId(
-														null,
-													);
-												}}>
-												<Trash
-													size={
-														14
-													}
-												/>{' '}
-												Delete
-											</button>
-										</div>
-									)}
-								</>
-							)}
-							{deletingChatId ===
-								item.id && (
-								<div className='chat-delete-confirm'>
-									<p>
-										Delete
-										this
-										chat?
-									</p>
-									<span>
-										This
-										cannot
-										be
-										undone.
-									</span>
-									<div>
-										<button
-											type='button'
-											onClick={() =>
-												setDeletingChatId(
-													null,
-												)
-											}>
-											Cancel
-										</button>
-										<button
-											className='danger'
-											type='button'
-											disabled={
-												chatActionBusy
-											}
-											onClick={() =>
-												deleteChat(
-													item,
-												)
-											}>
-											Delete
-										</button>
-									</div>
-								</div>
-							)}
-						</div>
-					))}
-				</nav>
-				<div className='chat-sidebar-footer'>
-					<SmoothLink
-						href='/'
-						className='chat-sidebar-projects'>
-						<ArrowLeft size={15} /> Back to
-						projects
-					</SmoothLink>
-					<ThemeToggle />
-				</div>
-			</aside>
-			{!chatSidebarOpen && (
-				<button
-					className='chat-sidebar-reopen'
-					type='button'
-					onClick={() => setChatSidebarOpen(true)}
-					aria-label='Open chat sidebar'>
-					<PanelLeftOpen size={19} />
-				</button>
-			)}
+			<ChatSidebar
+				chat={chat}
+				chats={chats}
+				projectName={projectName}
+				chatSidebarOpen={chatSidebarOpen}
+				setChatSidebarOpen={
+					setChatSidebarOpen
+				}
+				menuChatId={menuChatId}
+				setMenuChatId={setMenuChatId}
+				editingChatId={editingChatId}
+				setEditingChatId={
+					setEditingChatId
+				}
+				deletingChatId={deletingChatId}
+				setDeletingChatId={
+					setDeletingChatId
+				}
+				chatActionBusy={chatActionBusy}
+				onRename={renameChat}
+				onDelete={deleteChat}
+				onCreateChat={createChat}
+			/>
 			<main className='chat-screen'>
-				<header className='chat-page-header'>
-					<button
-						className='mobile-chat-menu'
-						type='button'
-						onClick={() =>
-							setChatSidebarOpen(true)
-						}
-						aria-label='Open chats'>
-						<Menu size={18} />
-					</button>
-					<div className='editorial-chat-title'>
-						<div
-							className='chat-title-breadcrumb'
-							aria-label='Project and chat'>
-							<SmoothLink
-								href={`/?project=${chat.project_id}`}>
-								{projectName}
-							</SmoothLink>
-							<ChevronRight
-								size={20}
-								aria-hidden='true'
-							/>
-							<h1>{chat.title}</h1>
-						</div>
-						<p>
-							Ask your documents. Get
-							source-backed answers.
-						</p>
-					</div>
-					<button
-						type='button'
-						className='header-sources-toggle'
-						onClick={() =>
-							setSourcesOpen(
-								open => !open,
-							)
-						}>
-						{sourcesOpen
-							? 'Hide sources'
-							: 'Show sources'}
-						<PanelRightOpen size={15} />
-					</button>
-				</header>
+				<ChatHeader
+					title={chat.title}
+					sourcesOpen={sourcesOpen}
+					sourcesCount={sources.length}
+					onToggleSources={() =>
+						setSourcesOpen(
+							open => !open,
+						)
+					}
+					onOpenSidebar={() =>
+						setChatSidebarOpen(true)
+					}
+				/>
 				{error && (
 					<div
 						className='workspace-error'
@@ -968,522 +807,85 @@ export function ChatScreen({
 						</button>
 					</div>
 				)}
+				<div className='chat-column'>
+					<MessageList
+						messages={messages}
+						streamingId={streamingId}
+						copiedId={copiedId}
+						onCopy={copyMessage}
+						onSuggest={sendContent}
+						endRef={endRef}
+					/>
+					<MessageComposer
+						ref={composerRef}
+						sending={sending}
+						placeholder={
+							sources.some(
+								source =>
+									source.status ===
+									'ready',
+							)
+								? 'Message kayceejenz.ai...'
+								: 'Upload a source or ask a question…'
+						}
+						defaultValue={
+							initialMessages.length ===
+							0
+								? initialPrompt
+								: undefined
+						}
+						onSubmit={send}
+						onStop={() =>
+							abortRef.current?.abort()
+						}
+					/>
+				</div>
 				<div
-					className={`chat-layout ${sourcesOpen ? '' : 'sources-collapsed'}`}>
-					<section className='conversation-panel panel'>
-						<div className='conversation-messages'>
-							{messages.length ===
-								0 && (
-								<div className='conversation-empty'>
-									<div className='empty-icon'>
-										<MessageSquareText
-											size={
-												28
-											}
-										/>
-									</div>
-									<h2>
-										Ask
-										about
-										your
-										sources
-									</h2>
-									<p>
-										Upload
-										a
-										document,
-										wait
-										until
-										it
-										is
-										ready,
-										then
-										ask
-										a
-										focused
-										question.
-									</p>
-								</div>
-							)}
-							{messages.map(
-								message => (
-									<article
-										className={`message-row ${message.role}`}
-										key={
-											message.id
-										}>
-										<div className='message-avatar'>
-											{message.role ===
-											'assistant' ? (
-												'AI'
-											) : (
-												<User
-													size={
-														17
-													}
-												/>
-											)}
-										</div>
-										<div className='message-body'>
-											<div className='message-meta'>
-												<strong>
-													{message.role ===
-													'assistant'
-														? 'AI Assistant'
-														: 'You'}
-												</strong>
-												<time>
-													{new Intl.DateTimeFormat(
-														undefined,
-														{
-															hour: '2-digit',
-															minute: '2-digit',
-														},
-													).format(
-														new Date(
-															message.created_at,
-														),
-													)}
-												</time>
-											</div>
-											{message.role ===
-											'assistant' ? (
-												<div className='message-markdown'>
-													<ReactMarkdown
-														remarkPlugins={[
-															remarkGfm,
-														]}
-														components={{
-															a: ({
-																children,
-																...chatScreenProps
-															}) => (
-																<a
-																	{...chatScreenProps}
-																	target='_blank'
-																	rel='noreferrer'>
-																	{
-																		children
-																	}
-																</a>
-															),
-														}}>
-														{
-															message.content
-														}
-													</ReactMarkdown>
-													{message.id ===
-														streamingId && (
-														<span
-															className='streaming-cursor'
-															aria-label='Generating'
-														/>
-													)}
-												</div>
-											) : (
-												<p>
-													{
-														message.content
-													}
-												</p>
-											)}
-											{message
-												.citations
-												.length >
-												0 && (
-												<details className='citation-group'>
-													<summary>
-														<Files
-															size={
-																14
-															}
-														/>{' '}
-														Citations{' '}
-														<span>
-															{
-																message
-																	.citations
-																	.length
-															}
-														</span>
-														<ChevronDown
-															size={
-																14
-															}
-															className='citation-chevron'
-														/>
-													</summary>
-													<div className='citation-list'>
-														{message.citations.map(
-															(
-																citation,
-																index,
-															) => (
-																<article
-																	key={`${citation.chunk_id}-${index}`}>
-																	<strong>
-																		[
-																		{index +
-																			1}
-
-																		]{' '}
-																		{
-																			citation.source_filename
-																		}
-																		{citation.page_number
-																			? ` · page ${citation.page_number}`
-																			: ''}
-																	</strong>
-																	<blockquote>
-																		{
-																			citation.excerpt
-																		}
-																	</blockquote>
-																</article>
-															),
-														)}
-													</div>
-												</details>
-											)}
-											{message.role ===
-												'assistant' &&
-												message.id !==
-													streamingId && (
-													<div className='message-actions'>
-														<button
-															type='button'
-															onClick={() =>
-																copyMessage(
-																	message,
-																)
-															}
-															aria-label='Copy response'>
-															{copiedId ===
-															message.id ? (
-																<Check
-																	size={
-																		14
-																	}
-																/>
-															) : (
-																<Copy
-																	size={
-																		14
-																	}
-																/>
-															)}
-															{copiedId ===
-															message.id
-																? 'Copied'
-																: 'Copy'}
-														</button>
-													</div>
-												)}
-										</div>
-									</article>
-								),
-							)}
-							<div ref={endRef} />
-						</div>
-						<form
-							ref={composerRef}
-							className='message-composer'
-							onSubmit={send}>
-							<textarea
-								name='content'
-								rows={2}
-								maxLength={
-									12000
-								}
-								required
-								disabled={
-									sending
-								}
-								defaultValue={
-									initialMessages.length ===
-									0
-										? initialPrompt
-										: undefined
-								}
-								onKeyDown={
-									composerKeyDown
-								}
-								placeholder={
-									sources.some(
-										source =>
-											source.status ===
-											'ready',
+					className={`sources-drawer ${sourcesOpen ? 'open' : ''}`}>
+					<div
+						className='sources-drawer-backdrop'
+						onClick={() =>
+							setSourcesOpen(false)
+						}
+					/>
+					<div className='sources-drawer-panel'>
+						<div className='sources-drawer-header'>
+							<h2>Sources</h2>
+							<button
+								type='button'
+								onClick={() =>
+									setSourcesOpen(
+										false,
 									)
-										? 'Ask...'
-										: 'Upload a source or ask a question…'
 								}
-							/>
-							{sending ? (
-								<button
-									type='button'
-									onClick={() =>
-										abortRef.current?.abort()
-									}
-									aria-label='Stop generating'>
-									<Square
-										size={
-											15
-										}
-										fill='currentColor'
-									/>
-								</button>
-							) : (
-								<button
-									type='submit'
-									aria-label='Send message'>
-									<ArrowUp
-										size={
-											20
-										}
-									/>
-								</button>
-							)}
-							<small className='composer-hint'>
-								Enter to send ·
-								Shift + Enter
-								for a new line
-							</small>
-						</form>
-					</section>
-					<aside className='sources-panel panel'>
-						<div className='sources-heading'>
-							<div className='sources-title'>
-								<h2>Sources</h2>
-							</div>
-							<span>
-								{sources.length}
-							</span>
+								aria-label='Close sources'>
+								<X size={18} />
+							</button>
 						</div>
-						{sourcesOpen && (
-							<>
-								<form
-									className='source-upload'
-									onSubmit={
-										upload
-									}>
-									<input
-										ref={
-											fileRef
-										}
-										id='source-file'
-										name='file'
-										type='file'
-										required
-										onChange={
-											chooseUploadFile
-										}
-									/>
-									<div className='source-file-picker'>
-										<label
-											className={
-												selectedUploadFile
-													? 'file-selected'
-													: ''
-											}
-											htmlFor='source-file'>
-											<Upload
-												size={
-													20
-												}
-											/>
-											<span>
-												<strong>
-													{selectedUploadFile
-														? selectedUploadFile.name
-														: 'Add a source'}
-												</strong>
-												<small>
-													{selectedUploadFile
-														? `${formatBytes(selectedUploadFile.size)} · Ready to upload`
-														: 'PDF, DOCX, text, and more · max 5 MB'}
-												</small>
-											</span>
-										</label>
-										{selectedUploadFile && (
-											<button
-												type='button'
-												className='selected-file-action'
-												onClick={
-													clearSelectedUpload
-												}
-												aria-label={`Remove ${selectedUploadFile.name}`}>
-												<CircleCheck
-													className='file-check-icon'
-													size={
-														18
-													}
-												/>
-												<X
-													className='file-remove-icon'
-													size={
-														18
-													}
-												/>
-											</button>
-										)}
-									</div>
-									<button
-										className='primary-action full'
-										disabled={
-											uploading ||
-											!selectedUploadFile
-										}>
-										{uploading ? (
-											<LoaderCircle
-												className='spin'
-												size={
-													17
-												}
-											/>
-										) : (
-											<Paperclip
-												size={
-													17
-												}
-											/>
-										)}{' '}
-										{uploading
-											? 'Uploading…'
-											: 'Upload'}
-									</button>
-								</form>
-								<div className='source-list'>
-									{sources.map(
-										source => (
-											<article
-												className='source-item'
-												key={
-													source.id
-												}>
-												<button
-													type='button'
-													className='source-open-button'
-													onClick={() =>
-														inspectSource(
-															source,
-														)
-													}
-													disabled={
-														inspectionLoading ===
-														source.id
-													}>
-													<div className='source-file-icon'>
-														<FileText
-															size={
-																18
-															}
-														/>
-													</div>
-													<div>
-														<strong
-															title={
-																source.display_name
-															}>
-															{
-																source.display_name
-															}
-														</strong>
-														<small>
-															{formatBytes(
-																source.byte_size,
-															)}{' '}
-															·
-															v
-															{
-																source.version
-															}
-														</small>
-														<span
-															className={`source-status ${source.status}`}>
-															{source.status ===
-															'ready' ? (
-																<CircleCheck
-																	size={
-																		12
-																	}
-																/>
-															) : activeStatuses.has(
-																	source.status,
-															  ) ? (
-																<LoaderCircle
-																	className='spin'
-																	size={
-																		12
-																	}
-																/>
-															) : (
-																<CircleAlert
-																	size={
-																		12
-																	}
-																/>
-															)}
-															{
-																source.status
-															}
-														</span>
-													</div>
-													<span className='source-inspect-icon'>
-														{inspectionLoading ===
-														source.id ? (
-															<LoaderCircle
-																className='spin'
-																size={
-																	15
-																}
-															/>
-														) : (
-															<ScanEye
-																size={
-																	15
-																}
-															/>
-														)}
-													</span>
-												</button>
-												<button
-													type='button'
-													className='source-delete-button'
-													onClick={() =>
-														setSourceToDelete(
-															source,
-														)
-													}
-													aria-label={`Delete ${source.display_name}`}>
-													<Trash
-														size={
-															15
-														}
-													/>
-												</button>
-											</article>
-										),
-									)}
-									{sources.length ===
-										0 && (
-										<div className='sources-empty'>
-											<Files
-												size={
-													22
-												}
-											/>
-											<p>
-												No
-												sources
-												uploaded
-												yet.
-											</p>
-										</div>
-									)}
-								</div>
-							</>
-						)}
-					</aside>
+						<SourcesPanel
+							sources={sources}
+							selectedUploadFiles={
+								selectedUploadFiles
+							}
+							uploading={uploading}
+							onChooseFiles={
+								chooseUploadFiles
+							}
+							onRemoveFile={
+								removeSelectedFile
+							}
+							onClearSelected={
+								clearSelectedUpload
+							}
+							onUpload={upload}
+						onInspect={
+							inspectSource
+						}
+						setSourceToDelete={
+								setSourceToDelete
+							}
+						/>
+					</div>
 				</div>
 				{sourceToDelete && (
 					<div

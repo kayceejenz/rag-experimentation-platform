@@ -97,11 +97,22 @@ export type Citation = {
 	element_ids: string[];
 };
 
+export type ToolCall = {
+	id: string;
+	type: string;
+	label: string;
+	status: 'running' | 'completed' | 'failed';
+	input?: unknown;
+	output?: unknown;
+};
+
 export type Message = {
 	id: string;
 	chat_id: string;
 	role: 'user' | 'assistant' | 'system';
 	content: string;
 	citations: Citation[];
+	tool_calls?: ToolCall[];
+	reasoning?: string;
 	created_at: string;
 };

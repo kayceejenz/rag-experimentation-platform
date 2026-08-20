@@ -34,11 +34,10 @@ export function AppShell({
 				<SmoothLink
 					href='/'
 					className='rail-brand'
-					aria-label='RagApp'>
-					<span className='rail-brand-mark'>
-						R
+					aria-label='kayceejenz.ai'>
+					<span className='rail-brand-text'>
+						kayceejenz.ai
 					</span>
-					<span>RagApp</span>
 				</SmoothLink>
 				<details className='mobile-workspace-menu'>
 					<summary aria-label='Open workspace navigation'>

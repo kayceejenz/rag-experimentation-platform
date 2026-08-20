@@ -5,6 +5,7 @@ import type { Chat, Project } from '@/types/workspace';
 import {
 	ArrowUp,
 	ChevronDown,
+	FileText,
 	Folder,
 	LoaderCircle,
 	Paperclip,
@@ -53,11 +54,9 @@ export function ProjectWorkspace({
 		initialShowProjectForm,
 	);
 	const [message, setMessage] = useState('');
-	const [sourceFile, setSourceFile] = useState<File | null>(null);
+	const [sourceFiles, setSourceFiles] = useState<File[]>([]);
 	const [busy, setBusy] = useState<'project' | 'chat' | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const selectedProject =
-		projects.find(project => project.id === selectedId) ?? null;
 
 	async function createProject(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -119,13 +118,15 @@ export function ProjectWorkspace({
 					body: JSON.stringify({ title }),
 				},
 			);
-			if (sourceFile) {
-				const form = new FormData();
-				form.set('file', sourceFile);
-				await requestJson(
-					`/api/knowledge-bases/${chat.knowledge_base_id}/sources`,
-					{ method: 'POST', body: form },
-				);
+			if (sourceFiles.length > 0) {
+				for (const file of sourceFiles) {
+					const form = new FormData();
+					form.set('file', file);
+					await requestJson(
+						`/api/knowledge-bases/${chat.knowledge_base_id}/sources`,
+						{ method: 'POST', body: form },
+					);
+				}
 			}
 			navigate(
 				`/chats/${chat.id}?prompt=${encodeURIComponent(content)}`,
@@ -141,15 +142,21 @@ export function ProjectWorkspace({
 	}
 
 	function selectSource(event: ChangeEvent<HTMLInputElement>) {
-		const file = event.target.files?.[0] ?? null;
-		if (file && file.size > 5 * 1024 * 1024) {
-			setError('File size must not exceed 5 MB.');
+		const incoming = Array.from(event.target.files ?? []);
+		const combined = [...sourceFiles, ...incoming].slice(0, 5);
+		const oversized = combined.find(f => f.size > 5 * 1024 * 1024);
+		if (oversized) {
+			setError(`"${oversized.name}" exceeds 5 MB limit.`);
 			event.target.value = '';
-			setSourceFile(null);
 			return;
 		}
 		setError(null);
-		setSourceFile(file);
+		setSourceFiles(combined);
+		event.target.value = '';
+	}
+
+	function removeSourceFile(index: number) {
+		setSourceFiles(current => current.filter((_, i) => i !== index));
 	}
 
 	function chooseProject(value: string) {
@@ -194,22 +201,6 @@ export function ProjectWorkspace({
 				)}
 				<section className='ai-launchpad'>
 					<h1>What can I help you explore?</h1>
-					<p>
-						{selectedProject ? (
-							<>
-								Your new chat
-								will use{' '}
-								<strong>
-									{
-										selectedProject.name
-									}
-								</strong>
-								.
-							</>
-						) : (
-							'Choose or create a project, then start with your first message.'
-						)}
-					</p>
 					<div className='ai-starter-grid'>
 						{/* <button
 							type='button'
@@ -313,6 +304,46 @@ export function ProjectWorkspace({
 					<form
 						className='ai-start-composer'
 						onSubmit={startChat}>
+						<input
+							ref={
+								sourceInputRef
+							}
+							id='new-chat-source'
+							className='composer-source-input'
+							type='file'
+							multiple
+							accept='.pdf,.doc,.docx,.txt,.csv,.md,.json,.xlsx,.xls'
+							onChange={
+								selectSource
+							}
+						/>
+						{sourceFiles.length > 0 && (
+							<div className='composer-attachments'>
+								{sourceFiles.map(
+									(file, i) => (
+										<span
+											key={`${file.name}-${i}`}
+											className='attachment-chip'>
+											<FileText size={12} />
+											<span className='attachment-chip-name'>
+												{file.name}
+											</span>
+											<button
+												type='button'
+												className='attachment-chip-remove'
+												onClick={() =>
+													removeSourceFile(
+														i,
+													)
+												}
+												aria-label={`Remove ${file.name}`}>
+												<X size={11} />
+											</button>
+										</span>
+									),
+								)}
+							</div>
+						)}
 						<textarea
 							value={message}
 							onChange={event =>
@@ -332,55 +363,18 @@ export function ProjectWorkspace({
 							aria-label='Message'
 						/>
 						<div className='composer-tools'>
-							<div className='composer-source-control'>
-								<input
-									ref={
-										sourceInputRef
-									}
-									id='new-chat-source'
-									className='composer-source-input'
-									type='file'
-									onChange={
-										selectSource
-									}
-								/>
-								<label
-									className={`composer-source-button ${sourceFile ? 'attached' : ''}`}
-									htmlFor='new-chat-source'
-									title={
-										sourceFile?.name
-									}>
-									<Paperclip
-										size={
-											15
-										}
-									/>
-									<span>
-										{sourceFile?.name ??
-											'Add source'}
-									</span>
-								</label>
-								{sourceFile && (
-									<button
-										className='source-remove-button'
-										type='button'
-										onClick={() => {
-											setSourceFile(
-												null,
-											);
-											if (
-												sourceInputRef.current
-											)
-												sourceInputRef.current.value =
-													'';
-										}}
-										aria-label='Remove attached source'>
-										<X
-											size={
-												13
-											}
-										/>
-									</button>
+							<div className='composer-tools-left'>
+								{sourceFiles.length < 5 && (
+									<label
+										className='composer-source-button'
+										htmlFor='new-chat-source'>
+										<Paperclip size={14} />
+										<span>
+											{sourceFiles.length === 0
+												? 'Add sources'
+												: `Add more (${sourceFiles.length}/5)`}
+										</span>
+									</label>
 								)}
 							</div>
 							<div className='composer-project-control'>
@@ -466,7 +460,7 @@ export function ProjectWorkspace({
 						</div>
 					</form>
 					<small className='ai-disclaimer'>
-						RagApp can make mistakes. Check
+						kayceejenz.ai can make mistakes. Check
 						important answers against their
 						sources.
 					</small>

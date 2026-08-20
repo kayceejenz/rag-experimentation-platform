@@ -3,8 +3,8 @@
 import { getSession, signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useEffect, useState } from 'react';
-import { CircleAlert, LoaderCircle, ScanText } from 'lucide-react';
-import { Mode } from 'fs';
+import { CircleAlert, LoaderCircle } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme/theme-toggle';
 
 const ERROR_COPY: Record<string, string> = {
 	SessionExpired: 'Your session expired. Sign in again to continue.',
@@ -21,7 +21,7 @@ function SignInContent() {
 			? requestedCallback
 			: '/';
 	const initialError = params.get('error');
-	const [mode, setMode] = useState<Mode>('signin');
+	const [mode, setMode] = useState<'signin' | 'register'>('signin');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [displayName, setDisplayName] = useState('');
@@ -39,7 +39,7 @@ function SignInContent() {
 		});
 	}, [callbackUrl]);
 
-	function changeMode(next: Mode) {
+	function changeMode(next: 'signin' | 'register') {
 		setMode(next);
 		setError('');
 	}
@@ -113,16 +113,17 @@ function SignInContent() {
 
 	return (
 		<main className='signin-page'>
+			<div className='signin-decoration' />
 			<section
-				className='signin-card auth-card'
+				className='signin-card'
 				aria-labelledby='signin-title'>
-				<div className='signin-brand'>
-					<span
-						className='signin-brand-mark'
-						aria-hidden>
-						<ScanText size={21} />
-					</span>
-					<span>RagApp</span>
+				<div className='signin-card-header'>
+					<div className='signin-brand'>
+						<span className='signin-brand-text'>
+							kayceejenz.ai
+						</span>
+					</div>
+					<ThemeToggle />
 				</div>
 
 				<div className='signin-copy'>
@@ -133,8 +134,8 @@ function SignInContent() {
 					</h1>
 					<p>
 						{mode === 'signin'
-							? 'Sign in to access your ai assistant.'
-							: 'Get onboard in minutes.'}
+							? 'Sign in to continue to your assistant.'
+							: 'Get started in minutes.'}
 					</p>
 				</div>
 
@@ -181,7 +182,7 @@ function SignInContent() {
 						className='signin-error'
 						role='alert'>
 						<CircleAlert
-							size={17}
+							size={15}
 							aria-hidden
 						/>
 						<span>{error}</span>
@@ -207,12 +208,12 @@ function SignInContent() {
 									)
 								}
 								maxLength={160}
-								placeholder='Precious'
+								placeholder='Optional'
 							/>
 						</label>
 					)}
 					<label>
-						<span>Email address</span>
+						<span>Email</span>
 						<input
 							type='email'
 							autoComplete='email'
@@ -257,8 +258,7 @@ function SignInContent() {
 						/>
 						{mode === 'register' && (
 							<small>
-								Use at least 12
-								characters.
+								At least 12 characters.
 							</small>
 						)}
 					</label>
@@ -269,7 +269,7 @@ function SignInContent() {
 						{loading && (
 							<LoaderCircle
 								className='signin-spin'
-								size={18}
+								size={16}
 								aria-hidden
 							/>
 						)}
