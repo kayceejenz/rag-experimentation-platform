@@ -52,40 +52,10 @@ export type Source = {
 
 export type SourceInspection = {
 	source_id: string;
-	version_id: string;
 	version: number;
 	filename: string;
 	status: string;
-	parser_name: string | null;
-	parser_version: string | null;
-	parser_config: Record<string, unknown>;
-	element_count: number;
-	chunk_count: number;
-	processing_started_at: string | null;
-	processing_completed_at: string | null;
-	error_code: string | null;
-	error_message: string | null;
-	elements: Array<{
-		element_id: string;
-		parent_element_id: string | null;
-		category: string;
-		content: string;
-		page_number: number | null;
-		coordinates: unknown;
-		table_html: string | null;
-		metadata: Record<string, unknown>;
-		sequence_number: number;
-	}>;
-	chunks: Array<{
-		id: string;
-		position: number;
-		content: string;
-		token_count: number | null;
-		page_from: number | null;
-		page_to: number | null;
-		metadata: Record<string, unknown>;
-		element_ids: string[];
-	}>;
+	url: string;
 };
 
 export type Citation = {

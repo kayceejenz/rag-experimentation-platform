@@ -16,7 +16,8 @@ function SignInContent() {
 	const requestedCallback = params.get('callbackUrl') ?? '/';
 	const callbackUrl =
 		requestedCallback.startsWith('/') &&
-		!requestedCallback.startsWith('//')
+		!requestedCallback.startsWith('//') &&
+		!requestedCallback.startsWith('/api/')
 			? requestedCallback
 			: '/';
 	const initialError = params.get('error');

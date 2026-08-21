@@ -146,6 +146,30 @@ export async function getAuthUser(): Promise<AuthUser | null> {
 	};
 }
 
+export async function registerUser(
+	email: string,
+	password: string,
+	displayName: string | null,
+): Promise<{ id: string; email: string }> {
+	const res = await fetch(apiUrl('/register'), {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ email, password, display_name: displayName }),
+		cache: 'no-store',
+	});
+	if (!res.ok) {
+		const body = await res.json().catch(() => ({})) as { detail?: string; error?: { message?: string; details?: Array<{ message?: string }> } };
+		throw new Error(
+			body.error?.details?.[0]?.message ??
+			body.error?.message ??
+			body.detail ??
+			'Unable to create the account.',
+		);
+	}
+	const data = (await res.json()) as { id: string; email: string; display_name: string | null };
+	return { id: data.id, email: data.email };
+}
+
 export async function getRefreshToken(): Promise<string | null> {
 	const store = await cookies();
 	return store.get(REFRESH_TOKEN)?.value ?? null;

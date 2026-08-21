@@ -144,9 +144,9 @@ export function ProjectWorkspace({
 	function selectSource(event: ChangeEvent<HTMLInputElement>) {
 		const incoming = Array.from(event.target.files ?? []);
 		const combined = [...sourceFiles, ...incoming].slice(0, 5);
-		const oversized = combined.find(f => f.size > 5 * 1024 * 1024);
+		const oversized = combined.find(f => f.size > 10 * 1024 * 1024);
 		if (oversized) {
-			setError(`"${oversized.name}" exceeds 5 MB limit.`);
+			setError(`"${oversized.name}" exceeds 10 MB limit.`);
 			event.target.value = '';
 			return;
 		}

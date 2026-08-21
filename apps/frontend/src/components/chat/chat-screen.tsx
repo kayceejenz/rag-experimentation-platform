@@ -61,125 +61,7 @@ const activeStatuses = new Set([
 	'queued',
 	'processing',
 ]);
-const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-
-function OcrElementCard({
-	element,
-}: {
-	element: SourceInspection['elements'][number];
-}) {
-	return (
-		<article className='element-record'>
-			<header>
-				<span className='element-sequence'>
-					{element.sequence_number + 1}
-				</span>
-				<div>
-					<strong>{element.category}</strong>
-					<small>
-						{element.page_number
-							? `Page ${element.page_number}`
-							: 'No page'}
-					</small>
-				</div>
-			</header>
-			<p>
-				{element.content ||
-					'No text extracted for this element.'}
-			</p>
-			{element.coordinates != null && (
-				<div className='record-metadata'>
-					<strong>Coordinates</strong>
-					<pre>
-						{JSON.stringify(
-							element.coordinates,
-							null,
-							2,
-						)}
-					</pre>
-				</div>
-			)}
-			{Object.keys(element.metadata).length > 0 && (
-				<div className='record-metadata'>
-					<strong>Metadata</strong>
-					<pre>
-						{JSON.stringify(
-							element.metadata,
-							null,
-							2,
-						)}
-					</pre>
-				</div>
-			)}
-			{element.table_html && (
-				<div className='record-metadata'>
-					<strong>
-						Extracted table HTML
-					</strong>
-					<pre>{element.table_html}</pre>
-				</div>
-			)}
-		</article>
-	);
-}
-
-function RagChunkCard({
-	chunk,
-}: {
-	chunk: SourceInspection['chunks'][number];
-}) {
-	const approximateTokens =
-		chunk.token_count ??
-		Math.ceil(chunk.content.length / 4);
-	return (
-		<article className='chunk-record'>
-			<header>
-				<span className='element-sequence'>
-					{chunk.position + 1}
-				</span>
-				<div>
-					<strong>
-						Chunk {chunk.position + 1}
-					</strong>
-					<small>
-						{chunk.page_from
-							? `Page ${chunk.page_from}${chunk.page_to && chunk.page_to !== chunk.page_from ? `–${chunk.page_to}` : ''}`
-							: 'No page'}{' '}
-						· {approximateTokens}{' '}
-						{chunk.token_count == null
-							? 'estimated '
-							: ''}
-						tokens ·{' '}
-						{chunk.content.length}{' '}
-						characters
-					</small>
-				</div>
-			</header>
-			<p>{chunk.content}</p>
-			<div className='chunk-elements'>
-				<strong>
-					Source elements (
-					{chunk.element_ids.length})
-				</strong>
-				{chunk.element_ids.length > 0
-					? chunk.element_ids.join(', ')
-					: 'No element links were stored.'}
-			</div>
-			{Object.keys(chunk.metadata).length > 0 && (
-				<div className='record-metadata'>
-					<strong>Chunk metadata</strong>
-					<pre>
-						{JSON.stringify(
-							chunk.metadata,
-							null,
-							2,
-						)}
-					</pre>
-				</div>
-			)}
-		</article>
-	);
-}
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 export function ChatScreen({
 	chat,
@@ -227,9 +109,6 @@ export function ChatScreen({
 		useState<SourceInspection | null>(null);
 	const [, setInspectionLoading] =
 		useState<string | null>(null);
-	const [inspectionTab, setInspectionTab] = useState<
-		'elements' | 'chunks'
-	>('elements');
 	const [sourceToDelete, setSourceToDelete] =
 		useState<Source | null>(null);
 	const [deletingSource, setDeletingSource] =
@@ -328,7 +207,7 @@ export function ChatScreen({
 		);
 		if (oversized) {
 			setError(
-				`"${oversized.name}" exceeds 5 MB limit.`,
+				`"${oversized.name}" exceeds 10 MB limit.`,
 			);
 			uploadForm.reset();
 			setSelectedUploadFiles([]);
@@ -382,7 +261,7 @@ export function ChatScreen({
 		);
 		if (oversized) {
 			setError(
-				`"${oversized.name}" exceeds 5 MB limit.`,
+				`"${oversized.name}" exceeds 10 MB limit.`,
 			);
 			event.target.value = '';
 			return;
@@ -413,7 +292,6 @@ export function ChatScreen({
 					`/api/knowledge-bases/${chat.knowledge_base_id}/sources/${source.id}/inspection`,
 				);
 			setInspection(result);
-			setInspectionTab('elements');
 		} catch (caught) {
 			setError(
 				caught instanceof Error
@@ -998,7 +876,7 @@ export function ChatScreen({
 							<header>
 								<div>
 									<span className='eyebrow'>
-										OCR
+										Source
 										inspection
 									</span>
 									<h2 id='inspection-title'>
@@ -1015,7 +893,7 @@ export function ChatScreen({
 											null,
 										)
 									}
-									aria-label='Close extraction inspection'>
+									aria-label='Close source inspection'>
 									<X
 										size={
 											19
@@ -1025,153 +903,30 @@ export function ChatScreen({
 							</header>
 							<div className='inspection-summary'>
 								<span>
+									Version{' '}
 									<strong>
 										{
-											inspection.element_count
+											inspection.version
 										}
-									</strong>{' '}
-									elements
+									</strong>
 								</span>
 								<span>
+									Status{' '}
 									<strong>
 										{
-											inspection.chunk_count
+											inspection.status
 										}
-									</strong>{' '}
-									chunks
+									</strong>
 								</span>
-								<span>
-									<strong>
-										{inspection.parser_name ||
-											'Unknown'}
-									</strong>{' '}
-									parser
-									{inspection.parser_version
-										? ` · ${inspection.parser_version}`
-										: ''}
-								</span>
-							</div>
-							{inspection.error_message && (
-								<div className='workspace-error'>
-									<span>
-										{
-											inspection.error_message
-										}
-									</span>
-								</div>
-							)}
-							<div
-								className='inspection-tabs'
-								role='tablist'>
-								<button
-									type='button'
-									role='tab'
-									aria-selected={
-										inspectionTab ===
-										'elements'
-									}
-									className={
-										inspectionTab ===
-										'elements'
-											? 'active'
-											: ''
-									}
-									onClick={() =>
-										setInspectionTab(
-											'elements',
-										)
-									}>
-									OCR
-									elements
-								</button>
-								<button
-									type='button'
-									role='tab'
-									aria-selected={
-										inspectionTab ===
-										'chunks'
-									}
-									className={
-										inspectionTab ===
-										'chunks'
-											? 'active'
-											: ''
-									}
-									onClick={() =>
-										setInspectionTab(
-											'chunks',
-										)
-									}>
-									RAG
-									chunks
-								</button>
 							</div>
 							<div className='inspection-content'>
-								{inspectionTab ===
-								'elements' ? (
-									<>
-										{inspection.elements.map(
-											element => (
-												<OcrElementCard
-													element={
-														element
-													}
-													key={
-														element.element_id
-													}
-												/>
-											),
-										)}
-										{inspection
-											.elements
-											.length ===
-											0 && (
-											<div className='inspection-empty'>
-												No
-												OCR
-												elements
-												have
-												been
-												stored
-												for
-												this
-												source.
-											</div>
-										)}
-									</>
-								) : (
-									<>
-										{inspection.chunks.map(
-											chunk => (
-												<RagChunkCard
-													chunk={
-														chunk
-													}
-													key={
-														chunk.id
-													}
-												/>
-											),
-										)}
-										{inspection
-											.chunks
-											.length ===
-											0 && (
-											<div className='inspection-empty'>
-												No
-												RAG
-												chunks
-												have
-												been
-												generated
-												for
-												this
-												source
-												yet.
-											</div>
-										)}
-									</>
-								)}
+								<a
+									className='primary-action'
+									href={`/api/knowledge-bases/${chat.knowledge_base_id}/sources/${inspection.source_id}/file`}
+									target='_blank'
+									rel='noopener noreferrer'>
+									Open file
+								</a>
 							</div>
 						</section>
 					</div>
