@@ -5,12 +5,13 @@ from uuid import UUID, uuid4
 from modules.sources.models.error_model import SourceNotFoundError, SourcePermissionError, SourceTooLargeError
 from modules.sources.models.source_model import (
     Source,
+    SourceStatus,
 )
-from integrations.storage import delete_file, upload_file
+from integrations.storage import delete_file, resolve_file, upload_file
 
 
 class SourceService:
-    MAX_FILE_SIZE = 5 * 1024 * 1024
+    MAX_FILE_SIZE = 10 * 1024 * 1024
 
     def __init__(self, repository, storage_dir: str) -> None:
         self.repository = repository
@@ -70,11 +71,29 @@ class SourceService:
             raise SourceNotFoundError
         return self.repository.list_for_user(knowledge_base_id, user_id)
 
-    def inspection(self, knowledge_base_id: UUID, source_id: UUID, user_id: UUID):
-        result = self.repository.inspection(knowledge_base_id, source_id, user_id)
-        if not result:
+    def inspection(self, knowledge_base_id: UUID, source_id: UUID, user_id: UUID) -> dict:
+        version = self.repository.latest_version(knowledge_base_id, source_id, user_id)
+        if not version:
             raise SourceNotFoundError
-        return result
+        return {
+            "source_id": source_id,
+            "version": version["version"],
+            "filename": version["filename"],
+            "status": SourceStatus(version["status"]),
+            "url": f"/api/v1/knowledge-bases/{knowledge_base_id}/sources/{source_id}/file",
+        }
+
+    def load_file(self, knowledge_base_id: UUID, source_id: UUID, user_id: UUID):
+        version = self.repository.latest_version(knowledge_base_id, source_id, user_id)
+        if not version:
+            raise SourceNotFoundError
+        path, temporary = resolve_file(version["storage_key"], self.storage_dir)
+        return (
+            path,
+            temporary,
+            version["content_type"] or "application/octet-stream",
+            version["filename"],
+        )
 
     def delete(self, knowledge_base_id: UUID, source_id: UUID, user_id: UUID) -> None:
         storage_keys = self.repository.delete(knowledge_base_id, source_id, user_id)

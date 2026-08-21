@@ -52,7 +52,7 @@ class GeminiEmbedder:
         for attempt in range(self.max_retries + 1):
             response = client.post(
                 url,
-                headers={"x-goog-api-key": self.api_key},
+                headers={"x-goog-api-key": self.api_key},  
                 json=payload,
             )
             if response.status_code == 429 and self._is_depleted_billing(response):

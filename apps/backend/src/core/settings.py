@@ -30,15 +30,9 @@ class Settings(BaseSettings):
     unstructured_job_timeout_seconds: float = Field(
         default=900.0, alias="UNSTRUCTURED_JOB_TIMEOUT_SECONDS", ge=60.0, le=3600.0
     )
-    chunk_max_characters: int = Field(default=1500, alias="CHUNK_MAX_CHARACTERS")
-    chunk_overlap_characters: int = Field(default=150, alias="CHUNK_OVERLAP_CHARACTERS")
     retrieval_candidate_limit: int = Field(default=16, alias="RETRIEVAL_CANDIDATE_LIMIT", ge=5, le=50)
     retrieval_result_limit: int = Field(default=5, alias="RETRIEVAL_RESULT_LIMIT", ge=1, le=12)
     retrieval_min_score: float = Field(default=0.25, alias="RETRIEVAL_MIN_SCORE", ge=0, le=1)
-    chat_context_max_characters: int = Field(
-        default=6000, alias="CHAT_CONTEXT_MAX_CHARACTERS", ge=1000, le=30000
-    )
-    chat_history_messages: int = Field(default=6, alias="CHAT_HISTORY_MESSAGES", ge=0, le=20)
     chat_max_output_tokens: int = Field(default=500, alias="CHAT_MAX_OUTPUT_TOKENS", ge=100, le=2000)
     llm_provider: str = Field(default="ollama", alias="LLM_PROVIDER")
     llm_model: str | None = Field(default=None, alias="LLM_MODEL")

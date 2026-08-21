@@ -108,11 +108,11 @@ class SourceRepository:
             ).fetchall()
         return [self._model(row) for row in rows]
 
-    def inspection(self, knowledge_base_id, source_id, user_id):
+    def latest_version(self, knowledge_base_id, source_id, user_id):
         if not self.has_read_access(knowledge_base_id, user_id):
             return None
         with psycopg.connect(self.database_url, row_factory=dict_row) as db:
-            version = db.execute(
+            return db.execute(
                 "select sv.* from ragapp.sources s join lateral "
                 "(select candidate.* from ragapp.source_versions candidate "
                 "where candidate.source_id=s.id order by "
@@ -121,25 +121,6 @@ class SourceRepository:
                 "where s.id=%s and s.knowledge_base_id=%s and s.deleted_at is null",
                 (source_id, knowledge_base_id),
             ).fetchone()
-            if not version:
-                return None
-            elements = db.execute(
-                "select element_id,parent_element_id,category,content,page_number,"
-                "coordinates,table_html,metadata,sequence_number "
-                "from ragapp.source_elements where source_version_id=%s "
-                "order by sequence_number",
-                (version["id"],),
-            ).fetchall()
-            chunks = db.execute(
-                "select c.id,c.position,c.content,c.token_count,c.page_from,c.page_to,"
-                "c.metadata,coalesce(array_agg(se.element_id order by ce.element_order) "
-                "filter (where se.element_id is not null),'{}') element_ids "
-                "from ragapp.chunks c left join ragapp.chunk_elements ce on ce.chunk_id=c.id "
-                "left join ragapp.source_elements se on se.id=ce.source_element_id "
-                "where c.source_version_id=%s group by c.id order by c.position",
-                (version["id"],),
-            ).fetchall()
-        return {"version": version, "elements": elements, "chunks": chunks}
 
     def delete(self, knowledge_base_id, source_id, user_id):
         with psycopg.connect(self.database_url, row_factory=dict_row) as db:
