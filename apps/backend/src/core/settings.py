@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     gemini_api_url: str = Field(
         default="https://generativelanguage.googleapis.com/v1beta", alias="GEMINI_API_URL"
     )
+    gemini_thinking_level: str = Field(default="low", alias="GEMINI_THINKING_LEVEL")
     r2_account_id: str | None = Field(default=None, alias="R2_ACCOUNT_ID")
     r2_api: str | None = Field(default=None, alias="R2_API")
     r2_bucket_name: str | None = Field(default=None, alias="R2_BUCKET_NAME")

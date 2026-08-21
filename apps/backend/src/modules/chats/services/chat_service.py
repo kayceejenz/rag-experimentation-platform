@@ -100,29 +100,61 @@ class ChatService:
     async def stream_message(
         self, chat_id: UUID, user_id: UUID, content: str
     ) -> AsyncIterator[dict]:
+        
+        yield {
+                "type": "tool_step",
+                "tool": {
+                    "id": "kb-search",
+                    "type": "search",
+                    "label": "Searching knowledge base",
+                    "status": "running",
+                },
+            }
+        
         chat, question, history, chunks, context = await self._prepare_message(
             chat_id, user_id, content
         )
-        parts: list[str] = []
+
+       
+        yield {
+            "type": "tool_step",
+            "tool": {
+                "id": "kb-search",
+                "type": "search",
+                "label": "Searching knowledge base",
+                "status": "completed",
+            },
+        }
+
+        answer_parts: list[str] = []
+        thinking_parts: list[str] = []
         try:
-            async for token in self.generator.generate_stream(
+            async for part in self.generator.generate_stream(
                 question,
                 context,
                 [(message.role.value, message.content) for message in history[-10:]],
             ):
-                parts.append(token)
-                yield {"type": "token", "content": token}
+                if part["kind"] == "thinking":
+                    thinking_parts.append(part["text"])
+                    yield {"type": "thinking_delta", "content": part["text"]}
+                else:
+                    answer_parts.append(part["text"])
+                    yield {"type": "token", "content": part["text"]}
         except Exception as error:
             raise ChatGenerationError(str(error)) from error
 
         assistant = Message(
             chat_id=chat.id,
             role=MessageRole.ASSISTANT,
-            content="".join(parts).strip(),
+            content="".join(answer_parts).strip(),
             citations=self._citations(chunks),
         )
         await self.messages.add(assistant)
-        yield {"type": "done", "message": assistant}
+        yield {
+            "type": "done",
+            "message": assistant,
+            "reasoning": "".join(thinking_parts).strip() or None,
+        }
 
     async def _prepare_message(self, chat_id: UUID, user_id: UUID, content: str):
         chat, _ = await self.get(chat_id, user_id)

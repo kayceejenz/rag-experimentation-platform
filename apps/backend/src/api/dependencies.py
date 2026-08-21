@@ -112,6 +112,7 @@ def chat_service() -> ChatService:
             c.llm_model,
             c.gemini_api_url,
             max_output_tokens=c.chat_max_output_tokens,
+            thinking_level=c.gemini_thinking_level,
         ),
     )
 

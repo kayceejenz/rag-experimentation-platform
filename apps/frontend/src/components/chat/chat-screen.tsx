@@ -1,18 +1,7 @@
 'use client';
 
-import {
-	ChangeEvent,
-	FormEvent,
-	useEffect,
-	useRef,
-	useState,
-} from 'react';
-import {
-	CircleAlert,
-	LoaderCircle,
-	Trash,
-	X,
-} from 'lucide-react';
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
+import { CircleAlert, LoaderCircle, Trash, X } from 'lucide-react';
 import type {
 	Chat,
 	Message,
@@ -29,10 +18,7 @@ import { MessageList } from './message-list';
 import { MessageComposer } from './message-composer';
 import { SourcesPanel } from './sources-panel';
 
-async function json<T>(
-	url: string,
-	init?: RequestInit,
-): Promise<T> {
+async function json<T>(url: string, init?: RequestInit): Promise<T> {
 	const response = await fetch(url, init);
 	const body = (await response.json().catch(() => ({}))) as T & {
 		error?: string | { message?: string };
@@ -56,11 +42,7 @@ async function json<T>(
 	return body;
 }
 
-const activeStatuses = new Set([
-	'uploaded',
-	'queued',
-	'processing',
-]);
+const activeStatuses = new Set(['uploaded', 'queued', 'processing']);
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 export function ChatScreen({
@@ -74,45 +56,32 @@ export function ChatScreen({
 	const navigate = useSmoothNavigation();
 	const { showSessionExpired } = useSessionExpired();
 	const [chats, setChats] = useState(projectChats);
-	const [messages, setMessages] =
-		useState(initialMessages);
-	const [sources, setSources] =
-		useState(initialSources);
+	const [messages, setMessages] = useState(initialMessages);
+	const [sources, setSources] = useState(initialSources);
 	const [sending, setSending] = useState(false);
 	const [uploading, setUploading] = useState(false);
-	const [selectedUploadFiles, setSelectedUploadFiles] =
-		useState<File[]>([]);
+	const [selectedUploadFiles, setSelectedUploadFiles] = useState<File[]>(
+		[],
+	);
 	const [sourcesOpen, setSourcesOpen] = useState(false);
-	const [streamingId, setStreamingId] = useState<
-		string | null
-	>(null);
-	const [copiedId, setCopiedId] = useState<
-		string | null
-	>(null);
-	const [chatSidebarOpen, setChatSidebarOpen] =
-		useState(true);
-	const [menuChatId, setMenuChatId] = useState<
-		string | null
-	>(null);
-	const [editingChatId, setEditingChatId] = useState<
-		string | null
-	>(null);
-	const [deletingChatId, setDeletingChatId] = useState<
-		string | null
-	>(null);
-	const [chatActionBusy, setChatActionBusy] =
-		useState(false);
-	const [error, setError] = useState<string | null>(
+	const [streamingId, setStreamingId] = useState<string | null>(null);
+	const [copiedId, setCopiedId] = useState<string | null>(null);
+	const [chatSidebarOpen, setChatSidebarOpen] = useState(true);
+	const [menuChatId, setMenuChatId] = useState<string | null>(null);
+	const [editingChatId, setEditingChatId] = useState<string | null>(null);
+	const [deletingChatId, setDeletingChatId] = useState<string | null>(
 		null,
 	);
-	const [inspection, setInspection] =
-		useState<SourceInspection | null>(null);
-	const [, setInspectionLoading] =
-		useState<string | null>(null);
-	const [sourceToDelete, setSourceToDelete] =
-		useState<Source | null>(null);
-	const [deletingSource, setDeletingSource] =
-		useState(false);
+	const [chatActionBusy, setChatActionBusy] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [inspection, setInspection] = useState<SourceInspection | null>(
+		null,
+	);
+	const [, setInspectionLoading] = useState<string | null>(null);
+	const [sourceToDelete, setSourceToDelete] = useState<Source | null>(
+		null,
+	);
+	const [deletingSource, setDeletingSource] = useState(false);
 	const fileRef = useRef<HTMLInputElement>(null);
 	const composerRef = useRef<HTMLFormElement>(null);
 	const initialPromptSentRef = useRef(false);
@@ -129,10 +98,7 @@ export function ChatScreen({
 	}, [messages, sending]);
 
 	useEffect(() => {
-		if (
-			window.matchMedia('(max-width: 900px)')
-				.matches
-		)
+		if (window.matchMedia('(max-width: 900px)').matches)
 			setChatSidebarOpen(false);
 	}, []);
 
@@ -146,11 +112,7 @@ export function ChatScreen({
 			return;
 		initialPromptSentRef.current = true;
 		composerRef.current?.requestSubmit();
-	}, [
-		hasActiveIngestion,
-		initialMessages.length,
-		initialPrompt,
-	]);
+	}, [hasActiveIngestion, initialMessages.length, initialPrompt]);
 
 	useEffect(() => {
 		if (!hasActiveIngestion) return;
@@ -165,34 +127,20 @@ export function ChatScreen({
 			} catch {}
 		}, 4000);
 		return () => window.clearInterval(timer);
-	}, [
-		chat.knowledge_base_id,
-		hasActiveIngestion,
-	]);
+	}, [chat.knowledge_base_id, hasActiveIngestion]);
 
 	useEffect(() => {
 		function handleKeyDown(event: KeyboardEvent) {
-			if (
-				event.key === 'Escape' &&
-				sourcesOpen
-			) {
+			if (event.key === 'Escape' && sourcesOpen) {
 				setSourcesOpen(false);
 			}
 		}
-		document.addEventListener(
-			'keydown',
-			handleKeyDown,
-		);
+		document.addEventListener('keydown', handleKeyDown);
 		return () =>
-			document.removeEventListener(
-				'keydown',
-				handleKeyDown,
-			);
+			document.removeEventListener('keydown', handleKeyDown);
 	}, [sourcesOpen]);
 
-	async function upload(
-		event: FormEvent<HTMLFormElement>,
-	) {
+	async function upload(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		const uploadForm = event.currentTarget;
 		const files =
@@ -202,13 +150,9 @@ export function ChatScreen({
 					? Array.from(fileRef.current.files)
 					: [];
 		if (files.length === 0) return;
-		const oversized = files.find(
-			f => f.size > MAX_UPLOAD_BYTES,
-		);
+		const oversized = files.find(f => f.size > MAX_UPLOAD_BYTES);
 		if (oversized) {
-			setError(
-				`"${oversized.name}" exceeds 10 MB limit.`,
-			);
+			setError(`"${oversized.name}" exceeds 10 MB limit.`);
 			uploadForm.reset();
 			setSelectedUploadFiles([]);
 			return;
@@ -246,23 +190,15 @@ export function ChatScreen({
 		}
 	}
 
-	function chooseUploadFiles(
-		event: ChangeEvent<HTMLInputElement>,
-	) {
-		const incoming = Array.from(
-			event.target.files ?? [],
+	function chooseUploadFiles(event: ChangeEvent<HTMLInputElement>) {
+		const incoming = Array.from(event.target.files ?? []);
+		const combined = [...selectedUploadFiles, ...incoming].slice(
+			0,
+			5,
 		);
-		const combined = [
-			...selectedUploadFiles,
-			...incoming,
-		].slice(0, 5);
-		const oversized = combined.find(
-			f => f.size > MAX_UPLOAD_BYTES,
-		);
+		const oversized = combined.find(f => f.size > MAX_UPLOAD_BYTES);
 		if (oversized) {
-			setError(
-				`"${oversized.name}" exceeds 10 MB limit.`,
-			);
+			setError(`"${oversized.name}" exceeds 10 MB limit.`);
 			event.target.value = '';
 			return;
 		}
@@ -279,18 +215,16 @@ export function ChatScreen({
 
 	function clearSelectedUpload() {
 		setSelectedUploadFiles([]);
-		if (fileRef.current)
-			fileRef.current.value = '';
+		if (fileRef.current) fileRef.current.value = '';
 	}
 
 	async function inspectSource(source: Source) {
 		setInspectionLoading(source.id);
 		setError(null);
 		try {
-			const result =
-				await json<SourceInspection>(
-					`/api/knowledge-bases/${chat.knowledge_base_id}/sources/${source.id}/inspection`,
-				);
+			const result = await json<SourceInspection>(
+				`/api/knowledge-bases/${chat.knowledge_base_id}/sources/${source.id}/inspection`,
+			);
 			setInspection(result);
 		} catch (caught) {
 			setError(
@@ -304,8 +238,7 @@ export function ChatScreen({
 	}
 
 	async function deleteSource() {
-		if (!sourceToDelete || deletingSource)
-			return;
+		if (!sourceToDelete || deletingSource) return;
 		setDeletingSource(true);
 		setError(null);
 		try {
@@ -317,9 +250,11 @@ export function ChatScreen({
 				const body = (await response
 					.json()
 					.catch(() => ({}))) as {
-					error?: string | {
-						message?: string;
-					};
+					error?:
+						| string
+						| {
+								message?: string;
+						  };
 				};
 				throw new Error(
 					typeof body.error === 'string'
@@ -331,14 +266,10 @@ export function ChatScreen({
 			setSources(current =>
 				current.filter(
 					source =>
-						source.id !==
-						sourceToDelete.id,
+						source.id !== sourceToDelete.id,
 				),
 			);
-			if (
-				inspection?.source_id ===
-				sourceToDelete.id
-			)
+			if (inspection?.source_id === sourceToDelete.id)
 				setInspection(null);
 			setSourceToDelete(null);
 		} catch (caught) {
@@ -369,6 +300,8 @@ export function ChatScreen({
 			role: 'assistant',
 			content: '',
 			citations: [],
+			reasoning: '',
+			tool_calls: [],
 			created_at: new Date().toISOString(),
 		};
 		setMessages(current => [
@@ -411,18 +344,15 @@ export function ChatScreen({
 						'Could not start the response stream.',
 				);
 			}
-			const reader =
-				response.body.getReader();
+			const reader = response.body.getReader();
 			const decoder = new TextDecoder();
 			let buffer = '';
 			while (true) {
-				const { value, done } =
-					await reader.read();
+				const { value, done } = await reader.read();
 				buffer += decoder.decode(value, {
 					stream: !done,
 				});
-				const frames =
-					buffer.split('\n\n');
+				const frames = buffer.split('\n\n');
 				buffer = frames.pop() ?? '';
 				for (const frame of frames) {
 					const data = frame
@@ -441,16 +371,23 @@ export function ChatScreen({
 								content: string;
 						  }
 						| {
+								type: 'thinking_delta';
+								content: string;
+						  }
+						| {
+								type: 'tool_step';
+								tool: import('@/types/workspace').ToolCall;
+						  }
+						| {
 								type: 'done';
 								message: Message;
+								reasoning?: string;
 						  }
 						| {
 								type: 'error';
 								message: string;
 						  };
-					if (
-						streamEvent.type === 'token'
-					) {
+					if (streamEvent.type === 'token') {
 						setMessages(current =>
 							current.map(message =>
 								message.id ===
@@ -465,13 +402,84 @@ export function ChatScreen({
 							),
 						);
 					} else if (
+						streamEvent.type ===
+						'thinking_delta'
+					) {
+						setMessages(current =>
+							current.map(message =>
+								message.id ===
+								assistantId
+									? {
+											...message,
+											reasoning:
+												(message.reasoning ??
+													'') +
+												streamEvent.content,
+										}
+									: message,
+							),
+						);
+					} else if (
+						streamEvent.type === 'tool_step'
+					) {
+						setMessages(current =>
+							current.map(message => {
+								if (
+									message.id !==
+									assistantId
+								)
+									return message;
+								const existing =
+									message.tool_calls ??
+									[];
+								const idx =
+									existing.findIndex(
+										t =>
+											t.id ===
+											streamEvent
+												.tool
+												.id,
+									);
+								const updated =
+									idx >= 0
+										? existing.map(
+												(
+													t,
+													i,
+												) =>
+													i ===
+													idx
+														? streamEvent.tool
+														: t,
+											)
+										: [
+												...existing,
+												streamEvent.tool,
+											];
+								return {
+									...message,
+									tool_calls: updated,
+								};
+							}),
+						);
+					} else if (
 						streamEvent.type === 'done'
 					) {
 						setMessages(current =>
 							current.map(message =>
 								message.id ===
 								assistantId
-									? streamEvent.message
+									? {
+											...streamEvent.message,
+											reasoning:
+												streamEvent.reasoning ??
+												message.reasoning,
+											tool_calls:
+												streamEvent
+													.message
+													.tool_calls ??
+												message.tool_calls,
+										}
 									: message,
 							),
 						);
@@ -490,13 +498,11 @@ export function ChatScreen({
 			) {
 				setMessages(current =>
 					current.map(message =>
-						message.id ===
-							assistantId &&
+						message.id === assistantId &&
 						!message.content
 							? {
 									...message,
-									content:
-										'_Response stopped._',
+									content: '_Response stopped._',
 								}
 							: message,
 					),
@@ -522,9 +528,7 @@ export function ChatScreen({
 		}
 	}
 
-	async function send(
-		event: FormEvent<HTMLFormElement>,
-	) {
+	async function send(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		const form = event.currentTarget;
 		if (!form) return;
@@ -536,20 +540,13 @@ export function ChatScreen({
 	}
 
 	function copyMessage(message: Message) {
-		navigator.clipboard.writeText(
-			message.content,
-		);
+		navigator.clipboard.writeText(message.content);
 		setCopiedId(message.id);
-		window.setTimeout(
-			() => setCopiedId(null),
-			1500,
-		);
+		window.setTimeout(() => setCopiedId(null), 1500);
 	}
 
 	function createChat() {
-		navigate(
-			`/?project=${chat.project_id}`,
-		);
+		navigate(`/?project=${chat.project_id}`);
 	}
 
 	async function renameChat(
@@ -558,9 +555,7 @@ export function ChatScreen({
 	) {
 		event.preventDefault();
 		const title = String(
-			new FormData(event.currentTarget).get(
-				'title',
-			) ?? '',
+			new FormData(event.currentTarget).get('title') ?? '',
 		).trim();
 		if (!title) return;
 		setChatActionBusy(true);
@@ -578,9 +573,7 @@ export function ChatScreen({
 			);
 			setChats(current =>
 				current.map(item =>
-					item.id === updated.id
-						? updated
-						: item,
+					item.id === updated.id ? updated : item,
 				),
 			);
 			setEditingChatId(null);
@@ -604,9 +597,7 @@ export function ChatScreen({
 				{ method: 'DELETE' },
 			);
 			if (!response.ok)
-				throw new Error(
-					'Could not delete chat.',
-				);
+				throw new Error('Could not delete chat.');
 			const remaining = chats.filter(
 				item => item.id !== target.id,
 			);
@@ -638,19 +629,13 @@ export function ChatScreen({
 				chats={chats}
 				projectName={projectName}
 				chatSidebarOpen={chatSidebarOpen}
-				setChatSidebarOpen={
-					setChatSidebarOpen
-				}
+				setChatSidebarOpen={setChatSidebarOpen}
 				menuChatId={menuChatId}
 				setMenuChatId={setMenuChatId}
 				editingChatId={editingChatId}
-				setEditingChatId={
-					setEditingChatId
-				}
+				setEditingChatId={setEditingChatId}
 				deletingChatId={deletingChatId}
-				setDeletingChatId={
-					setDeletingChatId
-				}
+				setDeletingChatId={setDeletingChatId}
 				chatActionBusy={chatActionBusy}
 				onRename={renameChat}
 				onDelete={deleteChat}
@@ -662,9 +647,7 @@ export function ChatScreen({
 					sourcesOpen={sourcesOpen}
 					sourcesCount={sources.length}
 					onToggleSources={() =>
-						setSourcesOpen(
-							open => !open,
-						)
+						setSourcesOpen(open => !open)
 					}
 					onOpenSidebar={() =>
 						setChatSidebarOpen(true)
@@ -756,10 +739,10 @@ export function ChatScreen({
 								clearSelectedUpload
 							}
 							onUpload={upload}
-						onInspect={
-							inspectSource
-						}
-						setSourceToDelete={
+							onInspect={
+								inspectSource
+							}
+							setSourceToDelete={
 								setSourceToDelete
 							}
 						/>
@@ -925,7 +908,8 @@ export function ChatScreen({
 									href={`/api/knowledge-bases/${chat.knowledge_base_id}/sources/${inspection.source_id}/file`}
 									target='_blank'
 									rel='noopener noreferrer'>
-									Open file
+									Open
+									file
 								</a>
 							</div>
 						</section>

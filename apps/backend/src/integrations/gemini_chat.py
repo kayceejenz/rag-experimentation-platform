@@ -1,57 +1,10 @@
 import asyncio
-import time
-import logging
-import json
-from typing import AsyncIterator
-
-import httpx
-
-logger = logging.getLogger(__name__)
-
-_RETRYABLE_EXCEPTIONS = (
-    httpx.ConnectError,
-    httpx.ConnectTimeout,
-    httpx.ReadTimeout,
-    httpx.ReadError,
-    httpx.WriteError,
-    httpx.RemoteProtocolError,
-    httpx.PoolTimeout,
-    httpx.HTTPStatusError
-)
-
-
-class GeminiChatModel:
-    def __init__(
-        self,
-        api_key: str,
-        model: str,
-        base_url: str = "https://generativelanguage.googleapis.com/v1beta",
-        timeout_seconds: float = 120,
-        max_retries: int = 3,
-        max_output_tokens: int = 500,
-    ) -> None:
-        self.api_key = api_key
-        self.model = model.removeprefix("models/")
-        self.base_url = base_url.rstrip("/")
-        self.timeout_seconds = timeout_seconds
-        self.max_retries = max_retries
-        self.max_output_tokens = max_output_tokens
-
-    async def generate(self, question: str, context: str, history: list[tuple[str, str]]) -> str:
-        request = self._request(question, context, history)
-        response = await self._post_with_retries("generateContent", request)
-        payload = response.json()
-        self._log_usage(payload)
-        answer = self._text(payload).strip()
-        if not answer:
-            raise RuntimeError(f"Gemini returned an empty answer ({self._empty_reason(payload)})")
-        return answer
-
-    import asyncio
 import json
 import logging
 import random
+import time
 from collections.abc import AsyncIterator
+from typing import TypedDict
 
 import httpx
 
@@ -68,6 +21,13 @@ _RETRYABLE_EXCEPTIONS = (
     httpx.HTTPStatusError,
 )
 
+VALID_THINKING_LEVELS = {"minimal", "low", "medium", "high"}
+
+
+class StreamPart(TypedDict):
+    kind: str  # "thinking" | "answer"
+    text: str
+
 
 class GeminiChatModel:
     def __init__(
@@ -78,6 +38,7 @@ class GeminiChatModel:
         timeout_seconds: float = 120,
         max_retries: int = 4,
         max_output_tokens: int = 500,
+        thinking_level: str = "low",
     ) -> None:
         self.api_key = api_key
         self.model = model.removeprefix("models/")
@@ -85,10 +46,23 @@ class GeminiChatModel:
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
         self.max_output_tokens = max_output_tokens
+        self.thinking_level = (
+            thinking_level.lower() if thinking_level.lower() in VALID_THINKING_LEVELS else "low"
+        )
+
+    async def generate(self, question: str, context: str, history: list[tuple[str, str]]) -> str:
+        request = self._request(question, context, history)
+        response = await self._post_with_retries("generateContent", request)
+        payload = response.json()
+        self._log_usage(payload)
+        answer = self._answer_text(payload).strip()
+        if not answer:
+            raise RuntimeError(f"Gemini returned an empty answer ({self._empty_reason(payload)})")
+        return answer
 
     async def generate_stream(
         self, question: str, context: str, history: list[tuple[str, str]]
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[StreamPart]:
         request = self._request(question, context, history)
         url = f"{self.base_url}/models/{self.model}:streamGenerateContent"
 
@@ -141,10 +115,10 @@ class GeminiChatModel:
                                 continue
                             last_payload = payload
                             self._log_usage(payload)
-                            text = self._text(payload)
-                            if text:
+
+                            for part in self._extract_parts(payload):
                                 produced = True
-                                yield text
+                                yield part
 
                         if not produced:
                             raise RuntimeError(
@@ -195,6 +169,12 @@ class GeminiChatModel:
                 ],
             }
         )
+        generation_config: dict = {
+            "temperature": 0.1,
+            "maxOutputTokens": self.max_output_tokens,
+        }
+        if self.thinking_level:
+            generation_config["thinkingConfig"] = {"thinkingLevel": self.thinking_level}
         return {
             "systemInstruction": {
                 "parts": [
@@ -211,10 +191,7 @@ class GeminiChatModel:
                 ]
             },
             "contents": contents,
-            "generationConfig": {
-                "temperature": 0.1,
-                "maxOutputTokens": self.max_output_tokens,
-            },
+            "generationConfig": generation_config,
         }
 
     def _post_with_retries(self, operation: str, request: dict) -> httpx.Response:
@@ -248,12 +225,39 @@ class GeminiChatModel:
         raise RuntimeError("Gemini request failed without a response")
 
     @staticmethod
+    def _extract_parts(payload: dict) -> list[StreamPart]:
+        candidates = payload.get("candidates") or []
+        if not candidates:
+            return []
+        parts = candidates[0].get("content", {}).get("parts", [])
+        result: list[StreamPart] = []
+        for part in parts:
+            text = part.get("text", "")
+            if not text:
+                continue
+            kind = "thinking" if part.get("thought", False) else "answer"
+            result.append({"kind": kind, "text": text})
+        return result
+
+    @staticmethod
+    def _answer_text(payload: dict) -> str:
+        candidates = payload.get("candidates") or []
+        if not candidates:
+            return ""
+        parts = candidates[0].get("content", {}).get("parts", [])
+        return "".join(
+            part.get("text", "") for part in parts if not part.get("thought", False)
+        )
+
+    @staticmethod
     def _log_usage(payload: dict) -> None:
         usage = payload.get("usageMetadata") or {}
         if usage:
             logger.info(
-                "Gemini chat usage prompt_tokens=%s output_tokens=%s total_tokens=%s",
-                usage.get("promptTokenCount"), usage.get("candidatesTokenCount"),
+                "Gemini chat usage prompt_tokens=%s output_tokens=%s thinking_tokens=%s total_tokens=%s",
+                usage.get("promptTokenCount"),
+                usage.get("candidatesTokenCount"),
+                usage.get("thoughtsTokenCount"),
                 usage.get("totalTokenCount"),
             )
         finish_reason = None
@@ -264,16 +268,7 @@ class GeminiChatModel:
             logger.warning("Gemini response was truncated (finishReason=MAX_TOKENS)")
 
     @staticmethod
-    def _text(payload: dict) -> str:
-        candidates = payload.get("candidates") or []
-        if not candidates:
-            return ""
-        parts = candidates[0].get("content", {}).get("parts", [])
-        return "".join(part.get("text", "") for part in parts)
-
-    @staticmethod
     def _empty_reason(payload: dict) -> str:
-        """Best-effort diagnostic for why no text was produced."""
         block_reason = (payload.get("promptFeedback") or {}).get("blockReason")
         if block_reason:
             return f"prompt blocked: {block_reason}"

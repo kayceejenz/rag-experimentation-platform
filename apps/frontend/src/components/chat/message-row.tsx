@@ -8,19 +8,12 @@ import type { Message } from '@/types/workspace';
 import { CitationFootnotes } from './citation-footnotes';
 import { ToolCallSteps } from './tool-call-step';
 
-function MarkdownContent({
-	content,
-}: {
-	content: string;
-}) {
+function MarkdownContent({ content }: { content: string }) {
 	return (
 		<ReactMarkdown
 			remarkPlugins={[remarkGfm]}
 			components={{
-				a: ({
-					children,
-					...props
-				}) => (
+				a: ({ children, ...props }) => (
 					<a
 						{...props}
 						target='_blank'
@@ -36,21 +29,31 @@ function MarkdownContent({
 
 function ReasoningBlock({
 	reasoning,
+	isStreaming,
 }: {
 	reasoning: string;
+	isStreaming: boolean;
 }) {
 	return (
-		<details className='reasoning-block'>
+		<details
+			className='reasoning-block'
+			open={isStreaming && !reasoning}>
 			<summary>
 				<ChevronDown
 					size={13}
 					className='reasoning-chevron'
 				/>
-				<span>Reasoning</span>
+				<span>
+					{isStreaming && !reasoning
+						? 'Thinking…'
+						: 'Reasoning'}
+				</span>
 			</summary>
-			<div className='reasoning-body'>
-				{reasoning}
-			</div>
+			{reasoning && (
+				<div className='reasoning-body'>
+					{reasoning}
+				</div>
+			)}
 		</details>
 	);
 }
@@ -73,17 +76,18 @@ export function MessageRow({
 		message.tool_calls &&
 		message.tool_calls.length > 0;
 	const hasReasoning =
-		isAssistant && !!message.reasoning;
-	const hasCitations =
-		isAssistant && message.citations.length > 0;
-	const [showCitations, setShowCitations] =
-		useState(false);
+		isAssistant && (isStreaming || !!message.reasoning);
+	const hasCitations = isAssistant && message.citations.length > 0;
+	const [showCitations, setShowCitations] = useState(false);
 
 	return (
-		<article
-			className={`message-row ${message.role}`}>
+		<article className={`message-row ${message.role}`}>
 			<div className='message-avatar'>
-				{isAssistant ? <Bot size={17} /> : <User size={17} />}
+				{isAssistant ? (
+					<Bot size={17} />
+				) : (
+					<User size={17} />
+				)}
 			</div>
 			<div className='message-body'>
 				<div className='message-meta'>
@@ -126,8 +130,9 @@ export function MessageRow({
 				{hasReasoning && (
 					<ReasoningBlock
 						reasoning={
-							message.reasoning!
+							message.reasoning ?? ''
 						}
+						isStreaming={isStreaming}
 					/>
 				)}
 				{hasToolCalls && (
@@ -140,67 +145,64 @@ export function MessageRow({
 						citations={message.citations}
 					/>
 				)}
-				{isAssistant &&
-					!isStreaming && (
-						<div className='message-actions'>
-							{hasCitations && (
-								<button
-									type='button'
-									className={`citation-toggle ${showCitations ? 'active' : ''}`}
-									onClick={() =>
-										setShowCitations(
-											prev =>
-												!prev,
-										)
-									}
-									aria-label={
-										showCitations
-											? 'Hide sources'
-											: 'Show sources'
-									}>
-									<BookOpen
-										size={
-											13
-										}
-									/>
-									<span>
-										{showCitations
-											? 'Hide sources'
-											: 'Show sources'}
-									</span>
-								</button>
-							)}
+				{isAssistant && !isStreaming && (
+					<div className='message-actions'>
+						{hasCitations && (
 							<button
 								type='button'
+								className={`citation-toggle ${showCitations ? 'active' : ''}`}
 								onClick={() =>
-									onCopy(
-										message,
+									setShowCitations(
+										prev =>
+											!prev,
 									)
 								}
-								aria-label='Copy response'>
-								{copiedId ===
-								message.id ? (
-									<>
-										<Check
-											size={
-												14
-											}
-										/>
-										Copied
-									</>
-								) : (
-									<>
-										<Copy
-											size={
-												14
-											}
-										/>
-										Copy
-									</>
-								)}
+								aria-label={
+									showCitations
+										? 'Hide sources'
+										: 'Show sources'
+								}>
+								<BookOpen
+									size={
+										13
+									}
+								/>
+								<span>
+									{showCitations
+										? 'Hide sources'
+										: 'Show sources'}
+								</span>
 							</button>
-						</div>
-					)}
+						)}
+						<button
+							type='button'
+							onClick={() =>
+								onCopy(message)
+							}
+							aria-label='Copy response'>
+							{copiedId ===
+							message.id ? (
+								<>
+									<Check
+										size={
+											14
+										}
+									/>
+									Copied
+								</>
+							) : (
+								<>
+									<Copy
+										size={
+											14
+										}
+									/>
+									Copy
+								</>
+							)}
+						</button>
+					</div>
+				)}
 			</div>
 		</article>
 	);
