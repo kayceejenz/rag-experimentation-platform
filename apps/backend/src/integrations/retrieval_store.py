@@ -79,8 +79,16 @@ class PgVectorKnowledgeSearch:
     async def _expand_neighbors(db: AsyncConnection, seeds: list[dict]):
         if not seeds:
             return seeds
-        seed_ids = [row["chunk_id"] for row in seeds]
-        seed_scores = {row["chunk_id"]: float(row["score"]) for row in seeds}
+        
+        neighbor_threshold = 0.60
+        expandable = [row for row in seeds if float(row["score"]) >= neighbor_threshold]
+        non_expandable = [row for row in seeds if float(row["score"]) < neighbor_threshold]
+        seed_ids = [row["chunk_id"] for row in expandable]
+        seed_scores = {row["chunk_id"]: float(row["score"]) for row in expandable}
+
+        if not seed_ids:
+            return seeds
+        
         cur = await db.execute(
             "with seeds as (select * from unnest(%s::uuid[]) with ordinality "
             "as seed(chunk_id,seed_rank)), expanded as (select distinct on(c.id) "
@@ -97,7 +105,7 @@ class PgVectorKnowledgeSearch:
         rows = await cur.fetchall()
         for row in rows:
             row["score"] = seed_scores[row["seed_id"]]
-        return rows
+        return rows + non_expandable
 
     async def _query_vector(self, query: str) -> list[float]:
         key = " ".join(query.lower().split())

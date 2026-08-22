@@ -83,7 +83,17 @@ class UnstructuredPartitioner:
                         "is_dynamic": True,
                         "allow_fast": True,
                     },
-                }
+                },
+                {
+                    "name": "Chunker",
+                    "type": "chunk",
+                    "subtype": "chunk_by_title",
+                    "settings": {
+                        "max_characters": 2000,
+                        "new_after_n_chars": 1500,
+                        "combine_text_under_n_chars": 200,
+                    },
+                },
             ]
         }
 
