@@ -32,11 +32,15 @@ class PgVectorKnowledgeSearch:
         vector_literal = "[" + ",".join(str(float(value)) for value in vector) + "]"
         async with await AsyncConnection.connect(self.database_url, row_factory=dict_row) as db:
             cur = await db.execute(
-                "with candidates as (select c.id chunk_id,c.source_id,c.source_version_id,"
+                "with latest_versions as ("
+                "select distinct on (sv.source_id) sv.id, sv.source_id "
+                "from ragapp.source_versions sv order by sv.source_id, sv.version desc"
+                "), candidates as (select c.id chunk_id,c.source_id,c.source_version_id,"
                 "c.position,s.display_name source_filename,c.content,c.page_from,c.metadata,"
                 "1-(ce.embedding <=> %s::vector) vector_score,"
                 "ts_rank_cd(c.search_vector,plainto_tsquery('english',%s)) lexical_score "
                 "from ragapp.chunks c join ragapp.sources s on s.id=c.source_id "
+                "join latest_versions lv on lv.id=c.source_version_id "
                 "join ragapp.chunk_embeddings ce on ce.chunk_id=c.id "
                 "join ragapp.embedding_models em on em.id=ce.embedding_model_id "
                 "where c.knowledge_base_id=%s and s.deleted_at is null "
@@ -105,7 +109,12 @@ class PgVectorKnowledgeSearch:
         rows = await cur.fetchall()
         for row in rows:
             row["score"] = seed_scores[row["seed_id"]]
-        return rows + non_expandable
+        seen = {row["chunk_id"] for row in rows}
+        for row in non_expandable:
+            if row["chunk_id"] not in seen:
+                rows.append(row)
+                seen.add(row["chunk_id"])
+        return rows
 
     async def _query_vector(self, query: str) -> list[float]:
         key = " ".join(query.lower().split())

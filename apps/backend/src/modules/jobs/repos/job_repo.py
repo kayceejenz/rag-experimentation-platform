@@ -99,6 +99,15 @@ class JobRepository:
                 ("failed" if terminal else "queued", error[:4000], terminal, job.source_version_id),
             )
 
+    def renew_lease(self, job_id) -> None:
+        with psycopg.connect(self.database_url) as db:
+            db.execute(
+                "update ragapp.ingestion_jobs "
+                "set lease_expires_at=now()+(%s*interval '1 second') "
+                "where id=%s and status='running'",
+                (self.lease_seconds, job_id),
+            )
+
     @staticmethod
     def _model(row) -> IngestionJob:
         return IngestionJob(

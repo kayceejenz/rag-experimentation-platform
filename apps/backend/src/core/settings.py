@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     refresh_token_days: int = Field(default=30, alias="REFRESH_TOKEN_DAYS")
     source_storage_dir: str = Field(default="storage/sources", alias="SOURCE_STORAGE_DIR")
     worker_poll_interval_seconds: float = Field(default=5.0, alias="WORKER_POLL_INTERVAL_SECONDS")
+    job_lease_seconds: int = Field(default=1200, alias="JOB_LEASE_SECONDS", ge=60, le=3600)
     unstructured_api_key: str | None = Field(default=None, alias="UNSTRUCTURED_API_KEY")
     unstructured_api_url: str | None = Field(default=None, alias="UNSTRUCTURED_API_URL")
     unstructured_strategy: str = Field(default="auto", alias="UNSTRUCTURED_STRATEGY")

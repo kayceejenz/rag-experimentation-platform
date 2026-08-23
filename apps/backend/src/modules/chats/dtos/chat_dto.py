@@ -43,8 +43,8 @@ class SendMessageRequest(BaseModel):
 
 
 class CitationResponse(BaseModel):
-    source_id: UUID
-    chunk_id: UUID
+    source_id: UUID | None = None
+    chunk_id: UUID | None = None
     source_filename: str
     excerpt: str
     page_number: int | None

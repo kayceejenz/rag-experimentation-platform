@@ -30,7 +30,7 @@ def embedding_provider(config: Settings):
 def run_once(config: Settings) -> bool:
     if not config.database_url:
         return False
-    queue = JobRepository(config.database_url)
+    queue = JobRepository(config.database_url, lease_seconds=config.job_lease_seconds)
     job = queue.claim_next(socket.gethostname())
     if not job:
         return False
@@ -58,6 +58,7 @@ def run_once(config: Settings) -> bool:
             ElementAssetStore(config.source_storage_dir),
             embedding_provider(config),
         )
+        queue.renew_lease(job.id)
         element_count, chunk_count = ingestion.execute(
             job.project_id,
             job.source_id,

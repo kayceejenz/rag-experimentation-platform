@@ -23,7 +23,13 @@ class ElementRepository:
                     "insert into ragapp.source_elements(source_version_id,element_id,"
                     "parent_element_id,category,content,page_number,coordinates,table_html,"
                     "visual_storage_key,metadata,sequence_number) "
-                    "values(%s,%s,%s,%s,%s,%s,%s::jsonb,%s,%s,%s::jsonb,%s)",
+                    "values(%s,%s,%s,%s,%s,%s,%s::jsonb,%s,%s,%s::jsonb,%s) "
+                    "on conflict (source_version_id,element_id) do update set "
+                    "parent_element_id=excluded.parent_element_id,category=excluded.category,"
+                    "content=excluded.content,page_number=excluded.page_number,"
+                    "coordinates=excluded.coordinates,table_html=excluded.table_html,"
+                    "visual_storage_key=excluded.visual_storage_key,metadata=excluded.metadata,"
+                    "sequence_number=excluded.sequence_number",
                     [
                         (
                             source_version_id,
