@@ -8,3 +8,15 @@ class SpecificationHashCollisionError(RuntimeError):
 
 class ArtifactIdentityConflictError(RuntimeError):
     pass
+
+
+class ExecutionIdentityConflictError(RuntimeError):
+    pass
+
+
+class InvalidExecutionTransitionError(RuntimeError):
+    pass
+
+
+class InvalidLineageLinkError(ValueError):
+    pass

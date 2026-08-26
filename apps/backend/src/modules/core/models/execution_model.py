@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -44,10 +45,27 @@ class Execution:
     started_at: datetime | None = None
     completed_at: datetime | None = None
 
+    def __post_init__(self) -> None:
+        if not self.code_revision.strip():
+            raise ValueError("code_revision cannot be blank")
+        if self.idempotency_key is not None and not self.idempotency_key.strip():
+            raise ValueError("idempotency_key cannot be blank")
+        if self.worker_id is not None and not self.worker_id.strip():
+            raise ValueError("worker_id cannot be blank")
+        if self.attempt < 1:
+            raise ValueError("attempt must be positive")
+
 
 @dataclass(frozen=True)
 class ExecutionArtifact:
+    project_id: UUID
     execution_id: UUID
     artifact_id: UUID
     role: str
     position: int = 0
+
+    def __post_init__(self) -> None:
+        if re.fullmatch(r"[a-z][a-z0-9_]{1,63}", self.role) is None:
+            raise ValueError("role must use lowercase letters, numbers, and underscores")
+        if self.position < 0:
+            raise ValueError("position cannot be negative")
