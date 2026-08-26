@@ -4,3 +4,7 @@ class UnsupportedSpecificationSchemaError(ValueError):
 
 class SpecificationHashCollisionError(RuntimeError):
     pass
+
+
+class ArtifactIdentityConflictError(RuntimeError):
+    pass
