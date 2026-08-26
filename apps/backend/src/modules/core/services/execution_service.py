@@ -68,6 +68,33 @@ class ExecutionService:
             self.clock(),
         )
 
+    def complete_with_outputs(
+        self,
+        execution: Execution,
+        outputs: list[tuple[Artifact, str, int]],
+        result_summary: dict[str, Any] | None = None,
+    ) -> Execution:
+        self._require_status(execution, ExecutionStatus.RUNNING)
+        links: list[ExecutionArtifact] = []
+        for artifact, role, position in outputs:
+            self._require_same_project(execution, artifact)
+            links.append(
+                ExecutionArtifact(
+                    project_id=execution.project_id,
+                    execution_id=execution.id,
+                    artifact_id=artifact.id,
+                    role=role,
+                    position=position,
+                )
+            )
+        return self.repository.complete_with_outputs(
+            execution.id,
+            execution.project_id,
+            links,
+            result_summary or {},
+            self.clock(),
+        )
+
     def fail(
         self,
         execution: Execution,

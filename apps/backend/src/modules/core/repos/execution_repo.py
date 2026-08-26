@@ -67,6 +67,20 @@ class ExecutionRepository:
             ).fetchone()
         return self._model(row) if row else None
 
+    def get_by_idempotency(
+        self,
+        project_id: UUID,
+        kind: ExecutionKind,
+        idempotency_key: str,
+    ) -> Execution | None:
+        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+            row = db.execute(
+                "select * from ragapp.executions "
+                "where project_id=%s and kind=%s and idempotency_key=%s",
+                (project_id, kind.value, idempotency_key),
+            ).fetchone()
+        return self._model(row) if row else None
+
     def start(
         self,
         execution_id: UUID,
@@ -132,6 +146,55 @@ class ExecutionRepository:
 
     def add_output(self, link: ExecutionArtifact) -> ExecutionArtifact:
         return self._add_link("execution_outputs", link)
+
+    def complete_with_outputs(
+        self,
+        execution_id: UUID,
+        project_id: UUID,
+        outputs: list[ExecutionArtifact],
+        result_summary: dict[str, Any],
+        completed_at: datetime,
+    ) -> Execution:
+        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+            for output in outputs:
+                row = db.execute(
+                    "insert into ragapp.execution_outputs("
+                    "project_id,execution_id,artifact_id,role,position) "
+                    "values(%s,%s,%s,%s,%s) on conflict do nothing returning *",
+                    (
+                        output.project_id,
+                        output.execution_id,
+                        output.artifact_id,
+                        output.role,
+                        output.position,
+                    ),
+                ).fetchone()
+                if row is None:
+                    row = db.execute(
+                        "select * from ragapp.execution_outputs "
+                        "where execution_id=%s and role=%s and position=%s",
+                        (output.execution_id, output.role, output.position),
+                    ).fetchone()
+                if row is None or row["artifact_id"] != output.artifact_id:
+                    raise ExecutionIdentityConflictError(
+                        f"Lineage slot {output.role}[{output.position}] is already occupied"
+                    )
+            row = db.execute(
+                "update ragapp.executions set status='completed',result_summary=%s,"
+                "completed_at=%s where id=%s and project_id=%s and status='running' "
+                "returning *",
+                (
+                    psycopg.types.json.Jsonb(result_summary),
+                    completed_at,
+                    execution_id,
+                    project_id,
+                ),
+            ).fetchone()
+            if row is None:
+                raise InvalidExecutionTransitionError(
+                    "Only a running execution can be finalized"
+                )
+        return self._model(row)
 
     def _transition(
         self,

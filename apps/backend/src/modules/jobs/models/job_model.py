@@ -18,6 +18,10 @@ class IngestionJob:
     project_id: UUID
     knowledge_base_id: UUID
     storage_key: str
+    uploaded_by: UUID
+    content_type: str
+    byte_size: int
+    content_sha256: str
     id: UUID = field(default_factory=uuid4)
     status: JobStatus = JobStatus.QUEUED
     attempts: int = 0

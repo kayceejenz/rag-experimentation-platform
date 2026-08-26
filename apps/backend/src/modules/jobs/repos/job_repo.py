@@ -20,7 +20,8 @@ class JobRepository:
                 "locked_at=now(),locked_by=%s,lease_expires_at=now()+(%s*interval '1 second') "
                 "from candidate c,ragapp.source_versions sv,ragapp.sources s "
                 "where j.id=c.id and sv.id=j.source_version_id and s.id=sv.source_id "
-                "returning j.*,sv.source_id,sv.storage_key,s.project_id,s.knowledge_base_id",
+                "returning j.*,sv.source_id,sv.storage_key,sv.content_type,"
+                "sv.byte_size,sv.content_sha256,s.project_id,s.knowledge_base_id,s.uploaded_by",
                 (worker_id, self.lease_seconds),
             ).fetchone()
             if row:
@@ -117,6 +118,10 @@ class JobRepository:
             project_id=row["project_id"],
             knowledge_base_id=row["knowledge_base_id"],
             storage_key=row["storage_key"],
+            uploaded_by=row["uploaded_by"],
+            content_type=row["content_type"],
+            byte_size=row["byte_size"],
+            content_sha256=row["content_sha256"],
             status=JobStatus(row["status"]),
             attempts=row["attempts"],
             max_attempts=row["max_attempts"],

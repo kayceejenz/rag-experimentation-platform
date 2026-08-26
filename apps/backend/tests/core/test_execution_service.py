@@ -56,6 +56,23 @@ class InMemoryExecutionRepository:
         execution = self.executions.get(execution_id)
         return execution if execution and execution.project_id == project_id else None
 
+    def get_by_idempotency(
+        self,
+        project_id: UUID,
+        kind: ExecutionKind,
+        idempotency_key: str,
+    ) -> Execution | None:
+        return next(
+            (
+                execution
+                for execution in self.executions.values()
+                if execution.project_id == project_id
+                and execution.kind is kind
+                and execution.idempotency_key == idempotency_key
+            ),
+            None,
+        )
+
     def start(
         self,
         execution_id: UUID,
@@ -129,6 +146,33 @@ class InMemoryExecutionRepository:
 
     def add_output(self, link: ExecutionArtifact) -> ExecutionArtifact:
         return self._add_link(self.outputs, link)
+
+    def complete_with_outputs(
+        self,
+        execution_id: UUID,
+        project_id: UUID,
+        outputs: list[ExecutionArtifact],
+        result_summary: dict[str, Any],
+        completed_at: datetime,
+    ) -> Execution:
+        current = self.executions[execution_id]
+        if current.project_id != project_id or current.status is not ExecutionStatus.RUNNING:
+            raise InvalidExecutionTransitionError("Only running executions can be finalized")
+        for output in outputs:
+            key = (output.execution_id, output.role, output.position)
+            existing = self.outputs.get(key)
+            if existing is not None and existing.artifact_id != output.artifact_id:
+                raise ExecutionIdentityConflictError("Lineage slot is occupied")
+        for output in outputs:
+            self._add_link(self.outputs, output)
+        completed = replace(
+            current,
+            status=ExecutionStatus.COMPLETED,
+            result_summary=result_summary,
+            completed_at=completed_at,
+        )
+        self.executions[execution_id] = completed
+        return completed
 
     def _transition(
         self,
@@ -229,6 +273,38 @@ class ExecutionServiceTests(unittest.TestCase):
         pending = self.create_execution()
         with self.assertRaises(InvalidLineageLinkError):
             self.service.add_input(pending, self.artifact(uuid4()), "source_version")
+
+    def test_outputs_and_completion_are_finalized_together(self) -> None:
+        running = self.service.start(self.create_execution(), "worker-1")
+        elements = self.artifact()
+        chunks = self.artifact()
+
+        completed = self.service.complete_with_outputs(
+            running,
+            [(elements, "elements", 0), (chunks, "chunks", 0)],
+            {"element_count": 2, "chunk_count": 2},
+        )
+
+        self.assertEqual(ExecutionStatus.COMPLETED, completed.status)
+        self.assertEqual(2, len(self.repository.outputs))
+
+    def test_output_collision_leaves_execution_running(self) -> None:
+        running = self.service.start(self.create_execution(), "worker-1")
+        occupied = self.artifact()
+        requested = self.artifact()
+        self.service.add_output(running, occupied, "chunks")
+
+        with self.assertRaises(ExecutionIdentityConflictError):
+            self.service.complete_with_outputs(
+                running,
+                [(requested, "chunks", 0)],
+                {"chunk_count": 1},
+            )
+
+        self.assertEqual(
+            ExecutionStatus.RUNNING,
+            self.repository.executions[running.id].status,
+        )
 
     def test_terminal_execution_cannot_transition_again(self) -> None:
         running = self.service.start(self.create_execution(), "worker-1")
