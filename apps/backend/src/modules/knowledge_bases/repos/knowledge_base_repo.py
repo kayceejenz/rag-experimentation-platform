@@ -23,6 +23,7 @@ class KnowledgeBaseRepository:
         return KnowledgeBase(
             id=row["id"],
             project_id=row["project_id"],
+            bot_id=row["bot_id"],
             chat_id=row["chat_id"],
             name=row["name"],
             created_at=row["created_at"],

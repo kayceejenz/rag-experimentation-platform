@@ -59,6 +59,7 @@ def message_response(message: Message) -> MessageResponse:
 def response(chat: Chat, role: str) -> ChatResponse:
     return ChatResponse(
         id=chat.id,
+        bot_id=chat.bot_id,
         project_id=chat.project_id,
         created_by=chat.created_by,
         knowledge_base_id=chat.knowledge_base_id,

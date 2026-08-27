@@ -10,6 +10,7 @@ export type Project = {
 
 export type Chat = {
 	id: string;
+	bot_id: string;
 	project_id: string;
 	created_by: string;
 	knowledge_base_id: string;
@@ -23,7 +24,8 @@ export type Chat = {
 export type KnowledgeBase = {
 	id: string;
 	project_id: string;
-	chat_id: string;
+	bot_id: string;
+	chat_id: string | null;
 	name: string;
 	created_at: string;
 };

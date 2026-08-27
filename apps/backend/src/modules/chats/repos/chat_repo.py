@@ -15,6 +15,7 @@ class ChatRepository:
     def chat(row: dict) -> Chat:
         return Chat(
             id=row["id"],
+            bot_id=row["bot_id"],
             project_id=row["project_id"],
             created_by=row["created_by"],
             title=row["title"],
@@ -27,16 +28,23 @@ class ChatRepository:
     async def create(self, project_id, created_by, title) -> Chat:
         async with await self.connect() as db:
             async with db.transaction():
-                cur = await db.execute(
-                    "insert into ragapp.chats(project_id,created_by,title) "
-                    "values(%s,%s,%s) returning *",
+                bot_cur = await db.execute(
+                    "insert into ragapp.knowledge_bots(project_id,created_by,name) "
+                    "values(%s,%s,%s) returning id",
                     (project_id, created_by, title),
+                )
+                bot = await bot_cur.fetchone()
+                cur = await db.execute(
+                    "insert into ragapp.chats(project_id,bot_id,created_by,title) "
+                    "values(%s,%s,%s,%s) returning *",
+                    (project_id, bot["id"], created_by, title),
                 )
                 chat = await cur.fetchone()
 
                 kb_cur = await db.execute(
-                    "insert into ragapp.knowledge_bases(project_id,chat_id) values(%s,%s) returning id",
-                    (project_id, chat["id"]),
+                    "insert into ragapp.knowledge_bases(project_id,bot_id,chat_id) "
+                    "values(%s,%s,%s) returning id",
+                    (project_id, bot["id"], chat["id"]),
                 )
                 knowledge_base = await kb_cur.fetchone()
 
@@ -80,8 +88,8 @@ class ChatRepository:
                 row = await cur.fetchone()
 
                 kb_cur = await db.execute(
-                    "select id from ragapp.knowledge_bases where chat_id=%s and deleted_at is null",
-                    (chat_id,),
+                    "select id from ragapp.knowledge_bases where bot_id=%s and deleted_at is null",
+                    (row["bot_id"],),
                 )
                 knowledge_base = await kb_cur.fetchone()
                 row["knowledge_base_id"] = knowledge_base["id"]
@@ -96,6 +104,13 @@ class ChatRepository:
                 )
                 await db.execute(
                     "update ragapp.knowledge_bases set deleted_at=now() "
-                    "where chat_id=%s and deleted_at is null",
+                    "where bot_id=(select bot_id from ragapp.chats where id=%s) "
+                    "and deleted_at is null",
+                    (chat_id,),
+                )
+                await db.execute(
+                    "update ragapp.knowledge_bots set deleted_at=now() "
+                    "where id=(select bot_id from ragapp.chats where id=%s) "
+                    "and deleted_at is null",
                     (chat_id,),
                 )

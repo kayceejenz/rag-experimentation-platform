@@ -22,6 +22,7 @@ class UpdateChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     id: UUID
+    bot_id: UUID
     project_id: UUID
     created_by: UUID
     knowledge_base_id: UUID
@@ -62,4 +63,3 @@ class MessageResponse(BaseModel):
 
 class MessageListResponse(BaseModel):
     messages: list[MessageResponse]
-

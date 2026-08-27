@@ -19,6 +19,8 @@ from modules.knowledge_bases.repos.knowledge_base_repo import KnowledgeBaseRepos
 from modules.knowledge_bases.services.knowledge_base_service import KnowledgeBaseService
 from modules.jobs.repos.job_repo import JobRepository
 from modules.jobs.services.job_service import JobService
+from modules.knowledge_bots.repository import KnowledgeBotRepository
+from modules.knowledge_bots.service import KnowledgeBotService
 from modules.projects.repos.project_repo import ProjectRepository
 from modules.projects.services.project_service import ProjectService
 from modules.sources.repos.source_repo import SourceRepository
@@ -72,6 +74,15 @@ def project_service() -> ProjectService:
     if not settings().database_url:
         raise RuntimeError("DATABASE_URL is required")
     return ProjectService(ProjectRepository(settings().database_url))
+
+
+@lru_cache
+def knowledge_bot_service() -> KnowledgeBotService:
+    if not settings().database_url:
+        raise RuntimeError("DATABASE_URL is required")
+    return KnowledgeBotService(
+        KnowledgeBotRepository(settings().database_url), project_service()
+    )
 
 
 @lru_cache
