@@ -64,6 +64,7 @@ button, a, input, textarea { outline-color: var(--accent); outline-offset: 3px; 
 button, a, summary, select { -webkit-tap-highlight-color: transparent; }
 :focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 75%, white); outline-offset: 3px; }
 a { color: inherit; }
+.app-version { position: fixed; right: 10px; bottom: 6px; z-index: 10; color: var(--muted); font-size: 9px; font-weight: 500; letter-spacing: .02em; pointer-events: none; }
 .mobile-workspace-menu { display: none; }
 .workspace, .chat-screen { view-transition-name: main-content; }
 .rail, .chat-history-sidebar { view-transition-name: app-sidebar; }
