@@ -13,11 +13,13 @@ class ProjectRole(StrEnum):
 @dataclass(frozen=True)
 class Project:
     id: UUID
+    workspace_id: UUID
     owner_id: UUID
     name: str
     description: str | None
     created_at: datetime
     updated_at: datetime
+    is_default: bool = False
 
 
 @dataclass(frozen=True)
@@ -31,4 +33,8 @@ class ProjectNotFoundError(Exception):
 
 
 class ProjectPermissionError(Exception):
+    pass
+
+
+class DefaultProjectDeletionError(Exception):
     pass

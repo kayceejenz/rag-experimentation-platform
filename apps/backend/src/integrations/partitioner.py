@@ -22,6 +22,7 @@ class UnstructuredPartitioner:
         ocr_languages: list[str] | None = None,
         poll_interval_seconds: float = 5.0,
         timeout_seconds: float = 900.0,
+        chunking_strategy: str = "by_title",
         client: Any | None = None,
     ) -> None:
         if not api_key:
@@ -32,6 +33,7 @@ class UnstructuredPartitioner:
         self._ocr_languages = ocr_languages or ["eng"]
         self._poll_interval_seconds = poll_interval_seconds
         self._timeout_seconds = timeout_seconds
+        self._chunking_strategy = chunking_strategy
         sdk_url = api_url.rstrip("/").removesuffix("/api/v1") if api_url else None
         self._client = client or unstructured_client.UnstructuredClient(
             api_key_auth=api_key,
@@ -87,7 +89,7 @@ class UnstructuredPartitioner:
                 {
                     "name": "Chunker",
                     "type": "chunk",
-                    "subtype": "chunk_by_title",
+                    "subtype": "chunk_by_title" if self._chunking_strategy in {"by_title", "element"} else "chunk_basic",
                     "settings": {
                         "max_characters": 2000,
                         "new_after_n_chars": 1500,

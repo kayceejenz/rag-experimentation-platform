@@ -19,20 +19,26 @@ from modules.ingestion.services.ingestion_tracking_service import (
     IngestionTracker,
     installed_code_revision,
 )
+from modules.jobs.models.job_model import PipelineStage
 from modules.jobs.repos.job_repo import JobRepository
 
 logger = logging.getLogger(__name__)
 
 
-def embedding_provider(config: Settings):
-    provider = config.embedding_provider.lower()
+def embedding_provider(config: Settings, embedding: dict | None = None):
+    selected = embedding or {
+        "provider": config.embedding_provider,
+        "model": config.embedding_model,
+        "dimensions": config.embedding_dimensions,
+    }
+    provider = str(selected["provider"]).lower()
     if provider == "gemini":
         if not config.effective_embedding_api_key:
             raise RuntimeError("EMBEDDING_API_KEY or LLM_API_KEY is required for Gemini embeddings")
         return GeminiEmbedder(
             api_key=config.effective_embedding_api_key,
-            model=config.embedding_model,
-            dimensions=config.embedding_dimensions,
+            model=str(selected["model"]),
+            dimensions=int(selected["dimensions"]),
             base_url=config.gemini_api_url,
             batch_size=config.embedding_batch_size,
         )
@@ -63,13 +69,16 @@ def run_once(config: Settings) -> bool:
     temporary = False
     execution = None
     try:
+        specification = (
+            SpecificationRepository(config.database_url).get(job.specification_id, job.project_id)
+            if job.specification_id else None
+        )
+        selected = specification.configuration if specification else None
         recovered = tracker.recover_previous_attempt(job)
         if recovered is not None:
             queue.complete(job, recovered.element_count, recovered.chunk_count)
             return True
-        if not config.unstructured_api_key:
-            raise RuntimeError("UNSTRUCTURED_API_KEY is required for ingestion")
-        execution = tracker.begin(job, config, worker_id)
+        execution = tracker.begin(job, config, worker_id, specification)
         if execution.status is ExecutionStatus.COMPLETED:
             summary = execution.result_summary or {}
             queue.complete(
@@ -82,38 +91,50 @@ def run_once(config: Settings) -> bool:
             raise RuntimeError(
                 f"Ingestion execution cannot continue from {execution.status.value}"
             )
-        path, temporary = resolve_file(job.storage_key, config.source_storage_dir)
-        ingestion = IngestSource(
-            UnstructuredPartitioner(
-                config.unstructured_api_key,
-                config.unstructured_api_url,
-                config.unstructured_strategy,
-                config.unstructured_pdf_strategy,
-                config.ocr_languages,
-                config.unstructured_poll_interval_seconds,
-                config.unstructured_job_timeout_seconds,
-            ),
-            ElementRepository(config.database_url),
-            ChunkRepository(
-                config.database_url, config.embedding_provider.lower(), config.embedding_model
-            ),
-            ElementAssetStore(config.source_storage_dir),
-            embedding_provider(config),
-        )
         queue.renew_lease(job.id)
-        element_count, chunk_count = ingestion.execute(
-            job.project_id,
-            job.source_id,
-            job.source_version_id,
-            job.knowledge_base_id,
-            path,
+        embedding = selected["embedding"] if selected else None
+        chunks = ChunkRepository(
+            config.database_url,
+            str(embedding["provider"]).lower() if embedding else config.embedding_provider.lower(),
+            str(embedding["model"]) if embedding else config.embedding_model,
         )
+        if job.stage is PipelineStage.CHUNK:
+            if not config.unstructured_api_key:
+                raise RuntimeError("UNSTRUCTURED_API_KEY is required for chunking")
+            path, temporary = resolve_file(job.storage_key, config.source_storage_dir)
+            ingestion = IngestSource(
+                UnstructuredPartitioner(
+                    config.unstructured_api_key,
+                    config.unstructured_api_url,
+                    config.unstructured_strategy,
+                    config.unstructured_pdf_strategy,
+                    config.ocr_languages,
+                    config.unstructured_poll_interval_seconds,
+                    config.unstructured_job_timeout_seconds,
+                    chunking_strategy=str(selected["chunking"]["strategy"]) if selected else "by_title",
+                ),
+                ElementRepository(config.database_url),
+                chunks,
+                ElementAssetStore(config.source_storage_dir),
+            )
+            element_count, chunk_count = ingestion.execute_chunking(
+                job.project_id,
+                job.source_id,
+                job.source_version_id,
+                job.knowledge_base_id,
+                path,
+            )
+        else:
+            ingestion = IngestSource(None, None, chunks, None, embedding_provider(config, embedding))
+            chunk_count = ingestion.execute_indexing(job.source_version_id)
+            element_count = 0
         execution = tracker.complete(
             job,
             execution,
             config,
             element_count,
             chunk_count,
+            selected,
         )
         queue.complete(job, element_count, chunk_count)
     except Exception as error:

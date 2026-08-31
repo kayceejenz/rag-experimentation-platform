@@ -25,15 +25,16 @@ class ExecutionRepository:
         with psycopg.connect(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "insert into ragapp.executions("
-                "id,project_id,kind,specification_id,status,idempotency_key,code_revision,"
+                "id,project_id,kind,specification_id,knowledge_base_id,status,idempotency_key,code_revision,"
                 "attempt,parameters,created_by,created_at) "
-                "values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+                "values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
                 "on conflict do nothing returning *",
                 (
                     execution.id,
                     execution.project_id,
                     execution.kind.value,
                     execution.specification_id,
+                    execution.knowledge_base_id,
                     execution.status.value,
                     execution.idempotency_key,
                     execution.code_revision,
@@ -258,6 +259,7 @@ class ExecutionRepository:
             "project_id",
             "kind",
             "specification_id",
+            "knowledge_base_id",
             "idempotency_key",
             "code_revision",
             "attempt",
@@ -279,6 +281,7 @@ class ExecutionRepository:
             project_id=row["project_id"],
             kind=ExecutionKind(row["kind"]),
             specification_id=row["specification_id"],
+            knowledge_base_id=row.get("knowledge_base_id"),
             status=ExecutionStatus(row["status"]),
             idempotency_key=row["idempotency_key"],
             code_revision=row["code_revision"],

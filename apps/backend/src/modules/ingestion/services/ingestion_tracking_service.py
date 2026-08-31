@@ -12,7 +12,7 @@ from modules.core.models.specification_model import SpecificationKind
 from modules.core.services.artifact_service import ArtifactService
 from modules.core.services.execution_service import ExecutionService
 from modules.core.services.specification_service import SpecificationService
-from modules.jobs.models.job_model import IngestionJob
+from modules.jobs.models.job_model import IngestionJob, PipelineStage
 
 if TYPE_CHECKING:
     from core.settings import Settings
@@ -48,7 +48,7 @@ class IngestionTracker:
         for attempt in range(job.attempts - 1, 0, -1):
             previous = self.execution_repository.get_by_idempotency(
                 job.project_id,
-                ExecutionKind.INGESTION,
+                ExecutionKind.CHUNKING if job.stage is PipelineStage.CHUNK else ExecutionKind.INDEX_BUILD,
                 execution_key(job.id, attempt),
             )
             if previous is not None:
@@ -76,33 +76,46 @@ class IngestionTracker:
         job: IngestionJob,
         config: Settings,
         worker_id: str,
+        specification=None,
     ) -> Execution:
-        specification = self.specifications.register(
+        specification = specification or self.specifications.register(
             job.project_id,
             job.uploaded_by,
             SpecificationKind.PIPELINE,
             1,
             ingestion_configuration(config),
         )
-        source = self.artifacts.register_content(
-            job.project_id,
-            job.uploaded_by,
-            ArtifactKind.SOURCE,
-            ArtifactStorageType.OBJECT,
-            job.content_sha256,
-            storage_key=job.storage_key,
-            media_type=job.content_type,
-            byte_size=job.byte_size,
-        )
+        if job.stage is PipelineStage.CHUNK:
+            input_artifact = self.artifacts.register_content(
+                job.project_id,
+                job.uploaded_by,
+                ArtifactKind.SOURCE,
+                ArtifactStorageType.OBJECT,
+                job.content_sha256,
+                storage_key=job.storage_key,
+                media_type=job.content_type,
+                byte_size=job.byte_size,
+            )
+            input_role = "source_version"
+        else:
+            input_artifact = self.artifacts.register_manifest(
+                job.project_id,
+                job.uploaded_by,
+                ArtifactKind.CHUNK_DATASET,
+                {"dataset": "ragapp.chunks", "source_version_id": str(job.source_version_id)},
+            )
+            input_role = "chunks"
         execution = self.executions.create(
             job.project_id,
             job.uploaded_by,
-            ExecutionKind.INGESTION,
+            ExecutionKind.CHUNKING if job.stage is PipelineStage.CHUNK else ExecutionKind.INDEX_BUILD,
             self.code_revision,
             specification_id=specification.id,
+            knowledge_base_id=job.knowledge_base_id,
             idempotency_key=execution_key(job.id, job.attempts),
             attempt=job.attempts,
             parameters={
+                "stage": job.stage.value,
                 "ingestion_job_id": str(job.id),
                 "source_id": str(job.source_id),
                 "source_version_id": str(job.source_version_id),
@@ -110,7 +123,7 @@ class IngestionTracker:
             },
         )
         if execution.status is ExecutionStatus.PENDING:
-            self.executions.add_input(execution, source, "source_version")
+            self.executions.add_input(execution, input_artifact, input_role)
             return self.executions.start(execution, worker_id)
         return execution
 
@@ -121,7 +134,9 @@ class IngestionTracker:
         config: Settings,
         element_count: int,
         chunk_count: int,
+        configuration: dict[str, Any] | None = None,
     ) -> Execution:
+        selected = configuration or ingestion_configuration(config)
         common_manifest = {
             "source_version_id": str(job.source_version_id),
             "specification_id": str(execution.specification_id),
@@ -154,18 +169,19 @@ class IngestionTracker:
                 **common_manifest,
                 "dataset": "ragapp.chunk_embeddings",
                 "row_count": chunk_count,
-                "provider": config.embedding_provider.lower(),
-                "model": config.embedding_model,
-                "dimensions": config.embedding_dimensions,
+                "provider": selected["embedding"]["provider"],
+                "model": selected["embedding"]["model"],
+                "dimensions": selected["embedding"]["dimensions"],
             },
+        )
+        outputs = (
+            [(elements, "elements", 0), (chunks, "chunks", 0)]
+            if job.stage is PipelineStage.CHUNK
+            else [(embeddings, "embeddings", 0)]
         )
         return self.executions.complete_with_outputs(
             execution,
-            [
-                (elements, "elements", 0),
-                (chunks, "chunks", 0),
-                (embeddings, "embeddings", 0),
-            ],
+            outputs,
             {"element_count": element_count, "chunk_count": chunk_count},
         )
 

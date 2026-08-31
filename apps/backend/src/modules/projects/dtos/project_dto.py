@@ -16,10 +16,12 @@ class UpdateProjectRequest(BaseModel):
 
 class ProjectResponse(BaseModel):
     id: UUID
+    workspace_id: UUID
     owner_id: UUID
     name: str
     description: str | None
     role: str
+    is_default: bool
     created_at: datetime
     updated_at: datetime
 

@@ -96,24 +96,10 @@ class ChunkRepository:
         self.provider = provider
         self.model_name = model_name
 
-    def replace_for_source(self, project_id, source_version_id, chunks, embeddings) -> None:
-        if chunks and not embeddings:
-            raise ValueError("Embedding provider returned no vectors")
-        dimensions = len(embeddings[0]) if embeddings else None
-        if any(len(vector) != dimensions for vector in embeddings):
-            raise ValueError("Embedding provider returned inconsistent vector dimensions")
-
+    def replace_chunks(self, project_id, source_version_id, chunks) -> None:
         with psycopg.connect(self.database_url, row_factory=dict_row) as db:
             db.execute("delete from ragapp.chunks where source_version_id=%s", (source_version_id,))
-            model_id = None
-            if dimensions:
-                model_id = db.execute(
-                    "insert into ragapp.embedding_models(provider,model_name,dimensions) "
-                    "values(%s,%s,%s) on conflict(provider,model_name,dimensions) "
-                    "do update set is_active=true returning id",
-                    (self.provider, self.model_name, dimensions),
-                ).fetchone()["id"]
-            for chunk, vector in zip(chunks, embeddings, strict=True):
+            for chunk in chunks:
                 row = db.execute(
                     "insert into ragapp.chunks(id,project_id,knowledge_base_id,source_id,"
                     "source_version_id,position,content,page_from,page_to,metadata) "
@@ -137,12 +123,40 @@ class ChunkRepository:
                     "where source_version_id=%s and element_id=%s",
                     (row["id"], source_version_id, chunk.element_ids[0]),
                 )
+
+    def texts_for_source(self, source_version_id) -> list[str]:
+        with psycopg.connect(self.database_url) as db:
+            return [row[0] for row in db.execute(
+                "select content from ragapp.chunks where source_version_id=%s order by position",
+                (source_version_id,),
+            ).fetchall()]
+
+    def replace_embeddings(self, source_version_id, embeddings) -> None:
+        dimensions = len(embeddings[0]) if embeddings else None
+        if any(len(vector) != dimensions for vector in embeddings):
+            raise ValueError("Embedding provider returned inconsistent vector dimensions")
+        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+            chunks = db.execute(
+                "select id from ragapp.chunks where source_version_id=%s order by position",
+                (source_version_id,),
+            ).fetchall()
+            if len(chunks) != len(embeddings):
+                raise ValueError("Embedding count does not match the chunk dataset")
+            if not dimensions:
+                return
+            model_id = db.execute(
+                "insert into ragapp.embedding_models(provider,model_name,dimensions) "
+                "values(%s,%s,%s) on conflict(provider,model_name,dimensions) "
+                "do update set is_active=true returning id",
+                (self.provider, self.model_name, dimensions),
+            ).fetchone()["id"]
+            db.execute(
+                "delete from ragapp.chunk_embeddings where chunk_id in "
+                "(select id from ragapp.chunks where source_version_id=%s) and embedding_model_id=%s",
+                (source_version_id, model_id),
+            )
+            for chunk, vector in zip(chunks, embeddings, strict=True):
                 db.execute(
-                    "insert into ragapp.chunk_embeddings(chunk_id,embedding_model_id,embedding) "
-                    "values(%s,%s,%s::vector)",
-                    (
-                        row["id"],
-                        model_id,
-                        "[" + ",".join(str(float(value)) for value in vector) + "]",
-                    ),
+                    "insert into ragapp.chunk_embeddings(chunk_id,embedding_model_id,embedding) values(%s,%s,%s::vector)",
+                    (chunk["id"], model_id, "[" + ",".join(str(float(value)) for value in vector) + "]"),
                 )

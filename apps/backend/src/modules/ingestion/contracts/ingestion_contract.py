@@ -24,13 +24,15 @@ class ElementAssetStorage(Protocol):
 
 
 class ChunkWriter(Protocol):
-    def replace_for_source(
+    def replace_chunks(
         self,
         project_id: UUID,
         source_version_id: UUID,
         chunks: list[Chunk],
-        embeddings: list[list[float]],
     ) -> None: ...
+
+    def texts_for_source(self, source_version_id: UUID) -> list[str]: ...
+    def replace_embeddings(self, source_version_id: UUID, embeddings: list[list[float]]) -> None: ...
 
 
 class Embedder(Protocol):

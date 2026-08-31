@@ -19,7 +19,7 @@ class IngestSource:
         elements: ElementWriter,
         chunks: ChunkWriter,
         assets: ElementAssetStorage,
-        embedder: Embedder,
+        embedder: Embedder | None = None,
     ) -> None:
         self._partitioner = partitioner
         self._elements = elements
@@ -27,7 +27,7 @@ class IngestSource:
         self._assets = assets
         self._embedder = embedder
 
-    def execute(
+    def execute_chunking(
         self,
         project_id: UUID,
         source_id: UUID,
@@ -57,11 +57,18 @@ class IngestSource:
             for position, element in enumerate(persisted_elements)
             if self._searchable_text(element).strip()
         ]
-        embeddings = self._embedder.embed([chunk.text for chunk in chunks])
-        if len(embeddings) != len(chunks):
-            raise ValueError("Embedding provider returned the wrong number of vectors")
-        self._chunks.replace_for_source(project_id, source_version_id, chunks, embeddings)
+        self._chunks.replace_chunks(project_id, source_version_id, chunks)
         return len(persisted_elements), len(chunks)
+
+    def execute_indexing(self, source_version_id: UUID) -> int:
+        if self._embedder is None:
+            raise ValueError("An embedding provider is required for index building")
+        texts = self._chunks.texts_for_source(source_version_id)
+        embeddings = self._embedder.embed(texts)
+        if len(embeddings) != len(texts):
+            raise ValueError("Embedding provider returned the wrong number of vectors")
+        self._chunks.replace_embeddings(source_version_id, embeddings)
+        return len(texts)
 
     def _persist_asset(self, source_id: UUID, element: DocumentElement) -> DocumentElement:
         if not element.image_payload:

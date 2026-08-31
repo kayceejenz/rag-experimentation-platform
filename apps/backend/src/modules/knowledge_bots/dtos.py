@@ -34,4 +34,4 @@ class KnowledgeBotResponse(BaseModel):
 
 
 class KnowledgeBotListResponse(BaseModel):
-    bots: list[KnowledgeBotResponse]
+    assistants: list[KnowledgeBotResponse]

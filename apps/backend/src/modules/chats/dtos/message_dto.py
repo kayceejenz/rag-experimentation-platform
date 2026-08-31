@@ -16,7 +16,7 @@ class SendMessageRequest(BaseModel):
 
 class MessageResponse(BaseModel):
     id: UUID
-    chat_id: UUID
+    conversation_id: UUID
     role: MessageRole
     content: str
     citations: list[CitationResponse]

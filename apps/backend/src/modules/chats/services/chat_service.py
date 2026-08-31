@@ -16,6 +16,7 @@ from modules.chats.models.error_model import (
     ChatPermissionError,
 )
 from modules.chats.models.message_model import Message, MessageRole
+from modules.knowledge_bots.service import KnowledgeBotService
 from modules.projects.models.project_model import ProjectRole
 
 
@@ -27,23 +28,35 @@ class ChatService:
         messages: MessageRepository,
         search: KnowledgeSearch,
         generator: ChatGenerator,
+        bots: KnowledgeBotService,
     ) -> None:
         self.repository = repository
         self.projects = projects
         self.messages = messages
         self.search = search
         self.generator = generator
-
-    async def create(self, project_id: UUID, user_id: UUID, title: str) -> tuple[Chat, ProjectRole]:
-        access = await self.projects.get(project_id, user_id)
-        self._require_editor(access.role)
-        chat = await self.repository.create(project_id, user_id, title.strip())
-        return chat, access.role
+        self.bots = bots
 
     async def list(self, project_id: UUID, user_id: UUID) -> tuple[list[Chat], ProjectRole]:
         access = await self.projects.get(project_id, user_id)
         chats = await self.repository.list_for_project(project_id, user_id)
         return chats, access.role
+
+    async def create_for_assistant(
+        self, assistant_id: UUID, user_id: UUID, title: str
+    ) -> tuple[Chat, ProjectRole]:
+        bot, role = await self.bots.get(assistant_id, user_id)
+        chat = await self.repository.create_for_assistant(
+            bot.id, bot.project_id, user_id, title.strip()
+        )
+        return chat, role
+
+    async def list_for_assistant(
+        self, assistant_id: UUID, user_id: UUID
+    ) -> tuple[list[Chat], ProjectRole]:
+        bot, role = await self.bots.get(assistant_id, user_id)
+        chats = await self.repository.list_for_assistant(bot.id, user_id)
+        return chats, role
 
     async def get(self, chat_id: UUID, user_id: UUID) -> tuple[Chat, ProjectRole]:
         chat = await self.repository.get(chat_id, user_id)
@@ -73,7 +86,7 @@ class ChatService:
 
     async def list_messages(self, chat_id: UUID, user_id: UUID) -> list[Message]:
         await self.get(chat_id, user_id)
-        return await self.messages.list_for_chat(chat_id)
+        return await self.messages.list_for_conversation(chat_id)
 
     async def send_message(self, chat_id: UUID, user_id: UUID, content: str) -> Message:
         chat, question, history, chunks, context = await self._prepare_message(
@@ -89,7 +102,7 @@ class ChatService:
             raise ChatGenerationError(str(error)) from error
 
         assistant = Message(
-            chat_id=chat.id,
+            conversation_id=chat.id,
             role=MessageRole.ASSISTANT,
             content=answer,
             citations=self._citations(chunks),
@@ -144,7 +157,7 @@ class ChatService:
             raise ChatGenerationError(str(error)) from error
 
         assistant = Message(
-            chat_id=chat.id,
+            conversation_id=chat.id,
             role=MessageRole.ASSISTANT,
             content="".join(answer_parts).strip(),
             citations=self._citations(chunks),
@@ -157,21 +170,10 @@ class ChatService:
         }
 
     async def _prepare_message(self, chat_id: UUID, user_id: UUID, content: str):
-        chat, _ = await self.get(chat_id, user_id)
-        question = content.strip()
-        history = await self.messages.list_for_chat(chat_id)
-        
-        user_message = Message(chat_id=chat_id, role=MessageRole.USER, content=question)
-        await self.messages.add(user_message)
-
-        chunks = await self.search.search(chat.knowledge_base_id, question)
-        context = "\n\n".join(
-            f"[{index}] Source: {chunk.source_filename}"
-            + (f", page {chunk.page_number}" if chunk.page_number else "")
-            + f"\n{chunk.text}"
-            for index, chunk in enumerate(chunks, 1)
+        await self.get(chat_id, user_id)
+        raise ChatGenerationError(
+            "The assistant has no active revision. Bind an index specification before running it."
         )
-        return chat, question, history, chunks, context or "No relevant passages were found."
 
     @staticmethod
     def _citations(chunks) -> tuple[Citation, ...]:

@@ -29,22 +29,17 @@ class KnowledgeBotRepository:
         async with await self.connect() as db:
             async with db.transaction():
                 cursor = await db.execute(
-                    "insert into ragapp.knowledge_bots(project_id,created_by,name,description) "
+                    "insert into ragapp.assistants(project_id,created_by,name,description) "
                     "values(%s,%s,%s,%s) returning *",
                     (project_id, created_by, name, description),
                 )
                 row = await cursor.fetchone()
-                await db.execute(
-                    "insert into ragapp.knowledge_bases(project_id,bot_id,name) "
-                    "values(%s,%s,%s)",
-                    (project_id, row["id"], f"{name} knowledge base"),
-                )
         return self.model(row)
 
     async def get(self, bot_id, user_id) -> KnowledgeBot | None:
         async with await self.connect() as db:
             cursor = await db.execute(
-                "select b.* from ragapp.knowledge_bots b "
+                "select b.* from ragapp.assistants b "
                 "join ragapp.project_members pm on pm.project_id=b.project_id "
                 "where b.id=%s and pm.user_id=%s and b.deleted_at is null",
                 (bot_id, user_id),
@@ -55,7 +50,7 @@ class KnowledgeBotRepository:
     async def list_for_project(self, project_id, user_id) -> list[KnowledgeBot]:
         async with await self.connect() as db:
             cursor = await db.execute(
-                "select b.* from ragapp.knowledge_bots b "
+                "select b.* from ragapp.assistants b "
                 "join ragapp.project_members pm on pm.project_id=b.project_id "
                 "where b.project_id=%s and pm.user_id=%s and b.deleted_at is null "
                 "order by b.updated_at desc",
@@ -67,7 +62,7 @@ class KnowledgeBotRepository:
     async def update(self, bot_id, name, description, update_description, bot_status):
         async with await self.connect() as db:
             cursor = await db.execute(
-                "update ragapp.knowledge_bots set name=coalesce(%s,name), "
+                "update ragapp.assistants set name=coalesce(%s,name), "
                 "description=case when %s then %s else description end, "
                 "status=coalesce(%s,status) where id=%s and deleted_at is null returning *",
                 (
@@ -85,17 +80,12 @@ class KnowledgeBotRepository:
         async with await self.connect() as db:
             async with db.transaction():
                 await db.execute(
-                    "update ragapp.knowledge_bases set deleted_at=now() "
-                    "where bot_id=%s and deleted_at is null",
+                    "update ragapp.conversations set deleted_at=now() "
+                    "where assistant_id=%s and deleted_at is null",
                     (bot_id,),
                 )
                 await db.execute(
-                    "update ragapp.chats set deleted_at=now() "
-                    "where bot_id=%s and deleted_at is null",
-                    (bot_id,),
-                )
-                await db.execute(
-                    "update ragapp.knowledge_bots set deleted_at=now() "
+                    "update ragapp.assistants set deleted_at=now() "
                     "where id=%s and deleted_at is null",
                     (bot_id,),
                 )

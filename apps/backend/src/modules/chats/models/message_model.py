@@ -14,7 +14,7 @@ class MessageRole(StrEnum):
 
 @dataclass(frozen=True)
 class Message:
-    chat_id: UUID
+    conversation_id: UUID
     role: MessageRole
     content: str
     citations: tuple[Citation, ...] = ()

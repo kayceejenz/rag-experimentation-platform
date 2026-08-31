@@ -11,6 +11,11 @@ class JobStatus(StrEnum):
     FAILED = "failed"
 
 
+class PipelineStage(StrEnum):
+    CHUNK = "chunk"
+    INDEX = "index"
+
+
 @dataclass(frozen=True)
 class IngestionJob:
     source_version_id: UUID
@@ -22,6 +27,8 @@ class IngestionJob:
     content_type: str
     byte_size: int
     content_sha256: str
+    stage: PipelineStage = PipelineStage.CHUNK
+    specification_id: UUID | None = None
     id: UUID = field(default_factory=uuid4)
     status: JobStatus = JobStatus.QUEUED
     attempts: int = 0

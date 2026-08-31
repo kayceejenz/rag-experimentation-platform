@@ -6,8 +6,10 @@ from api.error_handlers import global_error_handler
 from core.settings import Settings
 from modules.auth.controllers.auth_controller import router as auth_router
 from modules.chats.controllers.chat_controller import router as chat_router
+from modules.core.controllers.lineage_controller import router as lineage_router
 from modules.knowledge_bases.controllers.knowledge_base_controller import router as kb_router
 from modules.jobs.controllers.job_controller import router as job_router
+from modules.indexes.controller import router as index_router
 from modules.knowledge_bots.controller import router as knowledge_bot_router
 from modules.projects.controllers.project_controller import router as project_router
 from modules.sources.controllers.source_controller import router as source_router
@@ -31,6 +33,8 @@ def create_app() -> FastAPI:
     app.include_router(source_router, prefix="/api/v1")
     app.include_router(job_router, prefix="/api/v1")
     app.include_router(knowledge_bot_router, prefix="/api/v1")
+    app.include_router(lineage_router, prefix="/api/v1")
+    app.include_router(index_router, prefix="/api/v1")
 
     @app.get("/health", tags=["system"])
     def health() -> dict[str, str]:

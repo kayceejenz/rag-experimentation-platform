@@ -15,10 +15,17 @@ from modules.auth.services.auth_service import AuthenticationService
 from modules.chats.repos.chat_repo import ChatRepository
 from modules.chats.repos.message_repo import MessageRepository
 from modules.chats.services.chat_service import ChatService
+from modules.core.repos.lineage_repo import LineageRepository
+from modules.core.services.lineage_service import LineageService
 from modules.knowledge_bases.repos.knowledge_base_repo import KnowledgeBaseRepository
 from modules.knowledge_bases.services.knowledge_base_service import KnowledgeBaseService
 from modules.jobs.repos.job_repo import JobRepository
 from modules.jobs.services.job_service import JobService
+from modules.indexes.repository import IndexRepository
+from modules.indexes.service import IndexService
+from modules.core.repos.specification_repo import SpecificationRepository
+from modules.core.services.specification_service import SpecificationService
+from modules.ingestion.services.ingestion_specification import IngestionSpecificationRegistry
 from modules.knowledge_bots.repository import KnowledgeBotRepository
 from modules.knowledge_bots.service import KnowledgeBotService
 from modules.projects.repos.project_repo import ProjectRepository
@@ -125,6 +132,7 @@ def chat_service() -> ChatService:
             max_output_tokens=c.chat_max_output_tokens,
             thinking_level=c.gemini_thinking_level,
         ),
+        knowledge_bot_service(),
     )
 
 
@@ -147,6 +155,27 @@ def job_service() -> JobService:
     if not settings().database_url:
         raise RuntimeError("DATABASE_URL is required")
     return JobService(JobRepository(settings().database_url))
+
+
+@lru_cache
+def lineage_service() -> LineageService:
+    if not settings().database_url:
+        raise RuntimeError("DATABASE_URL is required")
+    return LineageService(
+        LineageRepository(settings().database_url),
+        project_service(),
+    )
+
+
+@lru_cache
+def index_service() -> IndexService:
+    c = settings()
+    if not c.database_url:
+        raise RuntimeError("DATABASE_URL is required")
+    return IndexService(
+        IndexRepository(c.database_url),
+        SpecificationService(SpecificationRepository(c.database_url), IngestionSpecificationRegistry()),
+    )
 
 
 def current_user(

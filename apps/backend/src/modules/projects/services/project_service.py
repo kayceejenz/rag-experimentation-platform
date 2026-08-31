@@ -1,7 +1,9 @@
+from dataclasses import replace
 from uuid import UUID
 
 from modules.projects.contracts.project_repo_contract import ProjectRepositoryContract
 from modules.projects.models.project_model import (
+    DefaultProjectDeletionError,
     ProjectAccess,
     ProjectNotFoundError,
     ProjectPermissionError,
@@ -41,10 +43,13 @@ class ProjectService:
         project = await self.repository.update(
             project_id, name.strip() if name else None, description, update_description
         )
+        project = replace(project, is_default=access.project.is_default)
         return ProjectAccess(project, access.role)
 
     async def delete(self, project_id: UUID, user_id: UUID) -> None:
         access = await self.get(project_id, user_id)
         if access.role is not ProjectRole.OWNER:
             raise ProjectPermissionError
+        if access.project.is_default:
+            raise DefaultProjectDeletionError
         await self.repository.delete(project_id)

@@ -12,6 +12,20 @@ from modules.knowledge_bases.services.knowledge_base_service import KnowledgeBas
 router = APIRouter(tags=["knowledge bases"])
 
 
+@router.get("/projects/{project_id}/source", response_model=KnowledgeBaseResponse)
+def get_project_source(
+    project_id: UUID,
+    user: Annotated[AuthenticatedUser, Depends(current_user)],
+    service: Annotated[KnowledgeBaseService, Depends(knowledge_base_service)],
+) -> KnowledgeBaseResponse:
+    try:
+        return KnowledgeBaseResponse.model_validate(
+            service.get_for_project(project_id, user.id), from_attributes=True
+        )
+    except KnowledgeBaseNotFoundError:
+        raise HTTPException(404, "Project source not found") from None
+
+
 @router.get("/knowledge-bases/{knowledge_base_id}", response_model=KnowledgeBaseResponse)
 def get_knowledge_base(
     knowledge_base_id: UUID,

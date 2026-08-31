@@ -19,7 +19,7 @@ from modules.knowledge_bots.models import (
 from modules.knowledge_bots.service import KnowledgeBotService
 from modules.projects.models.project_model import ProjectNotFoundError, ProjectPermissionError
 
-router = APIRouter(tags=["knowledge bots"])
+router = APIRouter(tags=["assistants"])
 
 
 def response(bot: KnowledgeBot, role: str) -> KnowledgeBotResponse:
@@ -38,12 +38,12 @@ def response(bot: KnowledgeBot, role: str) -> KnowledgeBotResponse:
 
 def translate(error: Exception) -> HTTPException:
     if isinstance(error, (KnowledgeBotNotFoundError, ProjectNotFoundError)):
-        return HTTPException(status.HTTP_404_NOT_FOUND, "Knowledge bot or project not found")
-    return HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient knowledge-bot permissions")
+        return HTTPException(status.HTTP_404_NOT_FOUND, "Assistant or project not found")
+    return HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient assistant permissions")
 
 
 @router.post(
-    "/projects/{project_id}/knowledge-bots",
+    "/projects/{project_id}/assistants",
     response_model=KnowledgeBotResponse,
     status_code=status.HTTP_201_CREATED,
 )
@@ -61,7 +61,7 @@ async def create_bot(
 
 
 @router.get(
-    "/projects/{project_id}/knowledge-bots", response_model=KnowledgeBotListResponse
+    "/projects/{project_id}/assistants", response_model=KnowledgeBotListResponse
 )
 async def list_bots(
     project_id: UUID,
@@ -70,12 +70,12 @@ async def list_bots(
 ):
     try:
         bots, role = await service.list(project_id, user.id)
-        return KnowledgeBotListResponse(bots=[response(bot, role.value) for bot in bots])
+        return KnowledgeBotListResponse(assistants=[response(bot, role.value) for bot in bots])
     except ProjectNotFoundError as error:
         raise translate(error) from None
 
 
-@router.get("/knowledge-bots/{bot_id}", response_model=KnowledgeBotResponse)
+@router.get("/assistants/{bot_id}", response_model=KnowledgeBotResponse)
 async def get_bot(
     bot_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
@@ -88,7 +88,7 @@ async def get_bot(
         raise translate(error) from None
 
 
-@router.patch("/knowledge-bots/{bot_id}", response_model=KnowledgeBotResponse)
+@router.patch("/assistants/{bot_id}", response_model=KnowledgeBotResponse)
 async def update_bot(
     bot_id: UUID,
     body: UpdateKnowledgeBotRequest,
@@ -114,7 +114,7 @@ async def update_bot(
         raise translate(error) from None
 
 
-@router.delete("/knowledge-bots/{bot_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/assistants/{bot_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_bot(
     bot_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],

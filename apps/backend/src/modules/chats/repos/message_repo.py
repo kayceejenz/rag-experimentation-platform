@@ -12,9 +12,9 @@ class MessageRepository:
     async def add(self, message: Message) -> None:
         async with await AsyncConnection.connect(self.database_url) as db:
             await db.execute(
-                "insert into ragapp.messages(id,chat_id,role,content,completed_at) "
+                "insert into ragapp.messages(id,conversation_id,role,content,completed_at) "
                 "values(%s,%s,%s,%s,now())",
-                (message.id, message.chat_id, message.role.value, message.content),
+                (message.id, message.conversation_id, message.role.value, message.content),
             )
             async with db.cursor() as cursor:
                 await cursor.executemany(
@@ -38,18 +38,18 @@ class MessageRepository:
                     ],
                 )
 
-    async def list_for_chat(self, chat_id) -> list[Message]:
+    async def list_for_conversation(self, conversation_id) -> list[Message]:
         async with await AsyncConnection.connect(self.database_url, row_factory=dict_row) as db:
             msg_cur = await db.execute(
-                "select * from ragapp.messages where chat_id=%s and status='completed' "
+                "select * from ragapp.messages where conversation_id=%s and status='completed' "
                 "order by created_at,id",
-                (chat_id,),
+                (conversation_id,),
             )
             rows = await msg_cur.fetchall()
             cita_cur = await db.execute(
                 "select mc.* from ragapp.message_citations mc join ragapp.messages m "
-                "on m.id=mc.message_id where m.chat_id=%s order by mc.citation_order",
-                (chat_id,),
+                "on m.id=mc.message_id where m.conversation_id=%s order by mc.citation_order",
+                (conversation_id,),
             )
             citations = await cita_cur.fetchall()
         by_message = {}
@@ -68,7 +68,7 @@ class MessageRepository:
         return [
             Message(
                 id=row["id"],
-                chat_id=row["chat_id"],
+                conversation_id=row["conversation_id"],
                 role=MessageRole(row["role"]),
                 content=row["content"],
                 citations=tuple(by_message.get(row["id"], [])),

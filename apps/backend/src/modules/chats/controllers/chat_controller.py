@@ -30,15 +30,16 @@ from modules.projects.models.project_model import (
     ProjectNotFoundError,
     ProjectPermissionError,
 )
+from modules.knowledge_bots.models import KnowledgeBotNotFoundError
 
-router = APIRouter(tags=["chats"])
+router = APIRouter(tags=["conversations"])
 logger = logging.getLogger(__name__)
 
 
 def message_response(message: Message) -> MessageResponse:
     return MessageResponse(
         id=message.id,
-        chat_id=message.chat_id,
+        conversation_id=message.conversation_id,
         role=message.role,
         content=message.content,
         citations=[
@@ -59,10 +60,9 @@ def message_response(message: Message) -> MessageResponse:
 def response(chat: Chat, role: str) -> ChatResponse:
     return ChatResponse(
         id=chat.id,
-        bot_id=chat.bot_id,
+        assistant_id=chat.assistant_id,
         project_id=chat.project_id,
         created_by=chat.created_by,
-        knowledge_base_id=chat.knowledge_base_id,
         title=chat.title,
         status=chat.status,
         role=role,
@@ -72,43 +72,47 @@ def response(chat: Chat, role: str) -> ChatResponse:
 
 
 def translate(error: Exception) -> HTTPException:
-    if isinstance(error, (ChatNotFoundError, ProjectNotFoundError)):
+    if isinstance(
+        error, (ChatNotFoundError, KnowledgeBotNotFoundError, ProjectNotFoundError)
+    ):
         return HTTPException(status.HTTP_404_NOT_FOUND, "Chat or project not found")
     return HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient project permissions")
 
 
 @router.post(
-    "/projects/{project_id}/chats",
+    "/assistants/{assistant_id}/conversations",
     response_model=ChatResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_chat(
-    project_id: UUID,
+async def create_conversation(
+    assistant_id: UUID,
     body: CreateChatRequest,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
     service: Annotated[ChatService, Depends(chat_service)],
 ):
     try:
-        chat, role = await service.create(project_id, user.id, body.title)
+        chat, role = await service.create_for_assistant(assistant_id, user.id, body.title)
         return response(chat, role.value)
-    except (ProjectNotFoundError, ProjectPermissionError, ChatPermissionError) as error:
+    except (KnowledgeBotNotFoundError, ProjectNotFoundError) as error:
         raise translate(error) from None
 
 
-@router.get("/projects/{project_id}/chats", response_model=ChatListResponse)
-async def list_chats(
-    project_id: UUID,
+@router.get(
+    "/assistants/{assistant_id}/conversations", response_model=ChatListResponse
+)
+async def list_conversations(
+    assistant_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
     service: Annotated[ChatService, Depends(chat_service)],
 ):
     try:
-        chats, role = await service.list(project_id, user.id)
-        return ChatListResponse(chats=[response(chat, role.value) for chat in chats])
-    except ProjectNotFoundError as error:
+        chats, role = await service.list_for_assistant(assistant_id, user.id)
+        return ChatListResponse(conversations=[response(chat, role.value) for chat in chats])
+    except (KnowledgeBotNotFoundError, ProjectNotFoundError) as error:
         raise translate(error) from None
 
 
-@router.get("/chats/{chat_id}", response_model=ChatResponse)
+@router.get("/conversations/{chat_id}", response_model=ChatResponse)
 async def get_chat(
     chat_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
@@ -121,7 +125,7 @@ async def get_chat(
         raise translate(error) from None
 
 
-@router.patch("/chats/{chat_id}", response_model=ChatResponse)
+@router.patch("/conversations/{chat_id}", response_model=ChatResponse)
 async def update_chat(
     chat_id: UUID,
     body: UpdateChatRequest,
@@ -135,7 +139,7 @@ async def update_chat(
         raise translate(error) from None
 
 
-@router.delete("/chats/{chat_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/conversations/{chat_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_chat(
     chat_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
@@ -148,7 +152,7 @@ async def delete_chat(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get("/chats/{chat_id}/messages", response_model=MessageListResponse)
+@router.get("/conversations/{chat_id}/messages", response_model=MessageListResponse)
 async def list_messages(
     chat_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
@@ -162,7 +166,7 @@ async def list_messages(
 
 
 @router.post(
-    "/chats/{chat_id}/messages",
+    "/conversations/{chat_id}/messages",
     response_model=MessageResponse,
     status_code=status.HTTP_201_CREATED,
 )
@@ -187,7 +191,7 @@ async def send_message(
         ) from None
 
 
-@router.post("/chats/{chat_id}/messages/stream")
+@router.post("/conversations/{chat_id}/messages/stream")
 async def stream_message(
     chat_id: UUID,
     body: SendMessageRequest,

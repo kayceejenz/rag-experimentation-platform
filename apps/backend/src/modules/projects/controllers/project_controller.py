@@ -12,6 +12,7 @@ from modules.projects.dtos.project_dto import (
     UpdateProjectRequest,
 )
 from modules.projects.models.project_model import (
+    DefaultProjectDeletionError,
     ProjectAccess,
     ProjectNotFoundError,
     ProjectPermissionError,
@@ -25,10 +26,12 @@ def response(access: ProjectAccess) -> ProjectResponse:
     p = access.project
     return ProjectResponse(
         id=p.id,
+        workspace_id=p.workspace_id,
         owner_id=p.owner_id,
         name=p.name,
         description=p.description,
         role=access.role.value,
+        is_default=p.is_default,
         created_at=p.created_at,
         updated_at=p.updated_at,
     )
@@ -37,6 +40,8 @@ def response(access: ProjectAccess) -> ProjectResponse:
 def translate(error: Exception) -> HTTPException:
     if isinstance(error, ProjectNotFoundError):
         return HTTPException(404, "Project not found")
+    if isinstance(error, DefaultProjectDeletionError):
+        return HTTPException(409, "The default project cannot be deleted")
     return HTTPException(403, "Insufficient project permissions")
 
 
@@ -98,6 +103,6 @@ async def delete_project(
 ) -> Response:
     try:
         await service.delete(project_id, user.id)
-    except (ProjectNotFoundError, ProjectPermissionError) as error:
+    except (ProjectNotFoundError, ProjectPermissionError, DefaultProjectDeletionError) as error:
         raise translate(error) from None
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -24,6 +24,7 @@ def normalize_ingestion_pipeline(configuration: Mapping[str, Any]) -> dict[str, 
     ):
         raise ValueError("partitioning.ocr_languages must be a list of languages")
     return {
+        "name": str(configuration.get("name", "Index build")).strip(),
         "partitioning": {
             "provider": str(partitioning.get("provider", "unstructured")).lower(),
             "strategy": str(partitioning.get("strategy", "auto")).lower(),

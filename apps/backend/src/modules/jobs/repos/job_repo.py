@@ -1,7 +1,7 @@
 import psycopg
 from psycopg.rows import dict_row
 
-from modules.jobs.models.job_model import IngestionJob, IngestionJobDetails, JobStatus
+from modules.jobs.models.job_model import IngestionJob, IngestionJobDetails, JobStatus, PipelineStage
 
 
 class JobRepository:
@@ -15,6 +15,10 @@ class JobRepository:
                 "with candidate as (select id from ragapp.ingestion_jobs "
                 "where attempts<max_attempts and ((status='queued' and available_at<=now()) or "
                 "(status='running' and lease_expires_at<now())) "
+                "and (stage='chunk' or specification_id is null or exists("
+                "select 1 from ragapp.ingestion_jobs dependency where dependency.source_version_id="
+                "ingestion_jobs.source_version_id and dependency.stage='chunk' and "
+                "dependency.specification_id=ingestion_jobs.specification_id and dependency.status='completed')) "
                 "order by priority,created_at for update skip locked limit 1) "
                 "update ragapp.ingestion_jobs j set status='running',attempts=attempts+1,"
                 "locked_at=now(),locked_by=%s,lease_expires_at=now()+(%s*interval '1 second') "
@@ -122,6 +126,8 @@ class JobRepository:
             content_type=row["content_type"],
             byte_size=row["byte_size"],
             content_sha256=row["content_sha256"],
+            stage=PipelineStage(row["stage"]),
+            specification_id=row["specification_id"],
             status=JobStatus(row["status"]),
             attempts=row["attempts"],
             max_attempts=row["max_attempts"],

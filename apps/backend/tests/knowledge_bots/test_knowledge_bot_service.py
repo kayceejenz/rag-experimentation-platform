@@ -55,6 +55,7 @@ class Projects:
         return ProjectAccess(
             Project(
                 id=project_id,
+                workspace_id=uuid4(),
                 owner_id=user_id,
                 name="Workspace",
                 description=None,
@@ -81,7 +82,9 @@ class KnowledgeBotServiceTests(unittest.TestCase):
         self.assertIs(role, ProjectRole.EDITOR)
 
     def test_viewer_cannot_create_or_update_bot(self):
-        bot = KnowledgeBot(project_id=uuid4(), created_by=uuid4(), name="Support")
+        bot = KnowledgeBot(
+            project_id=uuid4(), created_by=uuid4(), name="Support"
+        )
         repository = BotRepository(bot)
         service = KnowledgeBotService(repository, Projects(ProjectRole.VIEWER))
 
@@ -93,7 +96,10 @@ class KnowledgeBotServiceTests(unittest.TestCase):
 
     def test_update_can_clear_description_and_archive_bot(self):
         bot = KnowledgeBot(
-            project_id=uuid4(), created_by=uuid4(), name="Support", description="Old"
+            project_id=uuid4(),
+            created_by=uuid4(),
+            name="Support",
+            description="Old",
         )
         repository = BotRepository(bot)
         service = KnowledgeBotService(repository, Projects(ProjectRole.OWNER))

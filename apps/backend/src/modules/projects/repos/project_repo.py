@@ -15,28 +15,44 @@ class ProjectRepository:
     def project(row) -> Project:
         return Project(
             row["id"],
+            row["workspace_id"],
             row["owner_id"],
             row["name"],
             row["description"],
             row["created_at"],
             row["updated_at"],
+            bool(row.get("is_default", False)),
         )
 
     async def create(self, owner_id, name, description):
         async with await self.connect() as db:
-            curr = await db.execute(
-                "insert into ragapp.projects(owner_id,name,description) "
-                "values(%s,%s,%s) returning *",
-                (owner_id, name, description),
-            )
-            row = await curr.fetchone()
+            async with db.transaction():
+                curr = await db.execute(
+                    "insert into ragapp.projects(workspace_id,owner_id,name,description) "
+                    "select wm.workspace_id,%s,%s,%s from ragapp.workspace_members wm "
+                    "where wm.user_id=%s and wm.role='owner' order by wm.joined_at limit 1 "
+                    "returning *",
+                    (owner_id, name, description, owner_id),
+                )
+                row = await curr.fetchone()
+                source_cursor = await db.execute(
+                    "insert into ragapp.knowledge_bases(project_id,created_by,name) "
+                    "values(%s,%s,'Source') returning id",
+                    (row["id"], owner_id),
+                )
+                source = await source_cursor.fetchone()
+                await db.execute(
+                    "insert into ragapp.project_sources(project_id,knowledge_base_id) values(%s,%s)",
+                    (row["id"], source["id"]),
+                )
         return self.project(row)
 
     async def get_access(self, project_id, user_id):
         async with await self.connect() as db:
             curr = await db.execute(
-                "select p.*,m.role from ragapp.projects p "
+                "select p.*,m.role,(p.id=u.default_project_id) is_default from ragapp.projects p "
                 "join ragapp.project_members m on m.project_id=p.id "
+                "join ragapp.users u on u.id=m.user_id "
                 "where p.id=%s and m.user_id=%s and p.deleted_at is null",
                 (project_id, user_id),
             )
@@ -46,9 +62,11 @@ class ProjectRepository:
     async def list_for_user(self, user_id):
         async with await self.connect() as db:
             curr = await db.execute(
-                "select p.*,m.role from ragapp.projects p "
+                "select p.*,m.role,(p.id=u.default_project_id) is_default from ragapp.projects p "
                 "join ragapp.project_members m on m.project_id=p.id "
-                "where m.user_id=%s and p.deleted_at is null order by p.updated_at desc",
+                "join ragapp.users u on u.id=m.user_id "
+                "where m.user_id=%s and p.deleted_at is null "
+                "order by is_default desc,p.updated_at desc",
                 (user_id,),
             )
             rows = await curr.fetchall()

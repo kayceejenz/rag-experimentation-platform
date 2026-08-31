@@ -31,6 +31,7 @@ class Execution:
     kind: ExecutionKind
     code_revision: str
     specification_id: UUID | None = None
+    knowledge_base_id: UUID | None = None
     status: ExecutionStatus = ExecutionStatus.PENDING
     idempotency_key: str | None = None
     worker_id: str | None = None

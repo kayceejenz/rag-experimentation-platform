@@ -169,7 +169,7 @@ class IngestionTrackingTests(unittest.TestCase):
             error_message="Worker lease expired before execution completion",
         )
 
-    def test_completion_registers_three_outputs_and_finalizes_atomically(self) -> None:
+    def test_chunk_completion_links_prepared_dataset_outputs(self) -> None:
         running = Execution(
             project_id=self.job.project_id,
             kind=ExecutionKind.INGESTION,
@@ -209,7 +209,6 @@ class IngestionTrackingTests(unittest.TestCase):
             [
                 (outputs[0], "elements", 0),
                 (outputs[1], "chunks", 0),
-                (outputs[2], "embeddings", 0),
             ],
             {"element_count": 8, "chunk_count": 6},
         )
