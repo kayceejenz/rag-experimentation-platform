@@ -38,7 +38,7 @@ class ChatService:
         self.bots = bots
 
     async def list(self, project_id: UUID, user_id: UUID) -> tuple[list[Chat], ProjectRole]:
-        access = await self.projects.get(project_id, user_id)
+        access = await self.projects.require_permission(project_id, user_id, "assistants")
         chats = await self.repository.list_for_project(project_id, user_id)
         return chats, access.role
 
@@ -46,6 +46,7 @@ class ChatService:
         self, assistant_id: UUID, user_id: UUID, title: str
     ) -> tuple[Chat, ProjectRole]:
         bot, role = await self.bots.get(assistant_id, user_id)
+        await self.projects.require_permission(bot.project_id, user_id, "assistants")
         chat = await self.repository.create_for_assistant(
             bot.id, bot.project_id, user_id, title.strip()
         )
@@ -62,7 +63,7 @@ class ChatService:
         chat = await self.repository.get(chat_id, user_id)
         if not chat:
             raise ChatNotFoundError
-        access = await self.projects.get(chat.project_id, user_id)
+        access = await self.projects.require_permission(chat.project_id, user_id, "assistants")
         return chat, access.role
 
     async def update(
@@ -73,7 +74,7 @@ class ChatService:
         chat_status: ChatStatus | None,
     ) -> tuple[Chat, ProjectRole]:
         chat, role = await self.get(chat_id, user_id)
-        self._require_editor(role)
+        await self.projects.require_permission(chat.project_id, user_id, "assistants", "manage")
         updated_chat = await self.repository.update(
             chat.id, title.strip() if title else None, chat_status
         )
@@ -81,7 +82,7 @@ class ChatService:
 
     async def delete(self, chat_id: UUID, user_id: UUID) -> None:
         chat, role = await self.get(chat_id, user_id)
-        self._require_editor(role)
+        await self.projects.require_permission(chat.project_id, user_id, "assistants", "manage")
         await self.repository.delete(chat.id)
 
     async def list_messages(self, chat_id: UUID, user_id: UUID) -> list[Message]:

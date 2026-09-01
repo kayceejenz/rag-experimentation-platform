@@ -71,7 +71,7 @@ async def list_bots(
     try:
         bots, role = await service.list(project_id, user.id)
         return KnowledgeBotListResponse(assistants=[response(bot, role.value) for bot in bots])
-    except ProjectNotFoundError as error:
+    except (ProjectNotFoundError, ProjectPermissionError) as error:
         raise translate(error) from None
 
 
@@ -84,7 +84,7 @@ async def get_bot(
     try:
         bot, role = await service.get(bot_id, user.id)
         return response(bot, role.value)
-    except (KnowledgeBotNotFoundError, ProjectNotFoundError) as error:
+    except (KnowledgeBotNotFoundError, ProjectNotFoundError, ProjectPermissionError) as error:
         raise translate(error) from None
 
 

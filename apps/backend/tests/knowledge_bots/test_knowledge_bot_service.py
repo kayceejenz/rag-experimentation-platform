@@ -65,6 +65,11 @@ class Projects:
             self.role,
         )
 
+    async def require_permission(self, project_id, user_id, feature, action="view"):
+        if action == "manage" and self.role is ProjectRole.VIEWER:
+            raise KnowledgeBotPermissionError
+        return await self.get(project_id, user_id)
+
 
 def run(coroutine):
     return asyncio.run(coroutine)

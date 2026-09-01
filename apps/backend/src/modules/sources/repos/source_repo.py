@@ -158,9 +158,8 @@ class SourceRepository:
     def has_write_access(self, knowledge_base_id, user_id) -> bool:
         with psycopg.connect(self.database_url) as db:
             return db.execute(
-                "select exists(select 1 from ragapp.knowledge_bases kb "
-                "join ragapp.project_members pm on pm.project_id=kb.project_id "
-                "where kb.id=%s and pm.user_id=%s and pm.role in ('owner','editor') "
+                "select exists(select 1 from ragapp.knowledge_bases kb where kb.id=%s "
+                "and ragapp.has_project_permission(kb.project_id,%s,'knowledge','manage') "
                 "and kb.deleted_at is null)",
                 (knowledge_base_id, user_id),
             ).fetchone()[0]
@@ -176,9 +175,9 @@ class SourceRepository:
     def has_read_access(self, knowledge_base_id, user_id) -> bool:
         with psycopg.connect(self.database_url) as db:
             return db.execute(
-                "select exists(select 1 from ragapp.knowledge_bases kb "
-                "join ragapp.project_members pm on pm.project_id=kb.project_id "
-                "where kb.id=%s and pm.user_id=%s and kb.deleted_at is null)",
+                "select exists(select 1 from ragapp.knowledge_bases kb where kb.id=%s "
+                "and ragapp.has_project_permission(kb.project_id,%s,'knowledge','view') "
+                "and kb.deleted_at is null)",
                 (knowledge_base_id, user_id),
             ).fetchone()[0]
 
@@ -227,9 +226,9 @@ class SourceRepository:
         with psycopg.connect(self.database_url, row_factory=dict_row) as db:
             allowed = db.execute(
                 "select exists(select 1 from ragapp.sources s "
-                "join ragapp.project_members pm on pm.project_id=s.project_id "
-                "where s.id=%s and s.knowledge_base_id=%s and pm.user_id=%s "
-                "and pm.role in ('owner','editor') and s.deleted_at is null)",
+                "where s.id=%s and s.knowledge_base_id=%s "
+                "and ragapp.has_project_permission(s.project_id,%s,'knowledge','manage') "
+                "and s.deleted_at is null)",
                 (source_id, knowledge_base_id, user_id),
             ).fetchone()["exists"]
             if not allowed:

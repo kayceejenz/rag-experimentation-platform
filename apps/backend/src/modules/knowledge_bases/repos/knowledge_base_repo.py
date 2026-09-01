@@ -12,8 +12,8 @@ class KnowledgeBaseRepository:
         with psycopg.connect(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "select kb.* from ragapp.knowledge_bases kb "
-                "join ragapp.project_members pm on pm.project_id=kb.project_id "
-                "where kb.id=%s and pm.user_id=%s and kb.deleted_at is null",
+                "where kb.id=%s and ragapp.has_project_permission(kb.project_id,%s,'knowledge','view') "
+                "and kb.deleted_at is null",
                 (knowledge_base_id, user_id),
             ).fetchone()
         return self._model(row) if row else None
@@ -23,8 +23,8 @@ class KnowledgeBaseRepository:
             row = db.execute(
                 "select kb.* from ragapp.project_sources ps "
                 "join ragapp.knowledge_bases kb on kb.id=ps.knowledge_base_id "
-                "join ragapp.project_members pm on pm.project_id=kb.project_id "
-                "where ps.project_id=%s and pm.user_id=%s and kb.deleted_at is null",
+                "where ps.project_id=%s and ragapp.has_project_permission(kb.project_id,%s,'knowledge','view') "
+                "and kb.deleted_at is null",
                 (project_id, user_id),
             ).fetchone()
         return self._model(row) if row else None

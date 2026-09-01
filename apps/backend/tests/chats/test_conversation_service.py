@@ -66,6 +66,9 @@ class Projects:
             self.role,
         )
 
+    async def require_permission(self, project_id, user_id, feature, action="view"):
+        return await self.get(project_id, user_id)
+
 
 class Unused:
     pass

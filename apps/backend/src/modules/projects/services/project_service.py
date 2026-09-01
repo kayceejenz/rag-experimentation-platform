@@ -8,10 +8,12 @@ from modules.projects.models.project_model import (
     ProjectNotFoundError,
     ProjectPermissionError,
     ProjectRole,
+    ProjectMemberConflictError,
 )
 
 
 class ProjectService:
+    FEATURES = {"knowledge", "indexes", "experiments", "benchmarks", "assistants", "runs", "settings"}
     def __init__(self, repository: ProjectRepositoryContract) -> None:
         self.repository = repository
 
@@ -38,13 +40,13 @@ class ProjectService:
         update_description: bool,
     ) -> ProjectAccess:
         access = await self.get(project_id, user_id)
-        if access.role not in {ProjectRole.OWNER, ProjectRole.EDITOR}:
+        if not await self.repository.has_permission(project_id, user_id, "settings", "manage"):
             raise ProjectPermissionError
         project = await self.repository.update(
             project_id, name.strip() if name else None, description, update_description
         )
         project = replace(project, is_default=access.project.is_default)
-        return ProjectAccess(project, access.role)
+        return ProjectAccess(project, access.role, access.permissions)
 
     async def delete(self, project_id: UUID, user_id: UUID) -> None:
         access = await self.get(project_id, user_id)
@@ -53,3 +55,45 @@ class ProjectService:
         if access.project.is_default:
             raise DefaultProjectDeletionError
         await self.repository.delete(project_id)
+
+    async def require_permission(self, project_id, user_id, feature, action="view") -> ProjectAccess:
+        access = await self.get(project_id, user_id)
+        if not await self.repository.has_permission(project_id, user_id, feature, action):
+            raise ProjectPermissionError
+        return access
+
+    async def members(self, project_id, user_id):
+        await self.require_permission(project_id, user_id, "settings")
+        return await self.repository.list_members(project_id)
+
+    async def add_member(self, project_id, user_id, email, permissions):
+        await self._require_owner(project_id, user_id)
+        normalized = self._permissions(permissions)
+        result = await self.repository.add_member(project_id, email.strip().lower(), normalized)
+        if result is None:
+            raise ProjectNotFoundError
+        if result is False:
+            raise ProjectMemberConflictError
+
+    async def update_member_access(self, project_id, user_id, member_id, permissions):
+        await self._require_owner(project_id, user_id)
+        if not await self.repository.update_member_permissions(project_id, member_id, self._permissions(permissions)):
+            raise ProjectNotFoundError
+
+    async def remove_member(self, project_id, user_id, member_id):
+        await self._require_owner(project_id, user_id)
+        if not await self.repository.remove_member(project_id, member_id):
+            raise ProjectNotFoundError
+
+    async def _require_owner(self, project_id, user_id):
+        access = await self.get(project_id, user_id)
+        if access.role is not ProjectRole.OWNER:
+            raise ProjectPermissionError
+
+    def _permissions(self, permissions):
+        if set(permissions) != self.FEATURES:
+            raise ValueError("Permissions must be supplied for every project feature")
+        return {
+            feature: {"view": value.view or value.manage, "manage": value.manage}
+            for feature, value in permissions.items()
+        }

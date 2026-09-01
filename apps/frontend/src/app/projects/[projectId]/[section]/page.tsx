@@ -9,6 +9,8 @@ import {
 	type IndexCatalog,
 } from '@/components/indexes/index-manager';
 import { TraceExplorer } from '@/components/traces/trace-explorer';
+import { ProjectSettings } from '@/components/projects/project-settings';
+import { ProjectAccessDenied } from '@/components/projects/project-access-denied';
 import { getAuthUser } from '@/lib/api/auth';
 import { backendJson } from '@/lib/api/backend';
 import type { Execution, ExecutionLineage } from '@/types/trace';
@@ -16,6 +18,7 @@ import type {
 	KnowledgeBase,
 	KnowledgeFolder,
 	Project,
+	ProjectMember,
 	Source,
 } from '@/types/workspace';
 
@@ -41,6 +44,10 @@ export default async function ProjectSectionPage({ params }: Props) {
 		.catch(() => []);
 	const project = projects.find(item => item.id === projectId);
 	if (!project) notFound();
+	const feature = section as 'indexes' | 'experiments' | 'benchmarks' | 'assistants' | 'runs' | 'settings';
+	if (project.role !== 'owner' && !project.permissions?.[feature]?.view) {
+		return <AppShell user={{ id: user.id, email: user.email, name: user.name }} projects={projects} activeProjectId={projectId}><ProjectAccessDenied projectId={projectId} feature={feature}/></AppShell>;
+	}
 	if (section === 'indexes') {
 		const [catalog, knowledgeBase] = await Promise.all([
 			backendJson<IndexCatalog>(
@@ -148,6 +155,10 @@ export default async function ProjectSectionPage({ params }: Props) {
 				/>
 			</AppShell>
 		);
+	}
+	if (section === 'settings') {
+		const members = await backendJson<{ members: ProjectMember[] }>(user.accessToken, `/projects/${projectId}/members`).then(value => value.members).catch(() => []);
+		return <AppShell user={{ id: user.id, email: user.email, name: user.name }} projects={projects} activeProjectId={projectId}><ProjectSettings project={project} initialMembers={members} currentUserId={user.id}/></AppShell>;
 	}
 	return (
 		<AppShell

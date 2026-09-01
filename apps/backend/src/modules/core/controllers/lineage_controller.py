@@ -11,7 +11,7 @@ from modules.core.dtos.lineage_dto import (
     ExecutionResponse,
 )
 from modules.core.services.lineage_service import ExecutionNotFoundError, LineageService
-from modules.projects.models.project_model import ProjectNotFoundError
+from modules.projects.models.project_model import ProjectNotFoundError, ProjectPermissionError
 
 router = APIRouter(prefix="/projects/{project_id}/executions", tags=["execution lineage"])
 
@@ -27,6 +27,8 @@ async def list_executions(
         executions = await service.list_executions(project_id, user.id, limit)
     except ProjectNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found") from None
+    except ProjectPermissionError:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient run permissions") from None
     return ExecutionListResponse(
         executions=[ExecutionResponse.model_validate(item, from_attributes=True) for item in executions]
     )
@@ -45,4 +47,6 @@ async def get_execution(
         raise HTTPException(
             status.HTTP_404_NOT_FOUND, "Project or execution not found"
         ) from None
+    except ProjectPermissionError:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient run permissions") from None
     return ExecutionLineageResponse.model_validate(lineage, from_attributes=True)

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
@@ -26,6 +26,7 @@ class Project:
 class ProjectAccess:
     project: Project
     role: ProjectRole
+    permissions: dict = field(default_factory=dict)
 
 
 class ProjectNotFoundError(Exception):
@@ -37,4 +38,8 @@ class ProjectPermissionError(Exception):
 
 
 class DefaultProjectDeletionError(Exception):
+    pass
+
+
+class ProjectMemberConflictError(Exception):
     pass

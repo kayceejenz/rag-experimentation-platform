@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
 import { SourceOverview } from '@/components/sources/source-overview';
+import { ProjectAccessDenied } from '@/components/projects/project-access-denied';
 import { getAuthUser } from '@/lib/api/auth';
 import { backendJson } from '@/lib/api/backend';
 import type {
@@ -26,6 +27,9 @@ export default async function SourceSectionPage({ params }: Props) {
 		.catch(() => []);
 	const project = projects.find(item => item.id === projectId);
 	if (!project) notFound();
+	if (project.role !== 'owner' && !project.permissions?.knowledge?.view) {
+		return <AppShell user={{ id: user.id, email: user.email, name: user.name }} projects={projects} activeProjectId={projectId}><ProjectAccessDenied projectId={projectId} feature='Knowledge Base'/></AppShell>;
+	}
 	const source = await backendJson<KnowledgeBase>(
 		user.accessToken,
 		`/projects/${projectId}/source`,

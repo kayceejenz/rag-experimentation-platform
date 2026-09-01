@@ -14,7 +14,7 @@ import {
 	Settings,
 } from 'lucide-react';
 import { SmoothLink } from '@/components/navigation/smooth-link';
-import type { Project } from '@/types/workspace';
+import type { Project, ProjectFeature } from '@/types/workspace';
 
 const groups = [
 	{
@@ -71,6 +71,9 @@ export function WorkspaceNavigation({
 	const activeProject = projects.find(
 		project => project.id === resolvedProjectId,
 	);
+	const canView = (feature: ProjectFeature) =>
+		activeProject?.role === 'owner' ||
+		Boolean(activeProject?.permissions?.[feature]?.view);
 	return (
 		<nav
 			className={
@@ -168,14 +171,17 @@ export function WorkspaceNavigation({
 			)}
 			{activeProject && (
 				<div className='nav-project-context'>
-					{groups.map(group => (
+					{groups.map(group => {
+						const visibleItems = group.items.filter(item => canView(item.slug as ProjectFeature));
+						if (!visibleItems.length) return null;
+						return (
 						<div
 							className='nav-group'
 							key={group.label}>
 							<span className='nav-group-label'>
 								{group.label}
 							</span>
-							{group.items.map(
+							{visibleItems.map(
 								({
 									label,
 									slug,
@@ -219,8 +225,8 @@ export function WorkspaceNavigation({
 								},
 							)}
 						</div>
-					))}
-					<div className='nav-group nav-settings'>
+					);})}
+					{canView('settings') && <div className='nav-group nav-settings'>
 						<SmoothLink
 							href={`/projects/${activeProject.id}/settings`}
 							className={
@@ -235,7 +241,7 @@ export function WorkspaceNavigation({
 								Project settings
 							</span>
 						</SmoothLink>
-					</div>
+					</div>}
 				</div>
 			)}
 			{!activeProject && (

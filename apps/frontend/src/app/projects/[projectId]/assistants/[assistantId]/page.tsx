@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { AppShell } from '@/components/layout/app-shell';
 import { AssistantOverview } from '@/components/assistants/assistant-overview';
+import { ProjectAccessDenied } from '@/components/projects/project-access-denied';
 import { getAuthUser } from '@/lib/api/auth';
 import { backendJson } from '@/lib/api/backend';
 import type { Assistant, Project } from '@/types/workspace';
@@ -24,6 +25,9 @@ export default async function AssistantPage({ params }: Props) {
 			.catch(() => []),
 	]);
 	const project = projects.find(item => item.id === projectId);
+	if (project && project.role !== 'owner' && !project.permissions?.assistants?.view) {
+		return <AppShell user={{ id: user.id, email: user.email, name: user.name }} projects={projects} activeProjectId={projectId}><ProjectAccessDenied projectId={projectId} feature='Assistants'/></AppShell>;
+	}
 	if (!assistant || !project || assistant.project_id !== projectId)
 		notFound();
 	return (

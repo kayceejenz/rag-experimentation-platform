@@ -8,11 +8,10 @@ class IndexRepository:
         self.database_url = database_url
 
     def can_access(self, project_id, user_id, write=False):
-        roles = "('owner','editor')" if write else "('owner','editor','viewer')"
         with psycopg.connect(self.database_url) as db:
             return db.execute(
-                f"select exists(select 1 from ragapp.project_members where project_id=%s and user_id=%s and role in {roles})",
-                (project_id, user_id),
+                "select ragapp.has_project_permission(%s,%s,'indexes',%s)",
+                (project_id, user_id, "manage" if write else "view"),
             ).fetchone()[0]
 
     def models(self):

@@ -93,7 +93,7 @@ async def create_conversation(
     try:
         chat, role = await service.create_for_assistant(assistant_id, user.id, body.title)
         return response(chat, role.value)
-    except (KnowledgeBotNotFoundError, ProjectNotFoundError) as error:
+    except (KnowledgeBotNotFoundError, ProjectNotFoundError, ProjectPermissionError) as error:
         raise translate(error) from None
 
 
@@ -108,7 +108,7 @@ async def list_conversations(
     try:
         chats, role = await service.list_for_assistant(assistant_id, user.id)
         return ChatListResponse(conversations=[response(chat, role.value) for chat in chats])
-    except (KnowledgeBotNotFoundError, ProjectNotFoundError) as error:
+    except (KnowledgeBotNotFoundError, ProjectNotFoundError, ProjectPermissionError) as error:
         raise translate(error) from None
 
 
@@ -121,7 +121,7 @@ async def get_chat(
     try:
         chat, role = await service.get(chat_id, user.id)
         return response(chat, role.value)
-    except (ChatNotFoundError, ProjectNotFoundError) as error:
+    except (ChatNotFoundError, ProjectNotFoundError, ProjectPermissionError) as error:
         raise translate(error) from None
 
 

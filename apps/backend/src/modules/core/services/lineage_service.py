@@ -23,7 +23,7 @@ class LineageService:
     async def list_executions(
         self, project_id: UUID, user_id: UUID, limit: int
     ) -> list[Execution]:
-        await self.projects.get(project_id, user_id)
+        await self.projects.require_permission(project_id, user_id, "runs")
         return await asyncio.to_thread(
             self.repository.list_executions, project_id, limit
         )
@@ -31,7 +31,7 @@ class LineageService:
     async def get_execution(
         self, project_id: UUID, execution_id: UUID, user_id: UUID
     ) -> ExecutionLineage:
-        await self.projects.get(project_id, user_id)
+        await self.projects.require_permission(project_id, user_id, "runs")
         lineage = await asyncio.to_thread(
             self.repository.get_execution, project_id, execution_id
         )

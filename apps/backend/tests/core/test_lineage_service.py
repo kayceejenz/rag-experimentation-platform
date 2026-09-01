@@ -12,13 +12,13 @@ class LineageServiceTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.repository = MagicMock()
         self.projects = MagicMock()
-        self.projects.get = AsyncMock()
+        self.projects.require_permission = AsyncMock()
         self.service = LineageService(self.repository, self.projects)
         self.project_id = uuid4()
         self.user_id = uuid4()
 
     async def test_list_requires_project_membership(self) -> None:
-        self.projects.get.side_effect = ProjectNotFoundError
+        self.projects.require_permission.side_effect = ProjectNotFoundError
 
         with self.assertRaises(ProjectNotFoundError):
             await self.service.list_executions(self.project_id, self.user_id, 50)
@@ -37,7 +37,7 @@ class LineageServiceTests(unittest.IsolatedAsyncioTestCase):
             self.project_id, self.user_id, 25
         )
 
-        self.projects.get.assert_awaited_once_with(self.project_id, self.user_id)
+        self.projects.require_permission.assert_awaited_once_with(self.project_id, self.user_id, "runs")
         self.repository.list_executions.assert_called_once_with(self.project_id, 25)
         self.assertEqual([execution], result)
 

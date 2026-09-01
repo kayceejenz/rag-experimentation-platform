@@ -8,6 +8,27 @@ export type Project = {
 	is_default: boolean;
 	created_at: string;
 	updated_at: string;
+	permissions: Record<ProjectFeature, FeaturePermission>;
+};
+
+export type ProjectFeature =
+	| 'knowledge'
+	| 'indexes'
+	| 'experiments'
+	| 'benchmarks'
+	| 'assistants'
+	| 'runs'
+	| 'settings';
+
+export type FeaturePermission = { view: boolean; manage: boolean };
+
+export type ProjectMember = {
+	user_id: string;
+	email: string;
+	display_name: string | null;
+	role: 'owner' | 'editor' | 'viewer';
+	joined_at: string;
+	permissions: Record<ProjectFeature, FeaturePermission>;
 };
 
 export type Assistant = {

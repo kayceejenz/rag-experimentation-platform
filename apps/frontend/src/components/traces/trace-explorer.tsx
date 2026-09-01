@@ -15,7 +15,6 @@ import {
 	RefreshCw,
 	Search,
 	ServerCog,
-	TerminalSquare,
 	Workflow,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -28,7 +27,7 @@ import type {
 	ExecutionStatus,
 } from '@/types/trace';
 
-type Tab = 'overview' | 'lineage' | 'trace' | 'logs';
+type Tab = 'lineage' | 'trace';
 
 type Props = {
 	project: Project;
@@ -87,14 +86,6 @@ function artifactLabel(link: ArtifactLink): string {
 	return link.artifact.kind.replaceAll('_', ' ');
 }
 
-function JsonBlock({ value }: { value: unknown }) {
-	return (
-		<pre className='trace-json'>
-			{JSON.stringify(value, null, 2)}
-		</pre>
-	);
-}
-
 export function TraceExplorer({
 	project,
 	initialExecutions,
@@ -108,7 +99,7 @@ export function TraceExplorer({
 			null,
 	);
 	const [lineage, setLineage] = useState(initialLineage);
-	const [tab, setTab] = useState<Tab>('overview');
+	const [tab, setTab] = useState<Tab>('lineage');
 	const [query, setQuery] = useState('');
 	const [status, setStatus] = useState<'all' | ExecutionStatus>('all');
 	const [loading, setLoading] = useState(false);
@@ -169,7 +160,7 @@ export function TraceExplorer({
 
 	async function selectExecution(executionId: string) {
 		setSelectedId(executionId);
-		setTab('overview');
+		setTab('lineage');
 		setLoading(true);
 		setError(null);
 		try {
@@ -593,10 +584,8 @@ export function TraceExplorer({
 							role='tablist'>
 							{(
 								[
-									'overview',
 									'lineage',
 									'trace',
-									'logs',
 								] as Tab[]
 							).map(item => (
 								<button
@@ -635,14 +624,6 @@ export function TraceExplorer({
 											}
 										/>
 									)}
-									{item ===
-										'logs' && (
-										<TerminalSquare
-											size={
-												14
-											}
-										/>
-									)}
 									{item[0].toUpperCase() +
 										item.slice(
 											1,
@@ -651,13 +632,6 @@ export function TraceExplorer({
 							))}
 						</div>
 						<div className='trace-tab-content'>
-							{tab === 'overview' && (
-								<Overview
-									lineage={
-										selected
-									}
-								/>
-							)}
 							{tab === 'lineage' && (
 								<LineageView
 									lineage={
@@ -672,13 +646,6 @@ export function TraceExplorer({
 									}
 								/>
 							)}
-							{tab === 'logs' && (
-								<LogView
-									execution={
-										selected.execution
-									}
-								/>
-							)}
 						</div>
 					</>
 				) : (
@@ -687,92 +654,10 @@ export function TraceExplorer({
 						<h2>Select an execution</h2>
 						<p>
 							Choose a run to inspect
-							its configuration,
-							lineage, trace, and
-							lifecycle logs.
+							its lineage and execution trace.
 						</p>
 					</div>
 				)}
-			</section>
-		</div>
-	);
-}
-
-function Overview({ lineage }: { lineage: ExecutionLineage }) {
-	const { execution, specification } = lineage;
-	return (
-		<div className='trace-overview-grid'>
-			<section className='trace-info-card'>
-				<h3>Run information</h3>
-				<dl>
-					<div>
-						<dt>Run ID</dt>
-						<dd>{execution.id}</dd>
-					</div>
-					<div>
-						<dt>Code revision</dt>
-						<dd>
-							{
-								execution.code_revision
-							}
-						</dd>
-					</div>
-					<div>
-						<dt>Created</dt>
-						<dd>
-							{formatDate(
-								execution.created_at,
-							)}
-						</dd>
-					</div>
-					<div>
-						<dt>Completed</dt>
-						<dd>
-							{formatDate(
-								execution.completed_at,
-							)}
-						</dd>
-					</div>
-					<div>
-						<dt>Attempt</dt>
-						<dd>#{execution.attempt}</dd>
-					</div>
-				</dl>
-			</section>
-			<section className='trace-info-card'>
-				<h3>Result summary</h3>
-				<JsonBlock
-					value={
-						execution.result_summary ?? {
-							status: execution.status,
-						}
-					}
-				/>
-			</section>
-			<section className='trace-info-card wide'>
-				<div className='trace-card-title'>
-					<div>
-						<h3>Pipeline configuration</h3>
-						<p>
-							{specification
-								? `${specification.kind} schema v${specification.schema_version}`
-								: 'No specification attached'}
-						</p>
-					</div>
-					{specification && (
-						<code>
-							{shortId(
-								specification.configuration_hash,
-							)}
-						</code>
-					)}
-				</div>
-				<JsonBlock
-					value={
-						specification?.configuration ??
-						{}
-					}
-				/>
 			</section>
 		</div>
 	);
@@ -937,69 +822,6 @@ function TraceView({ lineage }: { lineage: ExecutionLineage }) {
 							? 'root'
 							: `span-${index}`}
 					</code>
-				</div>
-			))}
-		</div>
-	);
-}
-
-function LogView({ execution }: { execution: Execution }) {
-	const logs = [
-		{
-			time: execution.created_at,
-			level: 'INFO',
-			message: `Execution ${execution.id} created in pending state`,
-		},
-		...(execution.started_at
-			? [
-					{
-						time: execution.started_at,
-						level: 'INFO',
-						message: `Worker ${execution.worker_id ?? 'unknown'} started attempt ${execution.attempt}`,
-					},
-				]
-			: []),
-		...(execution.error_message
-			? [
-					{
-						time:
-							execution.completed_at ??
-							execution.created_at,
-						level: 'ERROR',
-						message: `${execution.error_code ?? 'execution_failed'}: ${execution.error_message}`,
-					},
-				]
-			: []),
-		...(execution.completed_at && !execution.error_message
-			? [
-					{
-						time: execution.completed_at,
-						level: 'INFO',
-						message: `Execution transitioned to ${execution.status}`,
-					},
-				]
-			: []),
-	];
-	return (
-		<div className='execution-log'>
-			<div className='execution-log-notice'>
-				<TerminalSquare size={15} />
-				<span>Structured lifecycle log</span>
-				<small>
-					Raw worker stdout is not persisted yet.
-				</small>
-			</div>
-			{logs.map((log, index) => (
-				<div
-					className={`log-line ${log.level.toLowerCase()}`}
-					key={index}>
-					<time>
-						{new Date(
-							log.time,
-						).toISOString()}
-					</time>
-					<strong>{log.level}</strong>
-					<span>{log.message}</span>
 				</div>
 			))}
 		</div>
