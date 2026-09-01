@@ -1,8 +1,22 @@
 export type Project = {
 	id: string;
+	workspace_id: string;
 	owner_id: string;
 	name: string;
 	description: string | null;
+	role: string;
+	is_default: boolean;
+	created_at: string;
+	updated_at: string;
+};
+
+export type Assistant = {
+	id: string;
+	project_id: string;
+	created_by: string;
+	name: string;
+	description: string | null;
+	status: 'active' | 'archived';
 	role: string;
 	created_at: string;
 	updated_at: string;
@@ -10,10 +24,9 @@ export type Project = {
 
 export type Chat = {
 	id: string;
-	bot_id: string;
+	assistant_id: string;
 	project_id: string;
 	created_by: string;
-	knowledge_base_id: string;
 	title: string;
 	status: string;
 	role: string;
@@ -24,8 +37,7 @@ export type Chat = {
 export type KnowledgeBase = {
 	id: string;
 	project_id: string;
-	bot_id: string;
-	chat_id: string | null;
+	created_by: string;
 	name: string;
 	created_at: string;
 };
@@ -50,6 +62,15 @@ export type Source = {
 		| 'failed'
 		| string;
 	created_at: string;
+	folder_id: string | null;
+};
+
+export type KnowledgeFolder = {
+	id: string;
+	knowledge_base_id: string;
+	parent_id: string | null;
+	name: string;
+	created_at: string;
 };
 
 export type SourceInspection = {
@@ -58,6 +79,22 @@ export type SourceInspection = {
 	filename: string;
 	status: string;
 	url: string;
+};
+
+export type KnowledgeActivityEvent = {
+	id: number;
+	event_type: 'knowledge.document_uploaded' | 'knowledge.document_deleted' | 'knowledge.folder_created' | string;
+	entity_id: string | null;
+	actor_user_id: string | null;
+	payload: {
+		filename?: string;
+		version?: number;
+		byte_size?: number;
+		content_type?: string;
+		name?: string;
+		parent_id?: string | null;
+	};
+	occurred_at: string;
 };
 
 export type Citation = {
@@ -80,7 +117,7 @@ export type ToolCall = {
 
 export type Message = {
 	id: string;
-	chat_id: string;
+	conversation_id: string;
 	role: 'user' | 'assistant' | 'system';
 	content: string;
 	citations: Citation[];

@@ -3,7 +3,7 @@ import { getAuthUser } from '@/lib/api/auth';
 import { backendFetch } from '@/lib/api/backend';
 import { apiError, proxyResponse } from '@/lib/api/proxy-response';
 
-type Params = { params: Promise<{ chatId: string }> };
+type Params = { params: Promise<{ projectId: string }> };
 
 async function forward(
 	request: Request | null,
@@ -17,15 +17,19 @@ async function forward(
 			{ status: 401 },
 		);
 	try {
-		const { chatId } = await params;
-		const body = request
-			? JSON.stringify(await request.json())
-			: undefined;
+		const { projectId } = await params;
 		return proxyResponse(
 			await backendFetch(
 				user.accessToken,
-				`/chats/${chatId}/messages`,
-				{ method, body },
+				`/projects/${projectId}/assistants`,
+				{
+					method,
+					body: request
+						? JSON.stringify(
+								await request.json(),
+							)
+						: undefined,
+				},
 			),
 		);
 	} catch (error) {
@@ -36,7 +40,6 @@ async function forward(
 export async function GET(_request: Request, { params }: Params) {
 	return forward(null, params, 'GET');
 }
-
 export async function POST(request: Request, { params }: Params) {
 	return forward(request, params, 'POST');
 }

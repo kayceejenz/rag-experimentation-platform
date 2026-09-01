@@ -55,6 +55,9 @@ export async function POST(request: Request, { params }: Params) {
 		}
 		const upstream = new FormData();
 		upstream.set('file', file);
+		const folderId = form.get('folder_id');
+		if (typeof folderId === 'string' && folderId)
+			upstream.set('folder_id', folderId);
 		return proxyResponse(
 			await backendFetch(
 				user.accessToken,

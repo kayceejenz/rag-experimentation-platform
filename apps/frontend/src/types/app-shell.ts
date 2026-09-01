@@ -18,4 +18,5 @@ export type AppShellProps = {
 	projects?: Project[];
 	chats?: Chat[];
 	activeProjectId?: string | null;
+	activeNavigation?: 'bots' | 'traces';
 };
