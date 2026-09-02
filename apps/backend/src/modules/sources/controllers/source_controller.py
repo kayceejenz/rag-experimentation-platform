@@ -1,18 +1,30 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from pydantic import BaseModel
-from fastapi.responses import FileResponse
-from starlette.background import BackgroundTask
-
 from api.dependencies import current_user, settings, source_service
 from core.settings import Settings
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from integrations.storage import cleanup_temp
 from modules.auth.models.auth_user_model import AuthenticatedUser
-from modules.sources.dtos.source_dto import CreateKnowledgeFolderRequest, KnowledgeActivityListResponse, KnowledgeActivityResponse, KnowledgeFolderListResponse, KnowledgeFolderResponse, SourceInspectionResponse, SourceListResponse, SourceResponse
-from modules.sources.models.error_model import SourceNotFoundError, SourcePermissionError, SourceTooLargeError
+from modules.sources.dtos.source_dto import (
+    CreateKnowledgeFolderRequest,
+    KnowledgeActivityListResponse,
+    KnowledgeActivityResponse,
+    KnowledgeFolderListResponse,
+    KnowledgeFolderResponse,
+    SourceInspectionResponse,
+    SourceListResponse,
+    SourceResponse,
+)
+from modules.sources.models.error_model import (
+    SourceNotFoundError,
+    SourcePermissionError,
+    SourceTooLargeError,
+)
 from modules.sources.services.source_service import SourceService
+from pydantic import BaseModel
+from starlette.background import BackgroundTask
 
 router = APIRouter(tags=["knowledge-base sources"])
 
@@ -112,7 +124,9 @@ def list_sources(
 ) -> SourceListResponse:
     try:
         return SourceListResponse(
-            sources=[response(item) for item in service.list(knowledge_base_id, user.id)]
+            sources=[
+                response(item) for item in service.list(knowledge_base_id, user.id)
+            ]
         )
     except SourceNotFoundError:
         raise HTTPException(404, "Knowledge base not found") from None
@@ -129,24 +143,52 @@ def knowledge_activity(
 ) -> KnowledgeActivityListResponse:
     try:
         return KnowledgeActivityListResponse(
-            events=[KnowledgeActivityResponse(**event) for event in service.activity(knowledge_base_id, user.id)]
+            events=[
+                KnowledgeActivityResponse(**event)
+                for event in service.activity(knowledge_base_id, user.id)
+            ]
         )
     except SourceNotFoundError:
         raise HTTPException(404, "Knowledge base not found") from None
 
 
-@router.get("/knowledge-bases/{knowledge_base_id}/folders", response_model=KnowledgeFolderListResponse)
-def list_folders(knowledge_base_id: UUID, user: Annotated[AuthenticatedUser, Depends(current_user)], service: Annotated[SourceService, Depends(source_service)]):
+@router.get(
+    "/knowledge-bases/{knowledge_base_id}/folders",
+    response_model=KnowledgeFolderListResponse,
+)
+def list_folders(
+    knowledge_base_id: UUID,
+    user: Annotated[AuthenticatedUser, Depends(current_user)],
+    service: Annotated[SourceService, Depends(source_service)],
+):
     try:
-        return KnowledgeFolderListResponse(folders=[KnowledgeFolderResponse(**folder) for folder in service.folders(knowledge_base_id, user.id)])
+        return KnowledgeFolderListResponse(
+            folders=[
+                KnowledgeFolderResponse(**folder)
+                for folder in service.folders(knowledge_base_id, user.id)
+            ]
+        )
     except SourceNotFoundError:
         raise HTTPException(404, "Knowledge base not found") from None
 
 
-@router.post("/knowledge-bases/{knowledge_base_id}/folders", response_model=KnowledgeFolderResponse, status_code=status.HTTP_201_CREATED)
-def create_folder(knowledge_base_id: UUID, body: CreateKnowledgeFolderRequest, user: Annotated[AuthenticatedUser, Depends(current_user)], service: Annotated[SourceService, Depends(source_service)]):
+@router.post(
+    "/knowledge-bases/{knowledge_base_id}/folders",
+    response_model=KnowledgeFolderResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_folder(
+    knowledge_base_id: UUID,
+    body: CreateKnowledgeFolderRequest,
+    user: Annotated[AuthenticatedUser, Depends(current_user)],
+    service: Annotated[SourceService, Depends(source_service)],
+):
     try:
-        return KnowledgeFolderResponse(**service.create_folder(knowledge_base_id, user.id, body.name, body.parent_id))
+        return KnowledgeFolderResponse(
+            **service.create_folder(
+                knowledge_base_id, user.id, body.name, body.parent_id
+            )
+        )
     except SourcePermissionError:
         raise HTTPException(403, "Insufficient knowledge-base permissions") from None
 

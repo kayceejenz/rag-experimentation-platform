@@ -1,7 +1,11 @@
 import psycopg
+from modules.jobs.models.job_model import (
+    IngestionJob,
+    IngestionJobDetails,
+    JobStatus,
+    PipelineStage,
+)
 from psycopg.rows import dict_row
-
-from modules.jobs.models.job_model import IngestionJob, IngestionJobDetails, JobStatus, PipelineStage
 
 
 class JobRepository:
@@ -101,7 +105,12 @@ class JobRepository:
                 "update ragapp.source_versions set status=%s,error_code='ingestion_failed',"
                 "error_message=%s,"
                 "processing_completed_at=case when %s then now() else null end where id=%s",
-                ("failed" if terminal else "queued", error[:4000], terminal, job.source_version_id),
+                (
+                    "failed" if terminal else "queued",
+                    error[:4000],
+                    terminal,
+                    job.source_version_id,
+                ),
             )
 
     def renew_lease(self, job_id) -> None:

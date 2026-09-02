@@ -3,8 +3,6 @@ from typing import Any
 from uuid import UUID
 
 import psycopg
-from psycopg.rows import dict_row
-
 from modules.core.models.error_model import (
     ExecutionIdentityConflictError,
     InvalidExecutionTransitionError,
@@ -15,6 +13,7 @@ from modules.core.models.execution_model import (
     ExecutionKind,
     ExecutionStatus,
 )
+from psycopg.rows import dict_row
 
 
 class ExecutionRepository:
@@ -213,7 +212,9 @@ class ExecutionRepository:
             ).fetchone()
         return self._transition_result(row, execution_id, project_id, assignment)
 
-    def _transition_result(self, row, execution_id: UUID, project_id: UUID, action: str):
+    def _transition_result(
+        self, row, execution_id: UUID, project_id: UUID, action: str
+    ):
         if row is not None:
             return self._model(row)
         current = self.get(execution_id, project_id)
@@ -289,7 +290,9 @@ class ExecutionRepository:
             attempt=row["attempt"],
             parameters=dict(row["parameters"]),
             result_summary=(
-                dict(row["result_summary"]) if row["result_summary"] is not None else None
+                dict(row["result_summary"])
+                if row["result_summary"] is not None
+                else None
             ),
             error_code=row["error_code"],
             error_message=row["error_message"],

@@ -1,8 +1,8 @@
+from modules.chats.models.citation_model import Citation
+from modules.chats.models.message_model import Message, MessageRole
 from psycopg import AsyncConnection
 from psycopg.rows import dict_row
 from psycopg.types.json import Json
-from modules.chats.models.citation_model import Citation
-from modules.chats.models.message_model import Message, MessageRole
 
 
 class MessageRepository:
@@ -14,7 +14,12 @@ class MessageRepository:
             await db.execute(
                 "insert into ragapp.messages(id,conversation_id,role,content,completed_at) "
                 "values(%s,%s,%s,%s,now())",
-                (message.id, message.conversation_id, message.role.value, message.content),
+                (
+                    message.id,
+                    message.conversation_id,
+                    message.role.value,
+                    message.content,
+                ),
             )
             async with db.cursor() as cursor:
                 await cursor.executemany(
@@ -39,7 +44,9 @@ class MessageRepository:
                 )
 
     async def list_for_conversation(self, conversation_id) -> list[Message]:
-        async with await AsyncConnection.connect(self.database_url, row_factory=dict_row) as db:
+        async with await AsyncConnection.connect(
+            self.database_url, row_factory=dict_row
+        ) as db:
             msg_cur = await db.execute(
                 "select * from ragapp.messages where conversation_id=%s and status='completed' "
                 "order by created_at,id",

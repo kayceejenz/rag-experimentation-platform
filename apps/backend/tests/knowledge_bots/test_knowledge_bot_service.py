@@ -4,13 +4,13 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from modules.knowledge_bots.models import (
+from modules.knowledge_bots.models.models import (
     KnowledgeBot,
     KnowledgeBotNotFoundError,
     KnowledgeBotPermissionError,
     KnowledgeBotStatus,
 )
-from modules.knowledge_bots.service import KnowledgeBotService
+from modules.knowledge_bots.services.knowledge_bot_service import KnowledgeBotService
 from modules.projects.models.project_model import Project, ProjectAccess, ProjectRole
 
 

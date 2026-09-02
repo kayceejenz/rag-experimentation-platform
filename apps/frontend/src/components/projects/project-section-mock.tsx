@@ -9,6 +9,7 @@ import {
 	PlayCircle,
 	Plus,
 	Settings,
+	FileCode2,
 } from 'lucide-react';
 import type { Project } from '@/types/workspace';
 
@@ -124,6 +125,15 @@ const definitions = {
 				'Draft',
 			],
 		],
+	},
+	prompts: {
+		title: 'Prompts',
+		eyebrow: 'AI applications',
+		description: 'Reusable versioned prompt templates.',
+		icon: FileCode2,
+		action: 'Create prompt',
+		columns: ['Prompt', 'Type', 'Version', 'Status', 'Updated'],
+		rows: [],
 	},
 	runs: {
 		title: 'Runs',

@@ -4,7 +4,6 @@ from uuid import UUID
 
 from modules.core.models.specification_model import Specification, SpecificationKind
 
-
 SpecificationNormalizer = Callable[[Mapping[str, Any]], dict[str, Any]]
 
 

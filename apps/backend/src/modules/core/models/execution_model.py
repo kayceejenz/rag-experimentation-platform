@@ -67,6 +67,8 @@ class ExecutionArtifact:
 
     def __post_init__(self) -> None:
         if re.fullmatch(r"[a-z][a-z0-9_]{1,63}", self.role) is None:
-            raise ValueError("role must use lowercase letters, numbers, and underscores")
+            raise ValueError(
+                "role must use lowercase letters, numbers, and underscores"
+            )
         if self.position < 0:
             raise ValueError("position cannot be negative")

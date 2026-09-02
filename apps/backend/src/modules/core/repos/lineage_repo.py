@@ -1,13 +1,16 @@
 from uuid import UUID
 
 import psycopg
-from psycopg.rows import dict_row
-
-from modules.core.models.artifact_model import Artifact, ArtifactKind, ArtifactStorageType
+from modules.core.models.artifact_model import (
+    Artifact,
+    ArtifactKind,
+    ArtifactStorageType,
+)
 from modules.core.models.execution_model import Execution
 from modules.core.models.lineage_model import ArtifactLink, ExecutionLineage
 from modules.core.models.specification_model import Specification, SpecificationKind
 from modules.core.repos.execution_repo import ExecutionRepository
+from psycopg.rows import dict_row
 
 
 class LineageRepository:

@@ -3,7 +3,11 @@ import socket
 
 from core.settings import Settings
 from integrations.embeddings import GeminiEmbedder
-from integrations.ingestion_store import ChunkRepository, ElementAssetStore, ElementRepository
+from integrations.ingestion_store import (
+    ChunkRepository,
+    ElementAssetStore,
+    ElementRepository,
+)
 from integrations.partitioner import UnstructuredPartitioner
 from integrations.storage import cleanup_temp, resolve_file
 from modules.core.models.execution_model import ExecutionStatus
@@ -13,8 +17,10 @@ from modules.core.repos.specification_repo import SpecificationRepository
 from modules.core.services.artifact_service import ArtifactService
 from modules.core.services.execution_service import ExecutionService
 from modules.core.services.specification_service import SpecificationService
-from modules.ingestion.services.ingestion_specification import IngestionSpecificationRegistry
 from modules.ingestion.services.ingestion_service import IngestSource
+from modules.ingestion.services.ingestion_specification import (
+    IngestionSpecificationRegistry,
+)
 from modules.ingestion.services.ingestion_tracking_service import (
     IngestionTracker,
     installed_code_revision,
@@ -34,7 +40,9 @@ def embedding_provider(config: Settings, embedding: dict | None = None):
     provider = str(selected["provider"]).lower()
     if provider == "gemini":
         if not config.effective_embedding_api_key:
-            raise RuntimeError("EMBEDDING_API_KEY or LLM_API_KEY is required for Gemini embeddings")
+            raise RuntimeError(
+                "EMBEDDING_API_KEY or LLM_API_KEY is required for Gemini embeddings"
+            )
         return GeminiEmbedder(
             api_key=config.effective_embedding_api_key,
             model=str(selected["model"]),
@@ -70,8 +78,11 @@ def run_once(config: Settings) -> bool:
     execution = None
     try:
         specification = (
-            SpecificationRepository(config.database_url).get(job.specification_id, job.project_id)
-            if job.specification_id else None
+            SpecificationRepository(config.database_url).get(
+                job.specification_id, job.project_id
+            )
+            if job.specification_id
+            else None
         )
         selected = specification.configuration if specification else None
         recovered = tracker.recover_previous_attempt(job)
@@ -95,7 +106,9 @@ def run_once(config: Settings) -> bool:
         embedding = selected["embedding"] if selected else None
         chunks = ChunkRepository(
             config.database_url,
-            str(embedding["provider"]).lower() if embedding else config.embedding_provider.lower(),
+            str(embedding["provider"]).lower()
+            if embedding
+            else config.embedding_provider.lower(),
             str(embedding["model"]) if embedding else config.embedding_model,
         )
         if job.stage is PipelineStage.CHUNK:
@@ -111,7 +124,9 @@ def run_once(config: Settings) -> bool:
                     config.ocr_languages,
                     config.unstructured_poll_interval_seconds,
                     config.unstructured_job_timeout_seconds,
-                    chunking_strategy=str(selected["chunking"]["strategy"]) if selected else "by_title",
+                    chunking_strategy=str(selected["chunking"]["strategy"])
+                    if selected
+                    else "by_title",
                 ),
                 ElementRepository(config.database_url),
                 chunks,
@@ -125,7 +140,9 @@ def run_once(config: Settings) -> bool:
                 path,
             )
         else:
-            ingestion = IngestSource(None, None, chunks, None, embedding_provider(config, embedding))
+            ingestion = IngestSource(
+                None, None, chunks, None, embedding_provider(config, embedding)
+            )
             chunk_count = ingestion.execute_indexing(job.source_version_id)
             element_count = 0
         execution = tracker.complete(
@@ -148,7 +165,9 @@ def run_once(config: Settings) -> bool:
                     error_message=message[:4000],
                 )
             except Exception:
-                logger.exception("Failed to record execution failure for job %s", job.id)
+                logger.exception(
+                    "Failed to record execution failure for job %s", job.id
+                )
         permanent = any(
             marker in message.lower()
             for marker in (

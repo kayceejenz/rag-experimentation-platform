@@ -1,7 +1,7 @@
 from typing import Protocol
 from uuid import UUID
 
-from modules.knowledge_bots.models import KnowledgeBot, KnowledgeBotStatus
+from modules.knowledge_bots.models.models import KnowledgeBot, KnowledgeBotStatus
 
 
 class KnowledgeBotRepositoryContract(Protocol):
@@ -11,7 +11,9 @@ class KnowledgeBotRepositoryContract(Protocol):
 
     async def get(self, bot_id: UUID, user_id: UUID) -> KnowledgeBot | None: ...
 
-    async def list_for_project(self, project_id: UUID, user_id: UUID) -> list[KnowledgeBot]: ...
+    async def list_for_project(
+        self, project_id: UUID, user_id: UUID
+    ) -> list[KnowledgeBot]: ...
 
     async def update(
         self,

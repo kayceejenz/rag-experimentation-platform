@@ -3,10 +3,9 @@ import logging
 from typing import Annotated
 from uuid import UUID
 
+from api.dependencies import chat_service, current_user
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
-
-from api.dependencies import chat_service, current_user
 from modules.auth.models.auth_user_model import AuthenticatedUser
 from modules.chats.dtos.chat_dto import (
     ChatListResponse,
@@ -26,11 +25,11 @@ from modules.chats.models.error_model import (
 )
 from modules.chats.models.message_model import Message
 from modules.chats.services.chat_service import ChatService
+from modules.knowledge_bots.models.models import KnowledgeBotNotFoundError
 from modules.projects.models.project_model import (
     ProjectNotFoundError,
     ProjectPermissionError,
 )
-from modules.knowledge_bots.models import KnowledgeBotNotFoundError
 
 router = APIRouter(tags=["conversations"])
 logger = logging.getLogger(__name__)
@@ -91,15 +90,19 @@ async def create_conversation(
     service: Annotated[ChatService, Depends(chat_service)],
 ):
     try:
-        chat, role = await service.create_for_assistant(assistant_id, user.id, body.title)
+        chat, role = await service.create_for_assistant(
+            assistant_id, user.id, body.title
+        )
         return response(chat, role.value)
-    except (KnowledgeBotNotFoundError, ProjectNotFoundError, ProjectPermissionError) as error:
+    except (
+        KnowledgeBotNotFoundError,
+        ProjectNotFoundError,
+        ProjectPermissionError,
+    ) as error:
         raise translate(error) from None
 
 
-@router.get(
-    "/assistants/{assistant_id}/conversations", response_model=ChatListResponse
-)
+@router.get("/assistants/{assistant_id}/conversations", response_model=ChatListResponse)
 async def list_conversations(
     assistant_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
@@ -107,8 +110,14 @@ async def list_conversations(
 ):
     try:
         chats, role = await service.list_for_assistant(assistant_id, user.id)
-        return ChatListResponse(conversations=[response(chat, role.value) for chat in chats])
-    except (KnowledgeBotNotFoundError, ProjectNotFoundError, ProjectPermissionError) as error:
+        return ChatListResponse(
+            conversations=[response(chat, role.value) for chat in chats]
+        )
+    except (
+        KnowledgeBotNotFoundError,
+        ProjectNotFoundError,
+        ProjectPermissionError,
+    ) as error:
         raise translate(error) from None
 
 
@@ -160,7 +169,9 @@ async def list_messages(
 ):
     try:
         messages = await service.list_messages(chat_id, user.id)
-        return MessageListResponse(messages=[message_response(item) for item in messages])
+        return MessageListResponse(
+            messages=[message_response(item) for item in messages]
+        )
     except (ChatNotFoundError, ProjectNotFoundError) as error:
         raise translate(error) from None
 
@@ -179,7 +190,12 @@ async def send_message(
     try:
         message = await service.send_message(chat_id, user.id, body.content)
         return message_response(message)
-    except (ChatNotFoundError, ProjectNotFoundError, ChatPermissionError, ProjectPermissionError) as error:
+    except (
+        ChatNotFoundError,
+        ProjectNotFoundError,
+        ChatPermissionError,
+        ProjectPermissionError,
+    ) as error:
         raise translate(error) from None
     except ChatGenerationError:
         raise HTTPException(
@@ -200,21 +216,28 @@ async def stream_message(
 ):
     try:
         await service.get(chat_id, user.id)
-    except (ChatNotFoundError, ProjectNotFoundError, ChatPermissionError, ProjectPermissionError) as error:
+    except (
+        ChatNotFoundError,
+        ProjectNotFoundError,
+        ChatPermissionError,
+        ProjectPermissionError,
+    ) as error:
         raise translate(error) from None
 
     async def events():
         try:
             async for event in service.stream_message(chat_id, user.id, body.content):
                 if event["type"] == "done":
-                    event["message"] = message_response(event["message"]).model_dump(mode="json")
+                    event["message"] = message_response(event["message"]).model_dump(
+                        mode="json"
+                    )
                 yield f"data: {json.dumps(event)}\n\n"
         except ChatGenerationError:
             logger.exception("Streaming chat generation failed")
-            yield f'data: {json.dumps({"type": "error", "message": "The chat model is temporarily unavailable; please try again"})}\n\n'
+            yield f"data: {json.dumps({'type': 'error', 'message': 'The chat model is temporarily unavailable; please try again'})}\n\n"
         except Exception:
             logger.exception("Unexpected error during SSE stream execution")
-            yield f'data: {json.dumps({"type": "error", "message": "An unexpected error occurred while streaming"})}\n\n'
+            yield f"data: {json.dumps({'type': 'error', 'message': 'An unexpected error occurred while streaming'})}\n\n"
 
     return StreamingResponse(
         events(),

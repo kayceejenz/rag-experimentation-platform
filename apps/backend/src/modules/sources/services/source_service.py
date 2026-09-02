@@ -4,12 +4,16 @@ import hashlib
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from modules.sources.models.error_model import SourceNotFoundError, SourcePermissionError, SourceTooLargeError
+from integrations.storage import delete_file, resolve_file, upload_file
+from modules.sources.models.error_model import (
+    SourceNotFoundError,
+    SourcePermissionError,
+    SourceTooLargeError,
+)
 from modules.sources.models.source_model import (
     Source,
     SourceStatus,
 )
-from integrations.storage import delete_file, resolve_file, upload_file
 
 
 class SourceService:
@@ -19,7 +23,13 @@ class SourceService:
         self.repository = repository
         self.storage_dir = storage_dir
 
-    def upload(self, knowledge_base_id: UUID, user_id: UUID, file, folder_id: UUID | None = None) -> Source:
+    def upload(
+        self,
+        knowledge_base_id: UUID,
+        user_id: UUID,
+        file,
+        folder_id: UUID | None = None,
+    ) -> Source:
         if not self.repository.has_write_access(knowledge_base_id, user_id):
             raise SourcePermissionError
         project_id = self.repository.project_id(knowledge_base_id)
@@ -27,7 +37,9 @@ class SourceService:
             raise SourceNotFoundError
 
         filename = file.filename or "document"
-        if folder_id and not self.repository.folder_exists(knowledge_base_id, folder_id):
+        if folder_id and not self.repository.folder_exists(
+            knowledge_base_id, folder_id
+        ):
             raise SourceNotFoundError
         target = self.repository.version_target(knowledge_base_id, filename, folder_id)
         source_id = target["id"] if target else uuid4()
@@ -94,13 +106,19 @@ class SourceService:
             raise SourceNotFoundError
         return folders
 
-    def create_folder(self, knowledge_base_id: UUID, user_id: UUID, name: str, parent_id: UUID | None):
-        folder = self.repository.create_folder(knowledge_base_id, user_id, name.strip(), parent_id)
+    def create_folder(
+        self, knowledge_base_id: UUID, user_id: UUID, name: str, parent_id: UUID | None
+    ):
+        folder = self.repository.create_folder(
+            knowledge_base_id, user_id, name.strip(), parent_id
+        )
         if folder is None:
             raise SourcePermissionError
         return folder
 
-    def inspection(self, knowledge_base_id: UUID, source_id: UUID, user_id: UUID) -> dict:
+    def inspection(
+        self, knowledge_base_id: UUID, source_id: UUID, user_id: UUID
+    ) -> dict:
         version = self.repository.latest_version(knowledge_base_id, source_id, user_id)
         if not version:
             raise SourceNotFoundError

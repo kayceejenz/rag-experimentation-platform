@@ -12,4 +12,6 @@ class JobQueue(Protocol):
 
 
 class JobReader(Protocol):
-    def get_for_user(self, job_id: UUID, user_id: UUID) -> IngestionJobDetails | None: ...
+    def get_for_user(
+        self, job_id: UUID, user_id: UUID
+    ) -> IngestionJobDetails | None: ...

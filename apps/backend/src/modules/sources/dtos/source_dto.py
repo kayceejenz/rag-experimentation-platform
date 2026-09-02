@@ -1,9 +1,8 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
-
 from modules.sources.models.source_model import SourceStatus
+from pydantic import BaseModel
 
 
 class SourceResponse(BaseModel):

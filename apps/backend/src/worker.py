@@ -3,6 +3,7 @@ import time
 
 from core.settings import Settings
 from modules.ingestion.services.ingestion_worker import run_once
+from modules.experiments.services.experiment_runner import run_once as run_experiment_once
 
 
 def main() -> None:
@@ -12,7 +13,7 @@ def main() -> None:
     config = Settings()
 
     while True:
-        processed = run_once(config)
+        processed = run_experiment_once(config) or run_once(config)
         if args.once or not config.has_database:
             break
         if not processed:

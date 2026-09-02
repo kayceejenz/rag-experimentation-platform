@@ -11,6 +11,7 @@ import {
 	Home,
 	Layers3,
 	PlayCircle,
+	FileCode2,
 	Settings,
 } from 'lucide-react';
 import { SmoothLink } from '@/components/navigation/smooth-link';
@@ -45,7 +46,10 @@ const groups = [
 	},
 	{
 		label: 'AI applications',
-		items: [{ label: 'Assistants', slug: 'assistants', icon: Bot }],
+		items: [
+			{ label: 'Prompts', slug: 'prompts', icon: FileCode2 },
+			{ label: 'Assistants', slug: 'assistants', icon: Bot },
+		],
 	},
 	{
 		label: 'Operations',
@@ -172,76 +176,95 @@ export function WorkspaceNavigation({
 			{activeProject && (
 				<div className='nav-project-context'>
 					{groups.map(group => {
-						const visibleItems = group.items.filter(item => canView(item.slug as ProjectFeature));
-						if (!visibleItems.length) return null;
+						const visibleItems =
+							group.items.filter(
+								item =>
+									canView(
+										item.slug as ProjectFeature,
+									),
+							);
+						if (!visibleItems.length)
+							return null;
 						return (
-						<div
-							className='nav-group'
-							key={group.label}>
-							<span className='nav-group-label'>
-								{group.label}
-							</span>
-							{visibleItems.map(
-								({
-									label,
-									slug,
-									icon: Icon,
-								}) => {
-									const href = `/projects/${activeProject.id}/${slug === 'knowledge' ? 'source/documents' : slug}`;
-									const isActive =
-										slug ===
-										'knowledge'
-											? pathname.startsWith(
-													`/projects/${activeProject.id}/source`,
-												)
-											: pathname.startsWith(
-													href,
-												);
-									return (
-										<SmoothLink
-											href={
-												href
-											}
-											key={
-												slug
-											}
-											className={
-												isActive
-													? 'active'
-													: ''
-											}>
-											<Icon
-												size={
-													16
+							<div
+								className='nav-group'
+								key={
+									group.label
+								}>
+								<span className='nav-group-label'>
+									{
+										group.label
+									}
+								</span>
+								{visibleItems.map(
+									({
+										label,
+										slug,
+										icon: Icon,
+									}) => {
+										const href = `/projects/${activeProject.id}/${slug === 'knowledge' ? 'source/documents' : slug}`;
+										const isActive =
+											slug ===
+											'knowledge'
+												? pathname.startsWith(
+														`/projects/${activeProject.id}/source`,
+													)
+												: pathname.startsWith(
+														href,
+													);
+										return (
+											<SmoothLink
+												href={
+													href
 												}
-											/>
-											<span>
-												{
-													label
+												key={
+													slug
 												}
-											</span>
-										</SmoothLink>
-									);
-								},
-							)}
+												className={
+													isActive
+														? 'active'
+														: ''
+												}>
+												<Icon
+													size={
+														16
+													}
+												/>
+												<span>
+													{
+														label
+													}
+												</span>
+											</SmoothLink>
+										);
+									},
+								)}
+							</div>
+						);
+					})}
+					{canView('settings') && (
+						<div className='nav-group nav-settings'>
+							<SmoothLink
+								href={`/projects/${activeProject.id}/settings`}
+								className={
+									pathname.startsWith(
+										`/projects/${activeProject.id}/settings`,
+									)
+										? 'active'
+										: ''
+								}>
+								<Settings
+									size={
+										16
+									}
+								/>
+								<span>
+									Project
+									settings
+								</span>
+							</SmoothLink>
 						</div>
-					);})}
-					{canView('settings') && <div className='nav-group nav-settings'>
-						<SmoothLink
-							href={`/projects/${activeProject.id}/settings`}
-							className={
-								pathname.startsWith(
-									`/projects/${activeProject.id}/settings`,
-								)
-									? 'active'
-									: ''
-							}>
-							<Settings size={16} />
-							<span>
-								Project settings
-							</span>
-						</SmoothLink>
-					</div>}
+					)}
 				</div>
 			)}
 			{!activeProject && (

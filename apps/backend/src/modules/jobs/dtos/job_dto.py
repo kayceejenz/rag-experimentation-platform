@@ -1,10 +1,9 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
-
 from modules.jobs.models.job_model import JobStatus
 from modules.sources.models.source_model import SourceStatus
+from pydantic import BaseModel
 
 
 class IngestionJobResponse(BaseModel):

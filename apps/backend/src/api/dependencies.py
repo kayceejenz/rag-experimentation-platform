@@ -12,6 +12,11 @@ from modules.auth.models.error_model import InvalidAccessTokenError
 from modules.auth.repos.refresh_token_repo import RefreshTokenRepository
 from modules.auth.repos.user_repo import UserRepository
 from modules.auth.services.auth_service import AuthenticationService
+from modules.benchmarks.repository import BenchmarkRepository
+from modules.benchmarks.service import BenchmarkService
+from modules.experiments.repos.experiment_repository import ExperimentRepository
+from modules.experiments.services.experiment_service import ExperimentService
+from modules.experiments.repos.run_repository import ExperimentRunRepository
 from modules.chats.repos.chat_repo import ChatRepository
 from modules.chats.repos.message_repo import MessageRepository
 from modules.chats.services.chat_service import ChatService
@@ -21,15 +26,17 @@ from modules.knowledge_bases.repos.knowledge_base_repo import KnowledgeBaseRepos
 from modules.knowledge_bases.services.knowledge_base_service import KnowledgeBaseService
 from modules.jobs.repos.job_repo import JobRepository
 from modules.jobs.services.job_service import JobService
-from modules.indexes.repository import IndexRepository
-from modules.indexes.service import IndexService
+from modules.indexes.repos.index_repository import IndexRepository
+from modules.indexes.services.index_service import IndexService
 from modules.core.repos.specification_repo import SpecificationRepository
 from modules.core.services.specification_service import SpecificationService
 from modules.ingestion.services.ingestion_specification import IngestionSpecificationRegistry
-from modules.knowledge_bots.repository import KnowledgeBotRepository
-from modules.knowledge_bots.service import KnowledgeBotService
+from modules.knowledge_bots.repos.knowledge_bot_repository import KnowledgeBotRepository
+from modules.knowledge_bots.services.knowledge_bot_service import KnowledgeBotService
 from modules.projects.repos.project_repo import ProjectRepository
 from modules.projects.services.project_service import ProjectService
+from modules.prompts.repos.prompt_repository import PromptRepository
+from modules.prompts.services.prompt_service import PromptService
 from modules.sources.repos.source_repo import SourceRepository
 from modules.sources.services.source_service import SourceService
 from integrations.embeddings import GeminiEmbedder
@@ -175,6 +182,32 @@ def index_service() -> IndexService:
     return IndexService(
         IndexRepository(c.database_url),
         SpecificationService(SpecificationRepository(c.database_url), IngestionSpecificationRegistry()),
+    )
+
+
+@lru_cache
+def prompt_service() -> PromptService:
+    if not settings().database_url:
+        raise RuntimeError("DATABASE_URL is required")
+    return PromptService(PromptRepository(settings().database_url))
+
+
+@lru_cache
+def benchmark_service() -> BenchmarkService:
+    if not settings().database_url:
+        raise RuntimeError("DATABASE_URL is required")
+    return BenchmarkService(BenchmarkRepository(settings().database_url))
+
+
+@lru_cache
+def experiment_service() -> ExperimentService:
+    if not settings().database_url:
+        raise RuntimeError("DATABASE_URL is required")
+    return ExperimentService(
+        ExperimentRepository(settings().database_url),
+        ExperimentRunRepository(settings().database_url),
+        settings().app_revision,
+        [settings().llm_model],
     )
 
 

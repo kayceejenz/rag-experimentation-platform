@@ -1,9 +1,8 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
-
 from api.dependencies import current_user, job_service
+from fastapi import APIRouter, Depends, HTTPException
 from modules.auth.models.auth_user_model import AuthenticatedUser
 from modules.jobs.dtos.job_dto import IngestionJobResponse
 from modules.jobs.services.job_service import JobNotFoundError, JobService

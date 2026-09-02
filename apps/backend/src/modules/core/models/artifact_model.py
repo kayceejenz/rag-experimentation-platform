@@ -42,7 +42,8 @@ class Artifact:
             ("manifest_hash", self.manifest_hash),
         ):
             if value is not None and (
-                len(value) != 64 or any(char not in "0123456789abcdef" for char in value)
+                len(value) != 64
+                or any(char not in "0123456789abcdef" for char in value)
             ):
                 raise ValueError(f"{name} must be a lowercase SHA-256 digest")
         if self.storage_key is not None and not self.storage_key.strip():

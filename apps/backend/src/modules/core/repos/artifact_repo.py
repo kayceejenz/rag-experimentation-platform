@@ -1,10 +1,13 @@
 from uuid import UUID
 
 import psycopg
-from psycopg.rows import dict_row
-
-from modules.core.models.artifact_model import Artifact, ArtifactKind, ArtifactStorageType
+from modules.core.models.artifact_model import (
+    Artifact,
+    ArtifactKind,
+    ArtifactStorageType,
+)
 from modules.core.models.error_model import ArtifactIdentityConflictError
+from psycopg.rows import dict_row
 
 
 class ArtifactRepository:
@@ -87,12 +90,9 @@ class ArtifactRepository:
             requested.content_sha256 is not None
             and existing.content_sha256 != requested.content_sha256
         )
-        manifest_conflict = (
-            requested.manifest_hash is not None
-            and (
-                existing.manifest_hash != requested.manifest_hash
-                or existing.manifest != requested.manifest
-            )
+        manifest_conflict = requested.manifest_hash is not None and (
+            existing.manifest_hash != requested.manifest_hash
+            or existing.manifest != requested.manifest
         )
         if existing.kind is not requested.kind or content_conflict or manifest_conflict:
             raise ArtifactIdentityConflictError(

@@ -13,17 +13,32 @@ class IndexService:
             raise PermissionError
         return self.repository.models(), self.repository.builds(project_id)
 
-    def create(self, project_id, user_id, knowledge_base_id, name, model_id, strategy, folder_ids):
+    def create(
+        self,
+        project_id,
+        user_id,
+        knowledge_base_id,
+        name,
+        model_id,
+        strategy,
+        folder_ids,
+    ):
         if not self.repository.can_access(project_id, user_id, write=True):
             raise PermissionError
         if strategy not in self.STRATEGIES:
             raise ValueError("Unsupported chunking strategy")
         model = self.repository.model(model_id)
-        if not model or not self.repository.knowledge_base_exists(project_id, knowledge_base_id):
+        if not model or not self.repository.knowledge_base_exists(
+            project_id, knowledge_base_id
+        ):
             raise LookupError
         folder_ids = list(dict.fromkeys(folder_ids))
-        if folder_ids and not self.repository.folders_exist(knowledge_base_id, folder_ids):
-            raise ValueError("One or more selected folders do not belong to this Knowledge Base")
+        if folder_ids and not self.repository.folders_exist(
+            knowledge_base_id, folder_ids
+        ):
+            raise ValueError(
+                "One or more selected folders do not belong to this Knowledge Base"
+            )
         specification = self.specifications.register(
             project_id,
             user_id,
@@ -31,9 +46,18 @@ class IndexService:
             1,
             {
                 "name": name,
-                "partitioning": {"provider": "unstructured", "strategy": "auto", "pdf_strategy": "hi_res", "ocr_languages": ["eng"]},
+                "partitioning": {
+                    "provider": "unstructured",
+                    "strategy": "auto",
+                    "pdf_strategy": "hi_res",
+                    "ocr_languages": ["eng"],
+                },
                 "chunking": {"strategy": strategy},
-                "embedding": {"provider": model["provider"], "model": model["model_name"], "dimensions": model["dimensions"]},
+                "embedding": {
+                    "provider": model["provider"],
+                    "model": model["model_name"],
+                    "dimensions": model["dimensions"],
+                },
                 "knowledge": {
                     "knowledge_base_id": str(knowledge_base_id),
                     "scope": "folders" if folder_ids else "root",
@@ -41,7 +65,9 @@ class IndexService:
                 },
             },
         )
-        queued, documents = self.repository.enqueue(project_id, knowledge_base_id, specification.id, folder_ids)
+        queued, documents = self.repository.enqueue(
+            project_id, knowledge_base_id, specification.id, folder_ids
+        )
         return specification, queued, documents
 
     def detail(self, project_id, user_id, specification_id):
@@ -55,7 +81,9 @@ class IndexService:
     def artifact_preview(self, project_id, user_id, specification_id, artifact_id):
         if not self.repository.can_access(project_id, user_id):
             raise PermissionError
-        preview = self.repository.artifact_preview(project_id, specification_id, artifact_id)
+        preview = self.repository.artifact_preview(
+            project_id, specification_id, artifact_id
+        )
         if preview is None:
             raise LookupError
         return preview

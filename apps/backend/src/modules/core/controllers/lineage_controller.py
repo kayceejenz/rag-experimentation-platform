@@ -1,9 +1,8 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-
 from api.dependencies import current_user, lineage_service
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from modules.auth.models.auth_user_model import AuthenticatedUser
 from modules.core.dtos.lineage_dto import (
     ExecutionLineageResponse,
@@ -11,9 +10,14 @@ from modules.core.dtos.lineage_dto import (
     ExecutionResponse,
 )
 from modules.core.services.lineage_service import ExecutionNotFoundError, LineageService
-from modules.projects.models.project_model import ProjectNotFoundError, ProjectPermissionError
+from modules.projects.models.project_model import (
+    ProjectNotFoundError,
+    ProjectPermissionError,
+)
 
-router = APIRouter(prefix="/projects/{project_id}/executions", tags=["execution lineage"])
+router = APIRouter(
+    prefix="/projects/{project_id}/executions", tags=["execution lineage"]
+)
 
 
 @router.get("", response_model=ExecutionListResponse)
@@ -28,9 +32,14 @@ async def list_executions(
     except ProjectNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found") from None
     except ProjectPermissionError:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient run permissions") from None
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Insufficient run permissions"
+        ) from None
     return ExecutionListResponse(
-        executions=[ExecutionResponse.model_validate(item, from_attributes=True) for item in executions]
+        executions=[
+            ExecutionResponse.model_validate(item, from_attributes=True)
+            for item in executions
+        ]
     )
 
 
@@ -48,5 +57,7 @@ async def get_execution(
             status.HTTP_404_NOT_FOUND, "Project or execution not found"
         ) from None
     except ProjectPermissionError:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient run permissions") from None
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Insufficient run permissions"
+        ) from None
     return ExecutionLineageResponse.model_validate(lineage, from_attributes=True)

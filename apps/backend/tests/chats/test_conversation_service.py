@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from modules.chats.models.chat_model import Chat, ChatStatus
 from modules.chats.services.chat_service import ChatService
-from modules.knowledge_bots.models import KnowledgeBot
+from modules.knowledge_bots.models.models import KnowledgeBot
 from modules.projects.models.project_model import Project, ProjectAccess, ProjectRole
 
 

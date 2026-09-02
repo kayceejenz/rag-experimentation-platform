@@ -8,15 +8,15 @@ from modules.chats.contracts.chat_repo_contract import ChatRepositoryContract
 from modules.chats.contracts.keysearch_contract import KnowledgeSearch
 from modules.chats.contracts.message_contract import MessageRepository
 from modules.chats.contracts.project_access_contract import ProjectAccessContract
-from modules.chats.models.citation_model import Citation
 from modules.chats.models.chat_model import Chat, ChatStatus
+from modules.chats.models.citation_model import Citation
 from modules.chats.models.error_model import (
     ChatGenerationError,
     ChatNotFoundError,
     ChatPermissionError,
 )
 from modules.chats.models.message_model import Message, MessageRole
-from modules.knowledge_bots.service import KnowledgeBotService
+from modules.knowledge_bots.services.knowledge_bot_service import KnowledgeBotService
 from modules.projects.models.project_model import ProjectRole
 
 
@@ -37,8 +37,12 @@ class ChatService:
         self.generator = generator
         self.bots = bots
 
-    async def list(self, project_id: UUID, user_id: UUID) -> tuple[list[Chat], ProjectRole]:
-        access = await self.projects.require_permission(project_id, user_id, "assistants")
+    async def list(
+        self, project_id: UUID, user_id: UUID
+    ) -> tuple[list[Chat], ProjectRole]:
+        access = await self.projects.require_permission(
+            project_id, user_id, "assistants"
+        )
         chats = await self.repository.list_for_project(project_id, user_id)
         return chats, access.role
 
@@ -63,7 +67,9 @@ class ChatService:
         chat = await self.repository.get(chat_id, user_id)
         if not chat:
             raise ChatNotFoundError
-        access = await self.projects.require_permission(chat.project_id, user_id, "assistants")
+        access = await self.projects.require_permission(
+            chat.project_id, user_id, "assistants"
+        )
         return chat, access.role
 
     async def update(
@@ -74,7 +80,9 @@ class ChatService:
         chat_status: ChatStatus | None,
     ) -> tuple[Chat, ProjectRole]:
         chat, role = await self.get(chat_id, user_id)
-        await self.projects.require_permission(chat.project_id, user_id, "assistants", "manage")
+        await self.projects.require_permission(
+            chat.project_id, user_id, "assistants", "manage"
+        )
         updated_chat = await self.repository.update(
             chat.id, title.strip() if title else None, chat_status
         )
@@ -82,7 +90,9 @@ class ChatService:
 
     async def delete(self, chat_id: UUID, user_id: UUID) -> None:
         chat, role = await self.get(chat_id, user_id)
-        await self.projects.require_permission(chat.project_id, user_id, "assistants", "manage")
+        await self.projects.require_permission(
+            chat.project_id, user_id, "assistants", "manage"
+        )
         await self.repository.delete(chat.id)
 
     async def list_messages(self, chat_id: UUID, user_id: UUID) -> list[Message]:
@@ -114,22 +124,20 @@ class ChatService:
     async def stream_message(
         self, chat_id: UUID, user_id: UUID, content: str
     ) -> AsyncIterator[dict]:
-        
         yield {
-                "type": "tool_step",
-                "tool": {
-                    "id": "kb-search",
-                    "type": "search",
-                    "label": "Searching knowledge base",
-                    "status": "running",
-                },
-            }
-        
+            "type": "tool_step",
+            "tool": {
+                "id": "kb-search",
+                "type": "search",
+                "label": "Searching knowledge base",
+                "status": "running",
+            },
+        }
+
         chat, question, history, chunks, context = await self._prepare_message(
             chat_id, user_id, content
         )
 
-       
         yield {
             "type": "tool_step",
             "tool": {

@@ -1,11 +1,20 @@
+from modules.projects.models.project_model import Project, ProjectAccess, ProjectRole
 from psycopg import AsyncConnection
 from psycopg.rows import dict_row
 
-from modules.projects.models.project_model import Project, ProjectAccess, ProjectRole
-
 
 class ProjectRepository:
-    FEATURES = ("knowledge", "indexes", "experiments", "benchmarks", "assistants", "runs", "settings")
+    FEATURES = (
+        "knowledge",
+        "indexes",
+        "experiments",
+        "benchmarks",
+        "prompts",
+        "assistants",
+        "runs",
+        "settings",
+    )
+
     def __init__(self, database_url: str) -> None:
         self.database_url = database_url
 
@@ -61,7 +70,13 @@ class ProjectRepository:
                 (project_id, user_id),
             )
             row = await curr.fetchone()
-        return ProjectAccess(self.project(row), ProjectRole(row["role"]), row["permissions"] or {}) if row else None
+        return (
+            ProjectAccess(
+                self.project(row), ProjectRole(row["role"]), row["permissions"] or {}
+            )
+            if row
+            else None
+        )
 
     async def list_for_user(self, user_id):
         async with await self.connect() as db:
@@ -77,7 +92,12 @@ class ProjectRepository:
                 (user_id,),
             )
             rows = await curr.fetchall()
-        return [ProjectAccess(self.project(row), ProjectRole(row["role"]), row["permissions"] or {}) for row in rows]
+        return [
+            ProjectAccess(
+                self.project(row), ProjectRole(row["role"]), row["permissions"] or {}
+            )
+            for row in rows
+        ]
 
     async def update(self, project_id, name, description, update_description):
         async with await self.connect() as db:
@@ -92,44 +112,54 @@ class ProjectRepository:
 
     async def delete(self, project_id):
         async with await self.connect() as db:
-            await db.execute("update ragapp.projects set deleted_at=now() where id=%s", (project_id,))
+            await db.execute(
+                "update ragapp.projects set deleted_at=now() where id=%s", (project_id,)
+            )
 
     async def has_permission(self, project_id, user_id, feature, action="view"):
         async with await self.connect() as db:
-            row = await (await db.execute(
-                "select ragapp.has_project_permission(%s,%s,%s,%s) allowed",
-                (project_id, user_id, feature, action),
-            )).fetchone()
+            row = await (
+                await db.execute(
+                    "select ragapp.has_project_permission(%s,%s,%s,%s) allowed",
+                    (project_id, user_id, feature, action),
+                )
+            ).fetchone()
         return bool(row["allowed"])
 
     async def list_members(self, project_id):
         async with await self.connect() as db:
-            rows = await (await db.execute(
-                "select pm.user_id,u.email,u.display_name,pm.role,pm.joined_at,"
-                "coalesce(jsonb_object_agg(p.feature,jsonb_build_object('view',p.can_view,'manage',p.can_manage)) "
-                "filter(where p.feature is not null),'{}'::jsonb) permissions "
-                "from ragapp.project_members pm join ragapp.users u on u.id=pm.user_id "
-                "left join ragapp.project_member_permissions p on p.project_id=pm.project_id and p.user_id=pm.user_id "
-                "where pm.project_id=%s group by pm.user_id,u.email,u.display_name,pm.role,pm.joined_at "
-                "order by (pm.role='owner') desc,lower(coalesce(u.display_name,u.email))",
-                (project_id,),
-            )).fetchall()
+            rows = await (
+                await db.execute(
+                    "select pm.user_id,u.email,u.display_name,pm.role,pm.joined_at,"
+                    "coalesce(jsonb_object_agg(p.feature,jsonb_build_object('view',p.can_view,'manage',p.can_manage)) "
+                    "filter(where p.feature is not null),'{}'::jsonb) permissions "
+                    "from ragapp.project_members pm join ragapp.users u on u.id=pm.user_id "
+                    "left join ragapp.project_member_permissions p on p.project_id=pm.project_id and p.user_id=pm.user_id "
+                    "where pm.project_id=%s group by pm.user_id,u.email,u.display_name,pm.role,pm.joined_at "
+                    "order by (pm.role='owner') desc,lower(coalesce(u.display_name,u.email))",
+                    (project_id,),
+                )
+            ).fetchall()
         return rows
 
     async def add_member(self, project_id, email, permissions):
         async with await self.connect() as db:
             async with db.transaction():
-                user = await (await db.execute(
-                    "select id from ragapp.users where email=%s and deleted_at is null and is_active",
-                    (email,),
-                )).fetchone()
+                user = await (
+                    await db.execute(
+                        "select id from ragapp.users where email=%s and deleted_at is null and is_active",
+                        (email,),
+                    )
+                ).fetchone()
                 if not user:
                     return None
-                inserted = await (await db.execute(
-                    "insert into ragapp.project_members(project_id,user_id,role) values(%s,%s,'viewer') "
-                    "on conflict do nothing returning user_id",
-                    (project_id, user["id"]),
-                )).fetchone()
+                inserted = await (
+                    await db.execute(
+                        "insert into ragapp.project_members(project_id,user_id,role) values(%s,%s,'viewer') "
+                        "on conflict do nothing returning user_id",
+                        (project_id, user["id"]),
+                    )
+                ).fetchone()
                 if not inserted:
                     return False
                 await self._replace_permissions(db, project_id, user["id"], permissions)
@@ -137,10 +167,12 @@ class ProjectRepository:
 
     async def update_member_permissions(self, project_id, member_id, permissions):
         async with await self.connect() as db:
-            member = await (await db.execute(
-                "select role from ragapp.project_members where project_id=%s and user_id=%s",
-                (project_id, member_id),
-            )).fetchone()
+            member = await (
+                await db.execute(
+                    "select role from ragapp.project_members where project_id=%s and user_id=%s",
+                    (project_id, member_id),
+                )
+            ).fetchone()
             if not member or member["role"] == "owner":
                 return False
             await self._replace_permissions(db, project_id, member_id, permissions)
@@ -148,10 +180,12 @@ class ProjectRepository:
 
     async def remove_member(self, project_id, member_id):
         async with await self.connect() as db:
-            row = await (await db.execute(
-                "delete from ragapp.project_members where project_id=%s and user_id=%s and role<>'owner' returning user_id",
-                (project_id, member_id),
-            )).fetchone()
+            row = await (
+                await db.execute(
+                    "delete from ragapp.project_members where project_id=%s and user_id=%s and role<>'owner' returning user_id",
+                    (project_id, member_id),
+                )
+            ).fetchone()
         return row is not None
 
     async def _replace_permissions(self, db, project_id, member_id, permissions):
@@ -164,5 +198,11 @@ class ProjectRepository:
             await db.execute(
                 "insert into ragapp.project_member_permissions(project_id,user_id,feature,can_view,can_manage) "
                 "values(%s,%s,%s,%s,%s)",
-                (project_id, member_id, feature, permission["view"], permission["manage"]),
+                (
+                    project_id,
+                    member_id,
+                    feature,
+                    permission["view"],
+                    permission["manage"],
+                ),
             )

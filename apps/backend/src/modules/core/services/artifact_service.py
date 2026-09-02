@@ -4,7 +4,11 @@ from uuid import UUID
 
 from modules.core.contracts.artifact_contract import ArtifactRepositoryContract
 from modules.core.helpers.canonical_json import canonical_json
-from modules.core.models.artifact_model import Artifact, ArtifactKind, ArtifactStorageType
+from modules.core.models.artifact_model import (
+    Artifact,
+    ArtifactKind,
+    ArtifactStorageType,
+)
 
 
 class ArtifactService:

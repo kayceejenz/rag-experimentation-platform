@@ -1,9 +1,8 @@
 from datetime import datetime
 from uuid import UUID
 
+from modules.knowledge_bots.models.models import KnowledgeBotStatus
 from pydantic import BaseModel, ConfigDict, Field
-
-from modules.knowledge_bots.models import KnowledgeBotStatus
 
 
 class CreateKnowledgeBotRequest(BaseModel):

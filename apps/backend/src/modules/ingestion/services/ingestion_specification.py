@@ -29,7 +29,9 @@ def normalize_ingestion_pipeline(configuration: Mapping[str, Any]) -> dict[str, 
             "provider": str(partitioning.get("provider", "unstructured")).lower(),
             "strategy": str(partitioning.get("strategy", "auto")).lower(),
             "pdf_strategy": str(partitioning.get("pdf_strategy", "hi_res")).lower(),
-            "ocr_languages": sorted({language.strip().lower() for language in languages}),
+            "ocr_languages": sorted(
+                {language.strip().lower() for language in languages}
+            ),
         },
         "chunking": {
             "strategy": str(chunking.get("strategy", "element")).lower(),

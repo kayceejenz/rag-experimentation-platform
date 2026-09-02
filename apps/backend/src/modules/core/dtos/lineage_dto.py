@@ -2,11 +2,10 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel
-
 from modules.core.models.artifact_model import ArtifactKind, ArtifactStorageType
 from modules.core.models.execution_model import ExecutionKind, ExecutionStatus
 from modules.core.models.specification_model import SpecificationKind
+from pydantic import BaseModel
 
 
 class ExecutionResponse(BaseModel):

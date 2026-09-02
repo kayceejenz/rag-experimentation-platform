@@ -1,23 +1,25 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-
 from api.dependencies import current_user, knowledge_bot_service
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from modules.auth.models.auth_user_model import AuthenticatedUser
-from modules.knowledge_bots.dtos import (
+from modules.knowledge_bots.models.dtos import (
     CreateKnowledgeBotRequest,
     KnowledgeBotListResponse,
     KnowledgeBotResponse,
     UpdateKnowledgeBotRequest,
 )
-from modules.knowledge_bots.models import (
+from modules.knowledge_bots.models.models import (
     KnowledgeBot,
     KnowledgeBotNotFoundError,
     KnowledgeBotPermissionError,
 )
-from modules.knowledge_bots.service import KnowledgeBotService
-from modules.projects.models.project_model import ProjectNotFoundError, ProjectPermissionError
+from modules.knowledge_bots.services.knowledge_bot_service import KnowledgeBotService
+from modules.projects.models.project_model import (
+    ProjectNotFoundError,
+    ProjectPermissionError,
+)
 
 router = APIRouter(tags=["assistants"])
 
@@ -38,8 +40,12 @@ def response(bot: KnowledgeBot, role: str) -> KnowledgeBotResponse:
 
 def translate(error: Exception) -> HTTPException:
     if isinstance(error, (KnowledgeBotNotFoundError, ProjectNotFoundError)):
-        return HTTPException(status.HTTP_404_NOT_FOUND, "Assistant or project not found")
-    return HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient assistant permissions")
+        return HTTPException(
+            status.HTTP_404_NOT_FOUND, "Assistant or project not found"
+        )
+    return HTTPException(
+        status.HTTP_403_FORBIDDEN, "Insufficient assistant permissions"
+    )
 
 
 @router.post(
@@ -54,9 +60,15 @@ async def create_bot(
     service: Annotated[KnowledgeBotService, Depends(knowledge_bot_service)],
 ):
     try:
-        bot, role = await service.create(project_id, user.id, body.name, body.description)
+        bot, role = await service.create(
+            project_id, user.id, body.name, body.description
+        )
         return response(bot, role.value)
-    except (ProjectNotFoundError, ProjectPermissionError, KnowledgeBotPermissionError) as error:
+    except (
+        ProjectNotFoundError,
+        ProjectPermissionError,
+        KnowledgeBotPermissionError,
+    ) as error:
         raise translate(error) from None
 
 
@@ -70,7 +82,9 @@ async def list_bots(
 ):
     try:
         bots, role = await service.list(project_id, user.id)
-        return KnowledgeBotListResponse(assistants=[response(bot, role.value) for bot in bots])
+        return KnowledgeBotListResponse(
+            assistants=[response(bot, role.value) for bot in bots]
+        )
     except (ProjectNotFoundError, ProjectPermissionError) as error:
         raise translate(error) from None
 
@@ -84,7 +98,11 @@ async def get_bot(
     try:
         bot, role = await service.get(bot_id, user.id)
         return response(bot, role.value)
-    except (KnowledgeBotNotFoundError, ProjectNotFoundError, ProjectPermissionError) as error:
+    except (
+        KnowledgeBotNotFoundError,
+        ProjectNotFoundError,
+        ProjectPermissionError,
+    ) as error:
         raise translate(error) from None
 
 

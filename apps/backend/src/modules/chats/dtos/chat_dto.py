@@ -1,10 +1,9 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
-
 from modules.chats.models.chat_model import ChatStatus
 from modules.chats.models.message_model import MessageRole
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CreateChatRequest(BaseModel):

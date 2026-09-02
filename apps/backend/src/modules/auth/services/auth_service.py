@@ -55,7 +55,9 @@ class AuthenticationService:
 
         return account.user
 
-    def register(self, email: str, password: str, display_name: str | None) -> AuthenticatedUser:
+    def register(
+        self, email: str, password: str, display_name: str | None
+    ) -> AuthenticatedUser:
         normalized_email = email.strip().lower()
 
         if self._accounts.find_by_email(normalized_email):
@@ -100,10 +102,14 @@ class AuthenticationService:
         if current is None:
             raise InvalidRefreshTokenError
         if current.revoked_at is not None:
-            self._refresh_tokens.revoke_family(current.family_id, "refresh token reuse detected")
+            self._refresh_tokens.revoke_family(
+                current.family_id, "refresh token reuse detected"
+            )
             raise InvalidRefreshTokenError
         if current.expires_at <= now:
-            self._refresh_tokens.revoke_family(current.family_id, "refresh token expired")
+            self._refresh_tokens.revoke_family(
+                current.family_id, "refresh token expired"
+            )
             raise InvalidRefreshTokenError
 
         account = self._accounts.find_by_id(current.user_id)
@@ -119,7 +125,9 @@ class AuthenticationService:
                 now + self._refresh_token_lifetime,
             )
         except ValueError:
-            self._refresh_tokens.revoke_family(current.family_id, "refresh token reuse detected")
+            self._refresh_tokens.revoke_family(
+                current.family_id, "refresh token reuse detected"
+            )
             raise InvalidRefreshTokenError from None
         access_token, expires_in = self._access_tokens.issue(account.user)
         return TokenPair(access_token, replacement, expires_in)

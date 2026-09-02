@@ -1,7 +1,7 @@
 from uuid import UUID
 
-from modules.knowledge_bots.contracts import KnowledgeBotRepositoryContract
-from modules.knowledge_bots.models import (
+from modules.knowledge_bots.contracts.knowledge_bot_repo_contracts import KnowledgeBotRepositoryContract
+from modules.knowledge_bots.models.models import (
     KnowledgeBot,
     KnowledgeBotNotFoundError,
     KnowledgeBotPermissionError,
@@ -25,7 +25,9 @@ class KnowledgeBotService:
         name: str,
         description: str | None,
     ) -> tuple[KnowledgeBot, ProjectRole]:
-        access = await self.projects.require_permission(project_id, user_id, "assistants", "manage")
+        access = await self.projects.require_permission(
+            project_id, user_id, "assistants", "manage"
+        )
         bot = await self.repository.create(
             project_id, user_id, name.strip(), self._description(description)
         )
@@ -34,14 +36,20 @@ class KnowledgeBotService:
     async def list(
         self, project_id: UUID, user_id: UUID
     ) -> tuple[list[KnowledgeBot], ProjectRole]:
-        access = await self.projects.require_permission(project_id, user_id, "assistants")
+        access = await self.projects.require_permission(
+            project_id, user_id, "assistants"
+        )
         return await self.repository.list_for_project(project_id, user_id), access.role
 
-    async def get(self, bot_id: UUID, user_id: UUID) -> tuple[KnowledgeBot, ProjectRole]:
+    async def get(
+        self, bot_id: UUID, user_id: UUID
+    ) -> tuple[KnowledgeBot, ProjectRole]:
         bot = await self.repository.get(bot_id, user_id)
         if not bot:
             raise KnowledgeBotNotFoundError
-        access = await self.projects.require_permission(bot.project_id, user_id, "assistants")
+        access = await self.projects.require_permission(
+            bot.project_id, user_id, "assistants"
+        )
         return bot, access.role
 
     async def update(
@@ -54,7 +62,9 @@ class KnowledgeBotService:
         bot_status: KnowledgeBotStatus | None,
     ) -> tuple[KnowledgeBot, ProjectRole]:
         bot, role = await self.get(bot_id, user_id)
-        await self.projects.require_permission(bot.project_id, user_id, "assistants", "manage")
+        await self.projects.require_permission(
+            bot.project_id, user_id, "assistants", "manage"
+        )
         updated = await self.repository.update(
             bot.id,
             name.strip() if name else None,
@@ -66,7 +76,9 @@ class KnowledgeBotService:
 
     async def delete(self, bot_id: UUID, user_id: UUID) -> None:
         bot, role = await self.get(bot_id, user_id)
-        await self.projects.require_permission(bot.project_id, user_id, "assistants", "manage")
+        await self.projects.require_permission(
+            bot.project_id, user_id, "assistants", "manage"
+        )
         await self.repository.delete(bot.id)
 
     @staticmethod

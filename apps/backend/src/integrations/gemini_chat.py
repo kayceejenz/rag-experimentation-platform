@@ -60,6 +60,14 @@ class GeminiChatModel:
             raise RuntimeError(f"Gemini returned an empty answer ({self._empty_reason(payload)})")
         return answer
 
+    def generate_configured(self, system_prompt: str, user_prompt: str, temperature: float, max_output_tokens: int):
+        request={"systemInstruction":{"parts":[{"text":system_prompt}]},"contents":[{"role":"user","parts":[{"text":user_prompt}]}],"generationConfig":{"temperature":temperature,"maxOutputTokens":max_output_tokens}}
+        payload=self._post_with_retries("generateContent",request).json()
+        answer=self._answer_text(payload).strip()
+        if not answer: raise RuntimeError(f"Gemini returned an empty answer ({self._empty_reason(payload)})")
+        usage=payload.get("usageMetadata",{})
+        return answer,{"input_tokens":usage.get("promptTokenCount",0),"output_tokens":usage.get("candidatesTokenCount",0),"total_tokens":usage.get("totalTokenCount",0)}
+
     async def generate_stream(
         self, question: str, context: str, history: list[tuple[str, str]]
     ) -> AsyncIterator[StreamPart]:
@@ -212,7 +220,15 @@ class GeminiChatModel:
                     continue
 
                 if response.status_code < 500 and response.status_code != 429:
-                    response.raise_for_status()
+                    try:
+                        response.raise_for_status()
+                    except httpx.HTTPStatusError as error:
+                        if response.status_code == 404:
+                            raise RuntimeError(
+                                f"Gemini model '{self.model}' is unavailable for generateContent. "
+                                "Create the experiment variant with a model enabled by this deployment."
+                            ) from error
+                        raise
                     return response
 
                 if is_last_attempt:

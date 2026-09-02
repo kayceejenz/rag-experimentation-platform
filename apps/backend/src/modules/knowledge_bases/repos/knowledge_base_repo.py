@@ -1,7 +1,6 @@
 import psycopg
-from psycopg.rows import dict_row
-
 from modules.knowledge_bases.models.knowledge_base_model import KnowledgeBase
+from psycopg.rows import dict_row
 
 
 class KnowledgeBaseRepository:

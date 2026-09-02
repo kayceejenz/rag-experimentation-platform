@@ -2,7 +2,11 @@ from datetime import datetime
 from typing import Any, Protocol
 from uuid import UUID
 
-from modules.core.models.execution_model import Execution, ExecutionArtifact, ExecutionKind
+from modules.core.models.execution_model import (
+    Execution,
+    ExecutionArtifact,
+    ExecutionKind,
+)
 
 
 class ExecutionRepositoryContract(Protocol):

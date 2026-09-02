@@ -50,7 +50,9 @@ def _validate_json(value: Any, path: str) -> None:
     if isinstance(value, dict):
         for key, item in value.items():
             if not isinstance(key, str):
-                raise InvalidCanonicalJsonError(f"{path} contains a non-string object key")
+                raise InvalidCanonicalJsonError(
+                    f"{path} contains a non-string object key"
+                )
             _validate_json(item, f"{path}.{key}")
         return
     raise InvalidCanonicalJsonError(

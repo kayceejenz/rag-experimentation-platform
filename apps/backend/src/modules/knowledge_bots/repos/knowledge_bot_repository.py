@@ -1,7 +1,6 @@
+from modules.knowledge_bots.models.models import KnowledgeBot, KnowledgeBotStatus
 from psycopg import AsyncConnection
 from psycopg.rows import dict_row
-
-from modules.knowledge_bots.models import KnowledgeBot, KnowledgeBotStatus
 
 
 class KnowledgeBotRepository:

@@ -1,8 +1,7 @@
 import psycopg
-from psycopg.types.json import Jsonb
-from psycopg.rows import dict_row
-
 from modules.sources.models.source_model import Source, SourceStatus
+from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 
 class SourceRepository:
@@ -146,12 +145,24 @@ class SourceRepository:
                 (knowledge_base_id, parent_id, name, user_id),
             ).fetchone()
             project = db.execute(
-                "select project_id from ragapp.knowledge_bases where id=%s", (knowledge_base_id,)
+                "select project_id from ragapp.knowledge_bases where id=%s",
+                (knowledge_base_id,),
             ).fetchone()
             db.execute(
                 "insert into ragapp.audit_events(project_id,knowledge_base_id,actor_user_id,event_type,"
                 "entity_type,entity_id,payload) values(%s,%s,%s,'knowledge.folder_created','folder',%s,%s)",
-                (project["project_id"], knowledge_base_id, user_id, folder["id"], Jsonb({"name": name, "parent_id": str(parent_id) if parent_id else None})),
+                (
+                    project["project_id"],
+                    knowledge_base_id,
+                    user_id,
+                    folder["id"],
+                    Jsonb(
+                        {
+                            "name": name,
+                            "parent_id": str(parent_id) if parent_id else None,
+                        }
+                    ),
+                ),
             )
         return folder
 

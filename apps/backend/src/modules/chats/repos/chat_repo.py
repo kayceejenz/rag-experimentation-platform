@@ -1,7 +1,6 @@
+from modules.chats.models.chat_model import Chat, ChatStatus
 from psycopg import AsyncConnection
 from psycopg.rows import dict_row
-
-from modules.chats.models.chat_model import Chat, ChatStatus
 
 
 class ChatRepository:
@@ -24,7 +23,9 @@ class ChatRepository:
             updated_at=row["updated_at"],
         )
 
-    async def create_for_assistant(self, assistant_id, project_id, created_by, title) -> Chat:
+    async def create_for_assistant(
+        self, assistant_id, project_id, created_by, title
+    ) -> Chat:
         async with await self.connect() as db:
             async with db.transaction():
                 cur = await db.execute(

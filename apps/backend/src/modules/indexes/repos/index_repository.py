@@ -1,6 +1,7 @@
+from uuid import UUID
+
 import psycopg
 from psycopg.rows import dict_row
-from uuid import UUID
 
 
 class IndexRepository:
@@ -24,7 +25,8 @@ class IndexRepository:
     def model(self, model_id):
         with psycopg.connect(self.database_url, row_factory=dict_row) as db:
             return db.execute(
-                "select * from ragapp.embedding_models where id=%s and is_active", (model_id,)
+                "select * from ragapp.embedding_models where id=%s and is_active",
+                (model_id,),
             ).fetchone()
 
     def knowledge_base_exists(self, project_id, knowledge_base_id):
@@ -62,8 +64,8 @@ class IndexRepository:
                 "(select candidate.id from ragapp.source_versions candidate "
                 "where candidate.source_id=s.id order by candidate.version desc limit 1) sv on true "
                 "where s.project_id=%s and s.knowledge_base_id=%s and s.deleted_at is null "
-                + folder_filter +
-                "and not exists(select 1 from ragapp.ingestion_jobs existing "
+                + folder_filter
+                + "and not exists(select 1 from ragapp.ingestion_jobs existing "
                 "where existing.source_version_id=sv.id and existing.specification_id=%s) "
                 "order by s.id",
                 parameters,
@@ -81,7 +83,10 @@ class IndexRepository:
                 ).fetchone()
                 queued += int(chunk is not None) + int(index is not None)
                 if chunk or index:
-                    db.execute("update ragapp.source_versions set status='queued' where id=%s", (version["id"],))
+                    db.execute(
+                        "update ragapp.source_versions set status='queued' where id=%s",
+                        (version["id"],),
+                    )
         return queued, len(versions)
 
     def specification_scope(self, project_id, specification_id):
@@ -98,7 +103,9 @@ class IndexRepository:
         knowledge_base_id = knowledge.get("knowledge_base_id")
         if not knowledge_base_id:
             return None
-        return UUID(knowledge_base_id), [UUID(value) for value in knowledge.get("folder_ids", [])]
+        return UUID(knowledge_base_id), [
+            UUID(value) for value in knowledge.get("folder_ids", [])
+        ]
 
     def specification_exists(self, project_id, specification_id):
         with psycopg.connect(self.database_url) as db:
@@ -154,12 +161,14 @@ class IndexRepository:
                 inputs = db.execute(
                     "select a.id,a.kind,a.storage_type,a.storage_key,a.manifest,a.content_sha256,a.created_at,l.role,l.position "
                     "from ragapp.execution_inputs l join ragapp.artifacts a on a.id=l.artifact_id "
-                    "where l.execution_id=%s order by l.position", (execution["id"],)
+                    "where l.execution_id=%s order by l.position",
+                    (execution["id"],),
                 ).fetchall()
                 outputs = db.execute(
                     "select a.id,a.kind,a.storage_type,a.storage_key,a.manifest,a.content_sha256,a.created_at,l.role,l.position "
                     "from ragapp.execution_outputs l join ragapp.artifacts a on a.id=l.artifact_id "
-                    "where l.execution_id=%s order by l.position", (execution["id"],)
+                    "where l.execution_id=%s order by l.position",
+                    (execution["id"],),
                 ).fetchall()
                 traces.append({**execution, "inputs": inputs, "outputs": outputs})
         return {"specification": specification, "jobs": jobs, "traces": traces}

@@ -7,7 +7,11 @@ from uuid import UUID
 
 from modules.core.contracts.execution_contract import ExecutionRepositoryContract
 from modules.core.models.artifact_model import ArtifactKind, ArtifactStorageType
-from modules.core.models.execution_model import Execution, ExecutionKind, ExecutionStatus
+from modules.core.models.execution_model import (
+    Execution,
+    ExecutionKind,
+    ExecutionStatus,
+)
 from modules.core.models.specification_model import SpecificationKind
 from modules.core.services.artifact_service import ArtifactService
 from modules.core.services.execution_service import ExecutionService
@@ -39,16 +43,16 @@ class IngestionTracker:
         self.execution_repository = execution_repository
         self.code_revision = code_revision
 
-    def recover_previous_attempt(
-        self, job: IngestionJob
-    ) -> RecoveredIngestion | None:
+    def recover_previous_attempt(self, job: IngestionJob) -> RecoveredIngestion | None:
         if job.attempts <= 1:
             return None
         previous = None
         for attempt in range(job.attempts - 1, 0, -1):
             previous = self.execution_repository.get_by_idempotency(
                 job.project_id,
-                ExecutionKind.CHUNKING if job.stage is PipelineStage.CHUNK else ExecutionKind.INDEX_BUILD,
+                ExecutionKind.CHUNKING
+                if job.stage is PipelineStage.CHUNK
+                else ExecutionKind.INDEX_BUILD,
                 execution_key(job.id, attempt),
             )
             if previous is not None:
@@ -102,13 +106,18 @@ class IngestionTracker:
                 job.project_id,
                 job.uploaded_by,
                 ArtifactKind.CHUNK_DATASET,
-                {"dataset": "ragapp.chunks", "source_version_id": str(job.source_version_id)},
+                {
+                    "dataset": "ragapp.chunks",
+                    "source_version_id": str(job.source_version_id),
+                },
             )
             input_role = "chunks"
         execution = self.executions.create(
             job.project_id,
             job.uploaded_by,
-            ExecutionKind.CHUNKING if job.stage is PipelineStage.CHUNK else ExecutionKind.INDEX_BUILD,
+            ExecutionKind.CHUNKING
+            if job.stage is PipelineStage.CHUNK
+            else ExecutionKind.INDEX_BUILD,
             self.code_revision,
             specification_id=specification.id,
             knowledge_base_id=job.knowledge_base_id,

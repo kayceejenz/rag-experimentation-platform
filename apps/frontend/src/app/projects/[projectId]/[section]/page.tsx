@@ -11,14 +11,19 @@ import {
 import { TraceExplorer } from '@/components/traces/trace-explorer';
 import { ProjectSettings } from '@/components/projects/project-settings';
 import { ProjectAccessDenied } from '@/components/projects/project-access-denied';
+import { PromptManager } from '@/components/prompts/prompt-manager';
+import { BenchmarkManager } from '@/components/benchmarks/benchmark-manager';
+import { ExperimentManager, type ExperimentCatalog } from '@/components/experiments/experiment-manager';
 import { getAuthUser } from '@/lib/api/auth';
 import { backendJson } from '@/lib/api/backend';
 import type { Execution, ExecutionLineage } from '@/types/trace';
 import type {
 	KnowledgeBase,
+	BenchmarkDataset,
 	KnowledgeFolder,
 	Project,
 	ProjectMember,
+	PromptAsset,
 	Source,
 } from '@/types/workspace';
 
@@ -27,6 +32,7 @@ const sections = new Set<ProjectSection>([
 	'experiments',
 	'benchmarks',
 	'assistants',
+	'prompts',
 	'runs',
 	'settings',
 ]);
@@ -44,7 +50,7 @@ export default async function ProjectSectionPage({ params }: Props) {
 		.catch(() => []);
 	const project = projects.find(item => item.id === projectId);
 	if (!project) notFound();
-	const feature = section as 'indexes' | 'experiments' | 'benchmarks' | 'assistants' | 'runs' | 'settings';
+	const feature = section as 'indexes' | 'experiments' | 'benchmarks' | 'prompts' | 'assistants' | 'runs' | 'settings';
 	if (project.role !== 'owner' && !project.permissions?.[feature]?.view) {
 		return <AppShell user={{ id: user.id, email: user.email, name: user.name }} projects={projects} activeProjectId={projectId}><ProjectAccessDenied projectId={projectId} feature={feature}/></AppShell>;
 	}
@@ -91,6 +97,28 @@ export default async function ProjectSectionPage({ params }: Props) {
 				/>
 			</AppShell>
 		);
+	}
+	if (section === 'prompts') {
+		const prompts=await backendJson<{prompts:PromptAsset[]}>(user.accessToken,`/projects/${projectId}/prompts`).then(value=>value.prompts);
+		return <AppShell user={{id:user.id,email:user.email,name:user.name}} projects={projects} activeProjectId={projectId}><PromptManager project={project} initialPrompts={prompts}/></AppShell>;
+	}
+	if (section === 'benchmarks') {
+		const datasets = await backendJson<{ datasets: BenchmarkDataset[] }>(
+			user.accessToken,
+			`/projects/${projectId}/benchmarks`,
+		).then(value => value.datasets);
+		return (
+			<AppShell
+				user={{ id: user.id, email: user.email, name: user.name }}
+				projects={projects}
+				activeProjectId={projectId}>
+				<BenchmarkManager project={project} initialDatasets={datasets} />
+			</AppShell>
+		);
+	}
+	if (section === 'experiments') {
+		const catalog=await backendJson<ExperimentCatalog>(user.accessToken,`/projects/${projectId}/experiments`);
+		return <AppShell user={{id:user.id,email:user.email,name:user.name}} projects={projects} activeProjectId={projectId}><ExperimentManager project={project} initialCatalog={catalog}/></AppShell>;
 	}
 	if (section === 'runs') {
 		const [executionResult, catalog, knowledgeBase] =

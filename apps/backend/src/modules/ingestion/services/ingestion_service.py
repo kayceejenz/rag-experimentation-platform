@@ -38,7 +38,9 @@ class IngestSource:
         persisted_elements = self._elements.get_for_source(source_version_id)
         if not persisted_elements:
             elements = self._partitioner.partition(path)
-            persisted_elements = [self._persist_asset(source_id, element) for element in elements]
+            persisted_elements = [
+                self._persist_asset(source_id, element) for element in elements
+            ]
             self._elements.replace_for_source(source_version_id, persisted_elements)
         chunks = [
             Chunk(
@@ -70,7 +72,9 @@ class IngestSource:
         self._chunks.replace_embeddings(source_version_id, embeddings)
         return len(texts)
 
-    def _persist_asset(self, source_id: UUID, element: DocumentElement) -> DocumentElement:
+    def _persist_asset(
+        self, source_id: UUID, element: DocumentElement
+    ) -> DocumentElement:
         if not element.image_payload:
             return element
 
