@@ -1,11 +1,12 @@
 import { notFound } from 'next/navigation';
-import { Activity, Construction } from 'lucide-react';
 import { AppShell } from '@/components/layout/app-shell';
 import { SmoothLink } from '@/components/navigation/smooth-link';
 import { ProjectAccessDenied } from '@/components/projects/project-access-denied';
 import { getAuthUser } from '@/lib/api/auth';
 import { backendJson } from '@/lib/api/backend';
 import type { Assistant, Project } from '@/types/workspace';
+import { AssistantLineage, type AssistantLineageData } from '@/components/assistants/assistant-lineage';
+import { AssistantPlayground } from '@/components/assistants/assistant-playground';
 
 const sections: Record<string, { title: string; description: string }> = {
 	playground: {
@@ -13,19 +14,10 @@ const sections: Record<string, { title: string; description: string }> = {
 		description:
 			'An interactive surface for testing the active assistant revision.',
 	},
-	conversations: {
-		title: 'Conversations',
-		description: 'Independent sessions and their message history.',
-	},
-	runs: {
-		title: 'Runs',
+	lineage: {
+		title: 'Lineage',
 		description:
-			'Execution history with trace, lineage, evaluation, and logs.',
-	},
-	deployments: {
-		title: 'Deployments',
-		description:
-			'Environment-specific releases of immutable assistant revisions.',
+			'The immutable path from a completed experiment run to the active assistant revision.',
 	},
 };
 
@@ -59,6 +51,7 @@ export default async function AssistantSection({ params }: Props) {
 		return <AppShell user={{ id: user.id, email: user.email, name: user.name }} projects={projects} activeProjectId={projectId}><ProjectAccessDenied projectId={projectId} feature='Assistants'/></AppShell>;
 	}
 	if (!assistant || assistant.project_id !== projectId) notFound();
+	const lineage = section === 'lineage' ? await backendJson<AssistantLineageData>(user.accessToken, `/assistants/${assistantId}/lineage`).catch(() => null) : null;
 	const base = `/projects/${projectId}/assistants/${assistantId}`;
 	return (
 		<AppShell
@@ -90,28 +83,16 @@ export default async function AssistantSection({ params }: Props) {
 					))}
 				</>
 			}>
-			<section className='foundation-placeholder'>
-				<span>
-					<Construction size={22} />
-				</span>
-				<h2>{definition.title} structure</h2>
-				<p>
-					This boundary is intentionally
-					non-functional. Its workflows and data
-					contracts will be implemented
-					independently.
-				</p>
-				{section === 'runs' && (
-					<div className='run-detail-preview'>
-						<Activity size={17} />
-						<span>
-							Run detail: Summary ·
-							Trace · Lineage ·
-							Evaluation · Logs
-						</span>
-					</div>
-				)}
-			</section>
+			{section === 'playground' ? (
+				<AssistantPlayground assistant={assistant} />
+			) : lineage ? (
+				<AssistantLineage lineage={lineage} />
+			) : (
+				<section className='foundation-placeholder'>
+					<h2>No lineage available</h2>
+					<p>This assistant was not created from a completed experiment run.</p>
+				</section>
+			)}
 		</AppShell>
 	);
 }

@@ -24,14 +24,34 @@ class KnowledgeBotService:
         user_id: UUID,
         name: str,
         description: str | None,
+        experiment_variant_run_id: UUID,
     ) -> tuple[KnowledgeBot, ProjectRole]:
         access = await self.projects.require_permission(
             project_id, user_id, "assistants", "manage"
         )
         bot = await self.repository.create(
-            project_id, user_id, name.strip(), self._description(description)
+            project_id, user_id, name.strip(), self._description(description),
+            experiment_variant_run_id,
         )
         return bot, access.role
+
+    async def candidates(self, project_id: UUID, user_id: UUID) -> list[dict]:
+        await self.projects.require_permission(project_id, user_id, "assistants")
+        return await self.repository.completed_run_candidates(project_id)
+
+    async def lineage(self, bot_id: UUID, user_id: UUID) -> dict:
+        bot, _ = await self.get(bot_id, user_id)
+        result = await self.repository.lineage(bot.id, bot.project_id)
+        if not result:
+            raise KnowledgeBotNotFoundError
+        return result
+
+    async def runtime_configuration(self, bot_id: UUID, user_id: UUID) -> dict:
+        bot, _ = await self.get(bot_id, user_id)
+        result = await self.repository.runtime_configuration(bot.id, bot.project_id)
+        if not result:
+            raise ValueError("The assistant has no active experiment-backed revision")
+        return result
 
     async def list(
         self, project_id: UUID, user_id: UUID

@@ -29,6 +29,7 @@ class ChatService:
         search: KnowledgeSearch,
         generator: ChatGenerator,
         bots: KnowledgeBotService,
+        runtime_factory=None,
     ) -> None:
         self.repository = repository
         self.projects = projects
@@ -36,6 +37,7 @@ class ChatService:
         self.search = search
         self.generator = generator
         self.bots = bots
+        self.runtime_factory = runtime_factory
 
     async def list(
         self, project_id: UUID, user_id: UUID
@@ -100,11 +102,11 @@ class ChatService:
         return await self.messages.list_for_conversation(chat_id)
 
     async def send_message(self, chat_id: UUID, user_id: UUID, content: str) -> Message:
-        chat, question, history, chunks, context = await self._prepare_message(
+        chat, question, history, chunks, context, generator = await self._prepare_message(
             chat_id, user_id, content
         )
         try:
-            answer = await self.generator.generate(
+            answer = await generator.generate(
                 question,
                 context,
                 [(message.role.value, message.content) for message in history[-10:]],
@@ -134,7 +136,7 @@ class ChatService:
             },
         }
 
-        chat, question, history, chunks, context = await self._prepare_message(
+        chat, question, history, chunks, context, generator = await self._prepare_message(
             chat_id, user_id, content
         )
 
@@ -151,7 +153,7 @@ class ChatService:
         answer_parts: list[str] = []
         thinking_parts: list[str] = []
         try:
-            async for part in self.generator.generate_stream(
+            async for part in generator.generate_stream(
                 question,
                 context,
                 [(message.role.value, message.content) for message in history[-10:]],
@@ -179,10 +181,28 @@ class ChatService:
         }
 
     async def _prepare_message(self, chat_id: UUID, user_id: UUID, content: str):
-        await self.get(chat_id, user_id)
-        raise ChatGenerationError(
-            "The assistant has no active revision. Bind an index specification before running it."
-        )
+        chat, _ = await self.get(chat_id, user_id)
+        if not self.runtime_factory:
+            raise ChatGenerationError("Assistant runtime is not configured")
+        try:
+            configuration = await self.bots.runtime_configuration(chat.assistant_id, user_id)
+            search, generator = self.runtime_factory.create(configuration)
+            history = await self.messages.list_for_conversation(chat.id)
+            question = Message(conversation_id=chat.id, role=MessageRole.USER, content=content.strip())
+            await self.messages.add(question)
+            chunks = await search.search(
+                configuration["knowledge_base_id"], question.content,
+                int(configuration["retrieval"]["top_k"]),
+            )
+            context = "\n\n".join(
+                f"[{index}] {chunk.source_filename}: {chunk.text}"
+                for index, chunk in enumerate(chunks, 1)
+            )
+            return chat, question.content, history, chunks, context, generator
+        except Exception as error:
+            if isinstance(error, ChatGenerationError):
+                raise
+            raise ChatGenerationError(str(error)) from error
 
     @staticmethod
     def _citations(chunks) -> tuple[Citation, ...]:

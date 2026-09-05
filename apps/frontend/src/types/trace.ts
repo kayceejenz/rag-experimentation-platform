@@ -59,3 +59,24 @@ export type ExecutionLineage = {
 	inputs: ArtifactLink[];
 	outputs: ArtifactLink[];
 };
+
+export type ExperimentRun = {
+	run_id: string;
+	run_status: ExecutionStatus;
+	code_revision: string;
+	created_at: string;
+	started_at: string | null;
+	completed_at: string | null;
+	run_error_message: string | null;
+	experiment_id: string;
+	experiment_name: string;
+	variant_run_id: string;
+	variant_status: ExecutionStatus;
+	variant_error_message: string | null;
+	aggregate_metrics: Record<string, unknown> | null;
+	variant_id: string;
+	variant_name: string;
+	assistant_id: string | null;
+	assistant_name: string | null;
+	assistant_revision: number | null;
+};

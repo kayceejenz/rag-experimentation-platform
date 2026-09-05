@@ -42,6 +42,7 @@ from modules.sources.services.source_service import SourceService
 from integrations.embeddings import GeminiEmbedder
 from integrations.gemini_chat import GeminiChatModel
 from integrations.retrieval_store import PgVectorKnowledgeSearch
+from integrations.assistant_runtime import AssistantRuntimeFactory
 
 bearer = HTTPBearer(
     auto_error=False,
@@ -140,6 +141,7 @@ def chat_service() -> ChatService:
             thinking_level=c.gemini_thinking_level,
         ),
         knowledge_bot_service(),
+        AssistantRuntimeFactory(c),
     )
 
 

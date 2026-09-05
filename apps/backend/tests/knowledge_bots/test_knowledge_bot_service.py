@@ -18,8 +18,10 @@ class BotRepository:
     def __init__(self, bot: KnowledgeBot | None = None) -> None:
         self.bot = bot
         self.deleted = False
+        self.source_run_id = None
 
-    async def create(self, project_id, created_by, name, description):
+    async def create(self, project_id, created_by, name, description, experiment_variant_run_id):
+        self.source_run_id = experiment_variant_run_id
         self.bot = KnowledgeBot(
             project_id=project_id,
             created_by=created_by,
@@ -80,10 +82,12 @@ class KnowledgeBotServiceTests(unittest.TestCase):
         repository = BotRepository()
         service = KnowledgeBotService(repository, Projects(ProjectRole.EDITOR))
 
-        bot, role = run(service.create(uuid4(), uuid4(), "  Support bot  ", "  Docs  "))
+        source_run_id = uuid4()
+        bot, role = run(service.create(uuid4(), uuid4(), "  Support bot  ", "  Docs  ", source_run_id))
 
         self.assertEqual(bot.name, "Support bot")
         self.assertEqual(bot.description, "Docs")
+        self.assertEqual(repository.source_run_id, source_run_id)
         self.assertIs(role, ProjectRole.EDITOR)
 
     def test_viewer_cannot_create_or_update_bot(self):
@@ -94,7 +98,7 @@ class KnowledgeBotServiceTests(unittest.TestCase):
         service = KnowledgeBotService(repository, Projects(ProjectRole.VIEWER))
 
         with self.assertRaises(KnowledgeBotPermissionError):
-            run(service.create(bot.project_id, uuid4(), "Another", None))
+            run(service.create(bot.project_id, uuid4(), "Another", None, uuid4()))
 
         with self.assertRaises(KnowledgeBotPermissionError):
             run(service.update(bot.id, uuid4(), "Changed", None, False, None))

@@ -14,13 +14,15 @@ import { ProjectAccessDenied } from '@/components/projects/project-access-denied
 import { PromptManager } from '@/components/prompts/prompt-manager';
 import { BenchmarkManager } from '@/components/benchmarks/benchmark-manager';
 import { ExperimentManager, type ExperimentCatalog } from '@/components/experiments/experiment-manager';
+import { AssistantManager, type AssistantCandidate } from '@/components/assistants/assistant-manager';
 import { getAuthUser } from '@/lib/api/auth';
 import { backendJson } from '@/lib/api/backend';
-import type { Execution, ExecutionLineage } from '@/types/trace';
+import type { Execution, ExecutionLineage, ExperimentRun } from '@/types/trace';
 import type {
 	KnowledgeBase,
 	BenchmarkDataset,
 	KnowledgeFolder,
+	Assistant,
 	Project,
 	ProjectMember,
 	PromptAsset,
@@ -120,13 +122,24 @@ export default async function ProjectSectionPage({ params }: Props) {
 		const catalog=await backendJson<ExperimentCatalog>(user.accessToken,`/projects/${projectId}/experiments`);
 		return <AppShell user={{id:user.id,email:user.email,name:user.name}} projects={projects} activeProjectId={projectId}><ExperimentManager project={project} initialCatalog={catalog}/></AppShell>;
 	}
+	if (section === 'assistants') {
+		const [assistantResult, candidateResult] = await Promise.all([
+			backendJson<{ assistants: Assistant[] }>(user.accessToken, `/projects/${projectId}/assistants`),
+			backendJson<{ candidates: AssistantCandidate[] }>(user.accessToken, `/projects/${projectId}/assistant-candidates`),
+		]);
+		return <AppShell user={{ id: user.id, email: user.email, name: user.name }} projects={projects} activeProjectId={projectId}><AssistantManager project={project} initialAssistants={assistantResult.assistants} candidates={candidateResult.candidates}/></AppShell>;
+	}
 	if (section === 'runs') {
-		const [executionResult, catalog, knowledgeBase] =
+		const [executionResult, experimentRunResult, catalog, knowledgeBase] =
 			await Promise.all([
 				backendJson<{ executions: Execution[] }>(
 					user.accessToken,
 					`/projects/${projectId}/executions?limit=100`,
 				).catch(() => ({ executions: [] })),
+				backendJson<{ runs: ExperimentRun[] }>(
+					user.accessToken,
+					`/projects/${projectId}/experiments/runs`,
+				).catch(() => ({ runs: [] })),
 				backendJson<IndexCatalog>(
 					user.accessToken,
 					`/projects/${projectId}/indexes`,
@@ -168,6 +181,7 @@ export default async function ProjectSectionPage({ params }: Props) {
 					initialExecutions={
 						executionResult.executions
 					}
+					initialExperimentRuns={experimentRunResult.runs}
 					initialLineage={initialLineage}
 					resources={{
 						sources,

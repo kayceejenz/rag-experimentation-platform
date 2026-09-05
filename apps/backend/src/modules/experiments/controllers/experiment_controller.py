@@ -59,6 +59,18 @@ def create_experiment(
         raise translate(error) from None
 
 
+@router.get("/runs")
+def project_runs(
+    project_id: UUID,
+    user: Annotated[AuthenticatedUser, Depends(current_user)],
+    service=Depends(experiment_service),
+):
+    try:
+        return service.project_runs(project_id, user.id)
+    except PermissionError as error:
+        raise translate(error) from None
+
+
 @router.get("/{experiment_id}")
 def detail(
     project_id: UUID,

@@ -20,6 +20,11 @@ class KnowledgeBot:
     id: UUID = field(default_factory=uuid4)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    active_revision_version: int | None = None
+    source_run_id: UUID | None = None
+    source_variant_run_id: UUID | None = None
+    source_experiment_name: str | None = None
+    source_variant_name: str | None = None
 
 
 class KnowledgeBotNotFoundError(Exception):

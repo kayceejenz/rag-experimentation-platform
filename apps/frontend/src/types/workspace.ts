@@ -122,6 +122,11 @@ export type Assistant = {
 	role: string;
 	created_at: string;
 	updated_at: string;
+	active_revision_version: number | null;
+	source_run_id: string | null;
+	source_variant_run_id: string | null;
+	source_experiment_name: string | null;
+	source_variant_name: string | null;
 };
 
 export type Chat = {

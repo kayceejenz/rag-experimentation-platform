@@ -58,6 +58,24 @@ class ExperimentRunRepository:
                 (experiment_id,),
             ).fetchall()
 
+    def project_runs(self, project_id, limit=100):
+        with db_connection(self.url, row_factory=dict_row) as db:
+            return db.execute(
+                "select r.id run_id,r.status run_status,r.code_revision,r.created_at,"
+                "r.started_at,r.completed_at,r.error_message run_error_message,"
+                "e.id experiment_id,e.name experiment_name,"
+                "vr.id variant_run_id,vr.status variant_status,vr.error_message variant_error_message,"
+                "vr.aggregate_metrics,v.id variant_id,v.name variant_name,"
+                "a.id assistant_id,a.name assistant_name,ar.version assistant_revision "
+                "from ragapp.experiment_runs r join ragapp.experiments e on e.id=r.experiment_id "
+                "join ragapp.experiment_variant_runs vr on vr.run_id=r.id "
+                "join ragapp.experiment_variants v on v.id=vr.variant_id "
+                "left join ragapp.assistant_revisions ar on ar.experiment_variant_run_id=vr.id "
+                "left join ragapp.assistants a on a.active_revision_id=ar.id and a.deleted_at is null "
+                "where r.project_id=%s order by r.created_at desc,v.name limit %s",
+                (project_id, limit),
+            ).fetchall()
+
     def run_detail(self, project_id, run_id):
         with db_connection(self.url, row_factory=dict_row) as db:
             run = db.execute(

@@ -180,7 +180,9 @@ class PgVectorKnowledgeSearch:
 
     def _score_expression(self, distance_expression):
         if self.distance_metric == "cosine":
-            return f"1-({distance_expression})"
+            # pgvector cosine distance spans 0..2. Convert cosine similarity's
+            # -1..1 range into the public retrieval score contract of 0..1.
+            return f"1-(({distance_expression})/2)"
         if self.distance_metric == "inner_product":
             return f"-({distance_expression})"
         return f"1/(1+({distance_expression}))"

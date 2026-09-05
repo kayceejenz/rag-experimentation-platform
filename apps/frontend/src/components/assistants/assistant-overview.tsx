@@ -1,12 +1,4 @@
-import {
-	Activity,
-	Bot,
-	Boxes,
-	GitBranch,
-	MessageSquareText,
-	Rocket,
-	TestTube2,
-} from 'lucide-react';
+import { Boxes, GitBranch, TestTube2 } from 'lucide-react';
 import { SmoothLink } from '@/components/navigation/smooth-link';
 import type { Assistant, Project } from '@/types/workspace';
 
@@ -27,39 +19,18 @@ export function AssistantOverview({
 			href: `${base}/playground`,
 		},
 		{
-			title: 'Conversations',
+			title: 'Lineage',
 			description:
-				'Independent user sessions owned by this assistant.',
-			icon: MessageSquareText,
-			href: `${base}/conversations`,
-		},
-		{
-			title: 'Runs',
-			description:
-				'Executions with trace, lineage, evaluation, and logs.',
-			icon: Activity,
-			href: `${base}/runs`,
-		},
-		{
-			title: 'Deployments',
-			description:
-				'Promote an immutable assistant revision to an environment.',
-			icon: Rocket,
-			href: `${base}/deployments`,
+				'Trace the tested experiment configuration promoted into this assistant.',
+			icon: GitBranch,
+			href: `${base}/lineage`,
 		},
 	];
 	return (
 		<div className='assistant-foundation'>
 			<header className='bot-console-hero'>
 				<div className='bot-console-identity'>
-					<span className='bot-avatar'>
-						<Bot size={25} />
-					</span>
 					<div>
-						<span className='eyebrow'>
-							{project.name} /
-							Assistant
-						</span>
 						<h1>{assistant.name}</h1>
 						<p>
 							{assistant.description ||
@@ -86,22 +57,6 @@ export function AssistantOverview({
 					</SmoothLink>
 				))}
 			</nav>
-			<section className='foundation-callout'>
-				<GitBranch size={18} />
-				<div>
-					<strong>
-						Active revision not configured
-					</strong>
-					<p>
-						An assistant revision will bind
-						immutable index, retrieval,
-						generation, and prompt
-						specifications. The UI boundary
-						is ready; configuration
-						workflows come next.
-					</p>
-				</div>
-			</section>
 			<div className='foundation-grid'>
 				{sections.map(
 					({

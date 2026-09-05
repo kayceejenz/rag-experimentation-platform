@@ -83,6 +83,10 @@ class ExperimentService:
             result["runs"] = self.runs.runs(experiment_id)
         return result
 
+    def project_runs(self, project_id, user_id, limit=100):
+        self._authorise(project_id, user_id)
+        return {"runs": self.runs.project_runs(project_id, limit)}
+
     def start_run(self, project_id, user_id, experiment_id, variant_ids):
         self._authorise(project_id, user_id, "manage")
         if not self.repository.detail(project_id, experiment_id):

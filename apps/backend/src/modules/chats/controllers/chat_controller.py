@@ -198,6 +198,7 @@ async def send_message(
     ) as error:
         raise translate(error) from None
     except ChatGenerationError:
+        logger.exception("Assistant message generation failed")
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY,
             {
