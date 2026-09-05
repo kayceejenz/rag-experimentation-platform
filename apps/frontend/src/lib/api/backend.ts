@@ -6,6 +6,13 @@ type BackendRequest = Omit<RequestInit, 'headers'> & {
 	headers?: HeadersInit;
 };
 
+export class BackendRequestError extends Error {
+	constructor(message: string, public readonly status: number) {
+		super(message);
+		this.name = 'BackendRequestError';
+	}
+}
+
 export async function backendFetch(
 	accessToken: string,
 	path: string,
@@ -45,10 +52,11 @@ export async function backendJson<T>(
 		error?: { message?: string };
 	};
 	if (!response.ok) {
-		throw new Error(
+		throw new BackendRequestError(
 			body.error?.message ??
 				body.detail ??
 				`Backend request failed with status ${response.status}.`,
+			response.status,
 		);
 	}
 	return body;

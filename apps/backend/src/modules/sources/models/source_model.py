@@ -28,3 +28,4 @@ class Source:
     job_id: UUID | None = None
     status: SourceStatus = SourceStatus.UPLOADED
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    folder_id: UUID | None = None

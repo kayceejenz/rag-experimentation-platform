@@ -6,8 +6,8 @@ from uuid import UUID, uuid4
 @dataclass(frozen=True)
 class KnowledgeBase:
     project_id: UUID
-    chat_id: UUID
-    name: str = "Chat knowledge base"
+    created_by: UUID
+    name: str = "Knowledge base"
     id: UUID = field(default_factory=uuid4)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 

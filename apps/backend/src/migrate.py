@@ -9,9 +9,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import psycopg
-
 from core.settings import Settings
-
 
 MIGRATION_PATTERN = re.compile(r"^(?P<version>\d{3})_(?P<name>[a-z0-9_]+)\.sql$")
 TRANSACTION_PATTERN = re.compile(
@@ -94,15 +92,22 @@ def applied_migrations(connection: psycopg.Connection) -> dict[int, tuple[str, s
     rows = connection.execute(
         "select version, filename, checksum from ragapp.schema_migrations order by version"
     ).fetchall()
-    return {int(version): (str(filename), str(checksum)) for version, filename, checksum in rows}
+    return {
+        int(version): (str(filename), str(checksum))
+        for version, filename, checksum in rows
+    }
 
 
-def validate_history(migrations: list[Migration], applied: dict[int, tuple[str, str]]) -> None:
+def validate_history(
+    migrations: list[Migration], applied: dict[int, tuple[str, str]]
+) -> None:
     available = {migration.version: migration for migration in migrations}
     for version, (filename, checksum) in applied.items():
         migration = available.get(version)
         if migration is None:
-            raise RuntimeError(f"Applied migration {version:03d} ({filename}) is missing")
+            raise RuntimeError(
+                f"Applied migration {version:03d} ({filename}) is missing"
+            )
         if migration.filename != filename or migration.checksum != checksum:
             raise RuntimeError(
                 f"Applied migration {version:03d} was modified; create a new migration instead"
@@ -117,7 +122,11 @@ def migrate(*, status_only: bool = False) -> None:
         try:
             applied = applied_migrations(connection)
             validate_history(migrations, applied)
-            pending = [migration for migration in migrations if migration.version not in applied]
+            pending = [
+                migration
+                for migration in migrations
+                if migration.version not in applied
+            ]
             if status_only:
                 for migration in migrations:
                     state = "applied" if migration.version in applied else "pending"
@@ -145,7 +154,9 @@ def migrate(*, status_only: bool = False) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Apply migrations")
     parser.add_argument(
-        "--status", action="store_true", help="Show migration status without applying changes"
+        "--status",
+        action="store_true",
+        help="Show migration status without applying changes",
     )
     args = parser.parse_args()
     migrate(status_only=args.status)

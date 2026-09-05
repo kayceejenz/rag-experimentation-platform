@@ -1,3 +1,2 @@
-
 class JobNotFoundError(Exception):
     pass

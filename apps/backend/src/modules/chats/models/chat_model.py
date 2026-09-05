@@ -12,10 +12,10 @@ class ChatStatus(StrEnum):
 @dataclass(frozen=True)
 class Chat:
     id: UUID
+    assistant_id: UUID
     project_id: UUID
     created_by: UUID
     title: str
     status: ChatStatus
-    knowledge_base_id: UUID
     created_at: datetime
     updated_at: datetime

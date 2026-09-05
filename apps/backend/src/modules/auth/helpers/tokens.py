@@ -2,12 +2,13 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import jwt
-
 from modules.auth.models.auth_user_model import AuthenticatedUser
 
 
 class JwtAccessTokenIssuer:
-    def __init__(self, secret: str, issuer: str, audience: str, lifetime_minutes: int = 15) -> None:
+    def __init__(
+        self, secret: str, issuer: str, audience: str, lifetime_minutes: int = 15
+    ) -> None:
         self.secret, self.issuer, self.audience = secret, issuer, audience
         self.lifetime = timedelta(minutes=lifetime_minutes)
 
@@ -36,4 +37,6 @@ class JwtAccessTokenIssuer:
             audience=self.audience,
             options={"require": ["sub", "jti", "iss", "aud", "iat", "exp"]},
         )
-        return AuthenticatedUser(UUID(data["sub"]), data["email"], None, int(data["ver"]))
+        return AuthenticatedUser(
+            UUID(data["sub"]), data["email"], None, int(data["ver"])
+        )

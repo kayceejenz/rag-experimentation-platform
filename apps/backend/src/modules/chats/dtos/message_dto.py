@@ -1,12 +1,10 @@
-
 from dataclasses import Field
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
-
 from modules.chats.dtos.citation_dto import CitationResponse
 from modules.chats.models.message_model import MessageRole
+from pydantic import BaseModel, ConfigDict
 
 
 class SendMessageRequest(BaseModel):
@@ -14,13 +12,15 @@ class SendMessageRequest(BaseModel):
 
     content: str = Field(min_length=1, max_length=12000)
 
+
 class MessageResponse(BaseModel):
     id: UUID
-    chat_id: UUID
+    conversation_id: UUID
     role: MessageRole
     content: str
     citations: list[CitationResponse]
     created_at: datetime
+
 
 class MessageListResponse(BaseModel):
     messages: list[MessageResponse]

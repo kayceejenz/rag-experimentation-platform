@@ -1,16 +1,15 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
-
 from modules.chats.models.chat_model import ChatStatus
 from modules.chats.models.message_model import MessageRole
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CreateChatRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    title: str = Field(default="New chat", min_length=1, max_length=240)
+    title: str = Field(default="New conversation", min_length=1, max_length=240)
 
 
 class UpdateChatRequest(BaseModel):
@@ -22,9 +21,9 @@ class UpdateChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     id: UUID
+    assistant_id: UUID
     project_id: UUID
     created_by: UUID
-    knowledge_base_id: UUID
     title: str
     status: ChatStatus
     role: str
@@ -33,7 +32,7 @@ class ChatResponse(BaseModel):
 
 
 class ChatListResponse(BaseModel):
-    chats: list[ChatResponse]
+    conversations: list[ChatResponse]
 
 
 class SendMessageRequest(BaseModel):
@@ -53,7 +52,7 @@ class CitationResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     id: UUID
-    chat_id: UUID
+    conversation_id: UUID
     role: MessageRole
     content: str
     citations: list[CitationResponse]
@@ -62,4 +61,3 @@ class MessageResponse(BaseModel):
 
 class MessageListResponse(BaseModel):
     messages: list[MessageResponse]
-

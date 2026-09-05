@@ -3,6 +3,7 @@ import { Outfit } from 'next/font/google';
 import { ClientProviders } from '@/components/auth/client-providers';
 import { AppVersion } from '@/components/layout/app-version';
 import './globals.css';
+import './experiment-overrides.css';
 
 const font = Outfit({
 	subsets: ['latin'],

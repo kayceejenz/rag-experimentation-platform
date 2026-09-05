@@ -1,8 +1,7 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
-
 from api.dependencies import auth_service, current_user, settings
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from modules.auth.dtos.login_dto import LoginRequest
 from modules.auth.dtos.register_dto import RegisterRequest
 from modules.auth.dtos.token_dto import TokenResponse
@@ -42,13 +41,16 @@ def token_response(pair: TokenPair) -> TokenResponse:
 
 @router.post("/register", response_model=UserResponse, status_code=201)
 def register(
-    body: RegisterRequest, service: Annotated[AuthenticationService, Depends(auth_service)]
+    body: RegisterRequest,
+    service: Annotated[AuthenticationService, Depends(auth_service)],
 ):
     try:
         user = service.register(body.email, body.password, body.display_name)
     except AccountAlreadyExistsError:
         raise HTTPException(409, "Account already exists") from None
-    return UserResponse(id=str(user.id), email=user.email, display_name=user.display_name)
+    return UserResponse(
+        id=str(user.id), email=user.email, display_name=user.display_name
+    )
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -101,4 +103,6 @@ def logout(
 
 @router.get("/me", response_model=UserResponse)
 def me(user: Annotated[AuthenticatedUser, Depends(current_user)]) -> UserResponse:
-    return UserResponse(id=str(user.id), email=user.email, display_name=user.display_name)
+    return UserResponse(
+        id=str(user.id), email=user.email, display_name=user.display_name
+    )

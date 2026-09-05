@@ -1,7 +1,12 @@
 import psycopg
+from modules.jobs.models.job_model import (
+    IngestionJob,
+    IngestionJobDetails,
+    JobStatus,
+    PipelineStage,
+)
 from psycopg.rows import dict_row
-
-from modules.jobs.models.job_model import IngestionJob, IngestionJobDetails, JobStatus
+from integrations.database import db_connection
 
 
 class JobRepository:
@@ -10,17 +15,22 @@ class JobRepository:
         self.lease_seconds = lease_seconds
 
     def claim_next(self, worker_id: str) -> IngestionJob | None:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "with candidate as (select id from ragapp.ingestion_jobs "
                 "where attempts<max_attempts and ((status='queued' and available_at<=now()) or "
                 "(status='running' and lease_expires_at<now())) "
+                "and (stage='chunk' or specification_id is null or exists("
+                "select 1 from ragapp.ingestion_jobs dependency where dependency.source_version_id="
+                "ingestion_jobs.source_version_id and dependency.stage='chunk' and "
+                "dependency.specification_id=ingestion_jobs.specification_id and dependency.status='completed')) "
                 "order by priority,created_at for update skip locked limit 1) "
                 "update ragapp.ingestion_jobs j set status='running',attempts=attempts+1,"
                 "locked_at=now(),locked_by=%s,lease_expires_at=now()+(%s*interval '1 second') "
                 "from candidate c,ragapp.source_versions sv,ragapp.sources s "
                 "where j.id=c.id and sv.id=j.source_version_id and s.id=sv.source_id "
-                "returning j.*,sv.source_id,sv.storage_key,s.project_id,s.knowledge_base_id",
+                "returning j.*,sv.source_id,sv.storage_key,sv.content_type,"
+                "sv.byte_size,sv.content_sha256,s.project_id,s.knowledge_base_id,s.uploaded_by",
                 (worker_id, self.lease_seconds),
             ).fetchone()
             if row:
@@ -33,7 +43,7 @@ class JobRepository:
         return self._model(row) if row else None
 
     def get_for_user(self, job_id, user_id) -> IngestionJobDetails | None:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "select j.*,sv.source_id,sv.filename,sv.status source_status,"
                 "sv.element_count,sv.chunk_count,sv.processing_started_at,"
@@ -70,7 +80,7 @@ class JobRepository:
         )
 
     def complete(self, job: IngestionJob, element_count: int, chunk_count: int) -> None:
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             db.execute(
                 "update ragapp.ingestion_jobs set status='completed',completed_at=now(),"
                 "lease_expires_at=null where id=%s",
@@ -84,7 +94,7 @@ class JobRepository:
 
     def fail(self, job: IngestionJob, error: str, permanent: bool = False) -> None:
         terminal = permanent or job.attempts >= job.max_attempts
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             db.execute(
                 "update ragapp.ingestion_jobs set status=%s,last_error=%s,locked_at=null,"
                 "locked_by=null,lease_expires_at=null,"
@@ -96,11 +106,16 @@ class JobRepository:
                 "update ragapp.source_versions set status=%s,error_code='ingestion_failed',"
                 "error_message=%s,"
                 "processing_completed_at=case when %s then now() else null end where id=%s",
-                ("failed" if terminal else "queued", error[:4000], terminal, job.source_version_id),
+                (
+                    "failed" if terminal else "queued",
+                    error[:4000],
+                    terminal,
+                    job.source_version_id,
+                ),
             )
 
     def renew_lease(self, job_id) -> None:
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             db.execute(
                 "update ragapp.ingestion_jobs "
                 "set lease_expires_at=now()+(%s*interval '1 second') "
@@ -117,6 +132,12 @@ class JobRepository:
             project_id=row["project_id"],
             knowledge_base_id=row["knowledge_base_id"],
             storage_key=row["storage_key"],
+            uploaded_by=row["uploaded_by"],
+            content_type=row["content_type"],
+            byte_size=row["byte_size"],
+            content_sha256=row["content_sha256"],
+            stage=PipelineStage(row["stage"]),
+            specification_id=row["specification_id"],
             status=JobStatus(row["status"]),
             attempts=row["attempts"],
             max_attempts=row["max_attempts"],

@@ -17,7 +17,9 @@ class RefreshTokenRepository:
             row["revoked_at"],
         )
 
-    def create(self, user_id, family_id, token_hash, expires_at, user_agent, ip_address):
+    def create(
+        self, user_id, family_id, token_hash, expires_at, user_agent, ip_address
+    ):
         with self.users.connect() as db:
             row = db.execute(
                 "insert into ragapp.refresh_tokens(user_id,family_id,token_hash,expires_at,"
@@ -38,7 +40,12 @@ class RefreshTokenRepository:
             replacement = db.execute(
                 "insert into ragapp.refresh_tokens(user_id,family_id,token_hash,expires_at) "
                 "values(%s,%s,%s,%s) returning *",
-                (current.user_id, current.family_id, replacement_hash, replacement_expires_at),
+                (
+                    current.user_id,
+                    current.family_id,
+                    replacement_hash,
+                    replacement_expires_at,
+                ),
             ).fetchone()
             result = db.execute(
                 "update ragapp.refresh_tokens set revoked_at=now(), last_used_at=now(), "

@@ -15,3 +15,9 @@ class KnowledgeBaseService:
         if not knowledge_base:
             raise KnowledgeBaseNotFoundError
         return knowledge_base
+
+    def get_for_project(self, project_id: UUID, user_id: UUID) -> KnowledgeBase:
+        knowledge_base = self.repository.get_for_project(project_id, user_id)
+        if knowledge_base is None:
+            raise KnowledgeBaseNotFoundError
+        return knowledge_base

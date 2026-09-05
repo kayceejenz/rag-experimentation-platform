@@ -1,0 +1,4 @@
+import {NextResponse} from 'next/server'; import {getAuthUser} from '@/lib/api/auth'; import {backendFetch} from '@/lib/api/backend'; import {apiError,proxyResponse} from '@/lib/api/proxy-response';
+type P={params:Promise<{projectId:string;promptId:string}>};
+export async function GET(_:Request,{params}:P){const u=await getAuthUser();if(!u)return NextResponse.json({error:'Unauthorized'},{status:401});try{const {projectId,promptId}=await params;return proxyResponse(await backendFetch(u.accessToken,`/projects/${projectId}/prompts/${promptId}`));}catch(e){return apiError(e)}}
+export async function DELETE(_:Request,{params}:P){const u=await getAuthUser();if(!u)return NextResponse.json({error:'Unauthorized'},{status:401});try{const {projectId,promptId}=await params;return proxyResponse(await backendFetch(u.accessToken,`/projects/${projectId}/prompts/${promptId}`,{method:'DELETE'}));}catch(e){return apiError(e)}}
