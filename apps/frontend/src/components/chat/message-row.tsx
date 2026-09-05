@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Bot, Check, Copy, User, ChevronDown, BookOpen } from 'lucide-react';
 import type { Message } from '@/types/workspace';
+import { formatTime } from '@/lib/format';
 import { CitationFootnotes } from './citation-footnotes';
 import { ToolCallSteps } from './tool-call-step';
 
@@ -97,17 +98,7 @@ export function MessageRow({
 							: 'You'}
 					</strong>
 					<time>
-						{new Intl.DateTimeFormat(
-							undefined,
-							{
-								hour: '2-digit',
-								minute: '2-digit',
-							},
-						).format(
-							new Date(
-								message.created_at,
-							),
-						)}
+						{formatTime(message.created_at)}
 					</time>
 				</div>
 				{isAssistant ? (

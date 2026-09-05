@@ -8,6 +8,7 @@ from modules.core.models.artifact_model import (
 )
 from modules.core.models.error_model import ArtifactIdentityConflictError
 from psycopg.rows import dict_row
+from integrations.database import db_connection
 
 
 class ArtifactRepository:
@@ -15,7 +16,7 @@ class ArtifactRepository:
         self.database_url = database_url
 
     def register(self, artifact: Artifact) -> Artifact:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "insert into ragapp.artifacts("
                 "id,project_id,kind,storage_type,storage_key,content_sha256,manifest,"
@@ -47,7 +48,7 @@ class ArtifactRepository:
         return registered
 
     def get(self, artifact_id: UUID, project_id: UUID) -> Artifact | None:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "select * from ragapp.artifacts where id=%s and project_id=%s",
                 (artifact_id, project_id),

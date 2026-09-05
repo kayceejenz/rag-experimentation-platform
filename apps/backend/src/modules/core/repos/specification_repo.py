@@ -4,6 +4,7 @@ import psycopg
 from modules.core.models.error_model import SpecificationHashCollisionError
 from modules.core.models.specification_model import Specification, SpecificationKind
 from psycopg.rows import dict_row
+from integrations.database import db_connection
 
 
 class SpecificationRepository:
@@ -11,7 +12,7 @@ class SpecificationRepository:
         self.database_url = database_url
 
     def register(self, specification: Specification) -> Specification:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "insert into ragapp.specifications("
                 "id,project_id,kind,schema_version,configuration,configuration_hash,created_by) "
@@ -50,7 +51,7 @@ class SpecificationRepository:
         return registered
 
     def get(self, specification_id: UUID, project_id: UUID) -> Specification | None:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "select * from ragapp.specifications where id=%s and project_id=%s",
                 (specification_id, project_id),

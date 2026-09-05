@@ -1,6 +1,7 @@
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
+from integrations.database import db_connection
 
 
 class BenchmarkRepository:
@@ -8,14 +9,14 @@ class BenchmarkRepository:
         self.database_url = database_url
 
     def can_access(self, project_id, user_id, action="view"):
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             return db.execute(
                 "select ragapp.has_project_permission(%s,%s,'benchmarks',%s)",
                 (project_id, user_id, action),
             ).fetchone()[0]
 
     def list(self, project_id):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             return db.execute(
                 "select distinct on (lower(name)) id,project_id,name,description,version,"
                 "jsonb_array_length(content) example_count,content_sha256,created_by,created_at,"
@@ -34,7 +35,7 @@ class BenchmarkRepository:
         content,
         content_sha256,
     ):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             return db.execute(
                 "insert into ragapp.benchmark_datasets"
                 "(project_id,name,description,version,content,content_sha256,created_by) "
@@ -50,7 +51,7 @@ class BenchmarkRepository:
             ).fetchone()
 
     def detail(self, project_id, dataset_id):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             dataset = db.execute(
                 "select * from ragapp.benchmark_datasets where id=%s and project_id=%s",
                 (dataset_id, project_id),
@@ -75,7 +76,7 @@ class BenchmarkRepository:
         content,
         content_sha256,
     ):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             return db.execute(
                 "insert into ragapp.benchmark_datasets"
                 "(project_id,name,description,version,content,content_sha256,created_by) "

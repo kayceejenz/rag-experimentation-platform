@@ -7,6 +7,14 @@ class Repository:
     def can_access(self, *args): return True
     def dataset_exists(self, *args): return True
     def create_experiment(self, *args): return {"id": "experiment"}
+    def detail(self, *args): return {"experiment": {"id": "experiment"}}
+
+
+class Runs:
+    def __init__(self): self.arguments = None
+    def enqueue(self, *args):
+        self.arguments = args
+        return {"id": "run"}
 
 
 class ExperimentValidationTests(unittest.TestCase):
@@ -28,3 +36,14 @@ class ExperimentValidationTests(unittest.TestCase):
             ["faithfulness", "context_precision", "faithfulness"], "faithfulness"
         )
         self.assertEqual({"id": "experiment"}, result)
+
+    def test_run_targets_only_selected_variants(self):
+        runs = Runs()
+        service = ExperimentService(
+            Repository(), runs, "revision", ["gemini-2.5-flash"]
+        )
+
+        result = service.start_run("project", "user", "experiment", ["variant"])
+
+        self.assertEqual({"id": "run"}, result)
+        self.assertEqual(["variant"], runs.arguments[-1])

@@ -14,6 +14,7 @@ from modules.core.models.execution_model import (
     ExecutionStatus,
 )
 from psycopg.rows import dict_row
+from integrations.database import db_connection
 
 
 class ExecutionRepository:
@@ -21,7 +22,7 @@ class ExecutionRepository:
         self.database_url = database_url
 
     def create(self, execution: Execution) -> Execution:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "insert into ragapp.executions("
                 "id,project_id,kind,specification_id,knowledge_base_id,status,idempotency_key,code_revision,"
@@ -60,7 +61,7 @@ class ExecutionRepository:
         return created
 
     def get(self, execution_id: UUID, project_id: UUID) -> Execution | None:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "select * from ragapp.executions where id=%s and project_id=%s",
                 (execution_id, project_id),
@@ -73,7 +74,7 @@ class ExecutionRepository:
         kind: ExecutionKind,
         idempotency_key: str,
     ) -> Execution | None:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "select * from ragapp.executions "
                 "where project_id=%s and kind=%s and idempotency_key=%s",
@@ -133,7 +134,7 @@ class ExecutionRepository:
         project_id: UUID,
         completed_at: datetime,
     ) -> Execution:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "update ragapp.executions set status='cancelled',completed_at=%s "
                 "where id=%s and project_id=%s and status in ('pending','running') returning *",
@@ -155,7 +156,7 @@ class ExecutionRepository:
         result_summary: dict[str, Any],
         completed_at: datetime,
     ) -> Execution:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             for output in outputs:
                 row = db.execute(
                     "insert into ragapp.execution_outputs("
@@ -204,7 +205,7 @@ class ExecutionRepository:
         assignment: str,
         values: tuple[Any, ...],
     ) -> Execution:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 f"update ragapp.executions set {assignment} "
                 "where id=%s and project_id=%s and status=%s returning *",
@@ -224,7 +225,7 @@ class ExecutionRepository:
         )
 
     def _add_link(self, table: str, link: ExecutionArtifact) -> ExecutionArtifact:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 f"insert into ragapp.{table}(project_id,execution_id,artifact_id,role,position) "
                 "values(%s,%s,%s,%s,%s) on conflict do nothing returning *",

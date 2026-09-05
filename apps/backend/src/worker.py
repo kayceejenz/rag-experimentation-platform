@@ -1,9 +1,30 @@
 import argparse
-import time
+import asyncio
 
 from core.settings import Settings
+from integrations.database import (
+    close_database_pools,
+    configure_database_pools,
+    open_database_pools,
+)
 from modules.ingestion.services.ingestion_worker import run_once
 from modules.experiments.services.experiment_runner import run_once as run_experiment_once
+
+
+async def run_worker(config: Settings, once: bool) -> None:
+    try:
+        if config.database_url:
+            await open_database_pools(config.database_url)
+        while True:
+            processed = await run_experiment_once(config)
+            if not processed:
+                processed = await asyncio.to_thread(run_once, config)
+            if once or not config.has_database:
+                break
+            if not processed:
+                await asyncio.sleep(config.worker_poll_interval_seconds)
+    finally:
+        await close_database_pools()
 
 
 def main() -> None:
@@ -11,13 +32,13 @@ def main() -> None:
     parser.add_argument("--once", action="store_true", help="Process one job and exit.")
     args = parser.parse_args()
     config = Settings()
+    configure_database_pools(
+        config.database_pool_min_size,
+        config.database_pool_max_size,
+        config.database_pool_timeout_seconds,
+    )
 
-    while True:
-        processed = run_experiment_once(config) or run_once(config)
-        if args.once or not config.has_database:
-            break
-        if not processed:
-            time.sleep(config.worker_poll_interval_seconds)
+    asyncio.run(run_worker(config, args.once))
 
 
 if __name__ == "__main__":

@@ -8,6 +8,9 @@ from modules.experiments.contracts.create_experiment_request import (
     CreateExperimentRequest,
 )
 from modules.experiments.contracts.create_variation import CreateVariantRequest
+from modules.experiments.contracts.start_experiment_run import (
+    StartExperimentRunRequest,
+)
 
 router = APIRouter(prefix="/projects/{project_id}/experiments", tags=["experiments"])
 
@@ -111,11 +114,14 @@ def delete_variant(
 def start_run(
     project_id: UUID,
     experiment_id: UUID,
+    body: StartExperimentRunRequest,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
     service=Depends(experiment_service),
 ):
     try:
-        return service.start_run(project_id, user.id, experiment_id)
+        return service.start_run(
+            project_id, user.id, experiment_id, body.variant_ids
+        )
     except (PermissionError, LookupError, ValueError) as error:
         raise translate(error) from None
 

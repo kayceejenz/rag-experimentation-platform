@@ -1,6 +1,10 @@
-import time
 import math
+import time
+
 import httpx
+
+from integrations.http_client import shared_http_client
+
 
 class GeminiEmbedder:
     def __init__(
@@ -12,6 +16,7 @@ class GeminiEmbedder:
         batch_size: int = 100,
         timeout_seconds: float = 120,
         max_retries: int = 4,
+        client: httpx.Client | None = None,
     ) -> None:
         self.api_key = api_key
         self.model = model.removeprefix("models/")
@@ -20,6 +25,7 @@ class GeminiEmbedder:
         self.batch_size = batch_size
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
+        self.client = client or shared_http_client()
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
@@ -27,17 +33,16 @@ class GeminiEmbedder:
 
         unique_texts = list(dict.fromkeys(texts))
         vectors_by_text: dict[str, list[float]] = {}
-        with httpx.Client(timeout=self.timeout_seconds) as client:
-            for start in range(0, len(unique_texts), self.batch_size):
-                batch = unique_texts[start : start + self.batch_size]
-                vectors = self._embed_batch(client, batch)
-                if len(vectors) != len(batch):
-                    raise ValueError("Gemini returned the wrong number of embedding vectors")
-                
-                vectors_by_text.update(zip(batch, vectors, strict=True))
+        for start in range(0, len(unique_texts), self.batch_size):
+            batch = unique_texts[start : start + self.batch_size]
+            vectors = self._embed_batch(batch)
+            if len(vectors) != len(batch):
+                raise ValueError("Gemini returned the wrong number of embedding vectors")
+
+            vectors_by_text.update(zip(batch, vectors, strict=True))
         return [vectors_by_text[text] for text in texts]
 
-    def _embed_batch(self, client: httpx.Client, texts: list[str]) -> list[list[float]]:
+    def _embed_batch(self, texts: list[str]) -> list[list[float]]:
         url = f"{self.base_url}/models/{self.model}:batchEmbedContents"
         payload = {
             "requests": [
@@ -50,10 +55,11 @@ class GeminiEmbedder:
             ]
         }
         for attempt in range(self.max_retries + 1):
-            response = client.post(
+            response = self.client.post(
                 url,
                 headers={"x-goog-api-key": self.api_key},  
                 json=payload,
+                timeout=self.timeout_seconds,
             )
             if response.status_code == 429 and self._is_depleted_billing(response):
                 raise RuntimeError(

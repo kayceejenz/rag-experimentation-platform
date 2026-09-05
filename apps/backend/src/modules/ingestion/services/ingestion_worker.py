@@ -110,6 +110,7 @@ def run_once(config: Settings) -> bool:
             if embedding
             else config.embedding_provider.lower(),
             str(embedding["model"]) if embedding else config.embedding_model,
+            execution.specification_id,
         )
         if job.stage is PipelineStage.CHUNK:
             if not config.unstructured_api_key:

@@ -1,10 +1,41 @@
 from collections import OrderedDict
+from collections.abc import Awaitable, Callable
+import asyncio
 import inspect
+import time
+from uuid import UUID
 
 from psycopg import AsyncConnection
 from psycopg.rows import dict_row
+from integrations.database import async_db_connection
 
 from modules.chats.models.retrieval_model import RetrievedChunk
+
+
+class QueryEmbeddingCache:
+    """Run-scoped, model-aware cache with single-flight embedding generation."""
+
+    def __init__(self) -> None:
+        self._values: dict[tuple[str, str, int, str], list[float]] = {}
+        self._locks: dict[tuple[str, str, int, str], asyncio.Lock] = {}
+
+    async def get_or_create(
+        self,
+        key: tuple[str, str, int, str],
+        factory: Callable[[], Awaitable[list[float]]],
+    ) -> tuple[list[float], bool]:
+        cached = self._values.get(key)
+        if cached is not None:
+            return cached, True
+        lock = self._locks.setdefault(key, asyncio.Lock())
+        async with lock:
+            cached = self._values.get(key)
+            if cached is not None:
+                return cached, True
+            value = await factory()
+            self._values[key] = value
+            self._locks.pop(key, None)
+            return value, False
 
 
 class PgVectorKnowledgeSearch:
@@ -17,6 +48,11 @@ class PgVectorKnowledgeSearch:
         candidate_limit: int = 16,
         min_score: float = 0.25,
         cache_size: int = 128,
+        specification_id=None,
+        embedding_model_id=None,
+        dimensions: int | None = None,
+        distance_metric: str = "cosine",
+        query_embedding_cache: QueryEmbeddingCache | None = None,
     ) -> None:
         self.database_url = database_url
         self.embedder = embedder
@@ -25,27 +61,48 @@ class PgVectorKnowledgeSearch:
         self.candidate_limit = candidate_limit
         self.min_score = min_score
         self.cache_size = cache_size
+        self.specification_id = specification_id
+        self.embedding_model_id = (
+            UUID(str(embedding_model_id)) if embedding_model_id else None
+        )
+        self.dimensions = int(dimensions or getattr(embedder, "dimensions", 0))
+        self.distance_metric = distance_metric
+        self.query_embedding_cache = query_embedding_cache
         self._query_cache: OrderedDict[str, list[float]] = OrderedDict()
 
-    async def search(self, knowledge_base_id, query: str, limit: int = 8) -> list[RetrievedChunk]:
-        vector = await self._query_vector(query)
+    async def search(
+        self, knowledge_base_id, query: str, limit: int = 8, telemetry: dict | None = None
+    ) -> list[RetrievedChunk]:
+        embedding_started = time.perf_counter()
+        vector = await self._query_vector(query, telemetry)
+        if telemetry is not None:
+            telemetry["embedding_latency"] = (
+                time.perf_counter() - embedding_started
+            ) * 1000
         vector_literal = "[" + ",".join(str(float(value)) for value in vector) + "]"
-        async with await AsyncConnection.connect(self.database_url, row_factory=dict_row) as db:
+        distance_expression, score_expression, model_filter, model_parameters = (
+            self._search_expression()
+        )
+        search_started = time.perf_counter()
+        async with async_db_connection(self.database_url, row_factory=dict_row) as db:
+            await db.execute("set local hnsw.iterative_scan = strict_order")
             cur = await db.execute(
-                "with latest_versions as ("
-                "select distinct on (sv.source_id) sv.id, sv.source_id "
-                "from ragapp.source_versions sv order by sv.source_id, sv.version desc"
-                "), candidates as (select c.id chunk_id,c.source_id,c.source_version_id,"
+                "with candidates as (select c.id chunk_id,c.source_id,c.source_version_id,"
                 "c.position,s.display_name source_filename,c.content,c.page_from,c.metadata,"
-                "1-(ce.embedding <=> %s::vector) vector_score,"
+                f"{score_expression} vector_score,"
                 "ts_rank_cd(c.search_vector,plainto_tsquery('english',%s)) lexical_score "
                 "from ragapp.chunks c join ragapp.sources s on s.id=c.source_id "
-                "join latest_versions lv on lv.id=c.source_version_id "
+                "join ragapp.source_versions sv on sv.id=c.source_version_id "
                 "join ragapp.chunk_embeddings ce on ce.chunk_id=c.id "
                 "join ragapp.embedding_models em on em.id=ce.embedding_model_id "
-                "where c.knowledge_base_id=%s and s.deleted_at is null "
-                "and em.provider=%s and em.model_name=%s "
-                "order by ce.embedding <=> %s::vector limit %s) "
+                "where c.knowledge_base_id=%s "
+                "and (%s::uuid is not null or s.deleted_at is null) "
+                "and (%s::uuid is null or c.specification_id=%s) "
+                "and (%s::uuid is not null or not exists("
+                "select 1 from ragapp.source_versions newer "
+                "where newer.source_id=sv.source_id and newer.version>sv.version)) "
+                f"and {model_filter} "
+                f"order by {distance_expression} limit %s) "
                 "select *,0.8*vector_score+0.2*least(lexical_score*4,1) score "
                 "from candidates where vector_score >= %s "
                 "order by score desc limit %s",
@@ -53,8 +110,11 @@ class PgVectorKnowledgeSearch:
                     vector_literal,
                     query,
                     knowledge_base_id,
-                    self.provider,
-                    self.model_name,
+                    self.specification_id,
+                    self.specification_id,
+                    self.specification_id,
+                    self.specification_id,
+                    *model_parameters,
                     vector_literal,
                     self.candidate_limit,
                     self.min_score,
@@ -63,6 +123,10 @@ class PgVectorKnowledgeSearch:
             )
             rows = await cur.fetchall()
             rows = await self._expand_neighbors(db, rows)
+        if telemetry is not None:
+            telemetry["vector_search_latency"] = (
+                time.perf_counter() - search_started
+            ) * 1000
 
         return [
             RetrievedChunk(
@@ -78,6 +142,48 @@ class PgVectorKnowledgeSearch:
             )
             for row in rows
         ]
+
+    def _search_expression(self):
+        operator = {
+            "cosine": "<=>",
+            "l2": "<->",
+            "inner_product": "<#>",
+        }.get(self.distance_metric)
+        if operator is None:
+            raise ValueError(f"Unsupported vector distance metric: {self.distance_metric}")
+        if self.embedding_model_id is None:
+            distance = f"ce.embedding {operator} %s::vector"
+            return (
+                distance,
+                self._score_expression(distance),
+                "em.provider=%s and em.model_name=%s",
+                (self.provider, self.model_name),
+            )
+        if self.specification_id is None:
+            raise ValueError("An index specification is required for indexed retrieval")
+        if not 1 <= self.dimensions <= 4000:
+            raise ValueError("Indexed embedding dimensions must be between 1 and 4000")
+        indexed_type = "vector" if self.dimensions <= 2000 else "halfvec"
+        expression = (
+            f"ce.embedding::{indexed_type}({self.dimensions}) "
+            f"{operator} %s::{indexed_type}({self.dimensions})"
+        )
+        model_id = str(self.embedding_model_id)
+        specification_id = str(UUID(str(self.specification_id)))
+        return (
+            expression,
+            self._score_expression(expression),
+            f"ce.embedding_model_id='{model_id}'::uuid "
+            f"and ce.specification_id='{specification_id}'::uuid",
+            (),
+        )
+
+    def _score_expression(self, distance_expression):
+        if self.distance_metric == "cosine":
+            return f"1-({distance_expression})"
+        if self.distance_metric == "inner_product":
+            return f"-({distance_expression})"
+        return f"1/(1+({distance_expression}))"
 
     @staticmethod
     async def _expand_neighbors(db: AsyncConnection, seeds: list[dict]):
@@ -101,7 +207,8 @@ class PgVectorKnowledgeSearch:
             "from seeds join ragapp.chunks root on root.id=seeds.chunk_id "
             "join ragapp.chunks c on c.source_version_id=root.source_version_id "
             "and c.position between root.position-1 and root.position+1 "
-            "join ragapp.sources s on s.id=c.source_id and s.deleted_at is null "
+            "and c.specification_id is not distinct from root.specification_id "
+            "join ragapp.sources s on s.id=c.source_id "
             "order by c.id,seeds.seed_rank) select * from expanded "
             "order by seed_rank,position",
             (seed_ids,),
@@ -116,20 +223,34 @@ class PgVectorKnowledgeSearch:
                 seen.add(row["chunk_id"])
         return rows
 
-    async def _query_vector(self, query: str) -> list[float]:
+    async def _query_vector(self, query: str, telemetry: dict | None = None) -> list[float]:
         key = " ".join(query.lower().split())
+        run_key = (self.provider, self.model_name, self.dimensions, key)
+        if self.query_embedding_cache is not None:
+            vector, cache_hit = await self.query_embedding_cache.get_or_create(
+                run_key, lambda: self._embed_query(query)
+            )
+            if telemetry is not None:
+                telemetry["embedding_cache_hit"] = cache_hit
+            return vector
         cached = self._query_cache.get(key)
         if cached is not None:
             self._query_cache.move_to_end(key)
+            if telemetry is not None:
+                telemetry["embedding_cache_hit"] = True
             return cached
 
-        res = self.embedder.embed([query])
-        if inspect.isawaitable(res):
-            res = await res
-        vector = res[0]
-
+        vector = await self._embed_query(query)
+        if telemetry is not None:
+            telemetry["embedding_cache_hit"] = False
         self._query_cache[key] = vector
         self._query_cache.move_to_end(key)
         while len(self._query_cache) > self.cache_size:
             self._query_cache.popitem(last=False)
         return vector
+
+    async def _embed_query(self, query: str) -> list[float]:
+        result = self.embedder.embed([query])
+        if inspect.isawaitable(result):
+            result = await result
+        return result[0]

@@ -8,6 +8,8 @@ from typing import TypedDict
 
 import httpx
 
+from integrations.http_client import shared_async_http_client, shared_http_client
+
 logger = logging.getLogger(__name__)
 
 _RETRYABLE_EXCEPTIONS = (
@@ -39,6 +41,8 @@ class GeminiChatModel:
         max_retries: int = 4,
         max_output_tokens: int = 500,
         thinking_level: str = "low",
+        client: httpx.Client | None = None,
+        async_client: httpx.AsyncClient | None = None,
     ) -> None:
         self.api_key = api_key
         self.model = model.removeprefix("models/")
@@ -46,13 +50,15 @@ class GeminiChatModel:
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
         self.max_output_tokens = max_output_tokens
+        self.client = client or shared_http_client()
+        self.async_client = async_client
         self.thinking_level = (
             thinking_level.lower() if thinking_level.lower() in VALID_THINKING_LEVELS else "low"
         )
 
     async def generate(self, question: str, context: str, history: list[tuple[str, str]]) -> str:
         request = self._request(question, context, history)
-        response = await self._post_with_retries("generateContent", request)
+        response = await asyncio.to_thread(self._post_with_retries, "generateContent", request)
         payload = response.json()
         self._log_usage(payload)
         answer = self._answer_text(payload).strip()
@@ -73,85 +79,86 @@ class GeminiChatModel:
     ) -> AsyncIterator[StreamPart]:
         request = self._request(question, context, history)
         url = f"{self.base_url}/models/{self.model}:streamGenerateContent"
+        client = self.async_client or shared_async_http_client()
 
-        async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
-            for attempt in range(self.max_retries + 1):
-                is_last_attempt = attempt == self.max_retries
-                try:
-                    async with client.stream(
-                        "POST",
-                        url,
-                        params={"alt": "sse"},
-                        headers={"x-goog-api-key": self.api_key},
-                        json=request,
-                    ) as response:
-                        if response.status_code >= 500 or response.status_code == 429:
-                            error_body = (await response.aread()).decode("utf-8", errors="replace")
-                            logger.warning(
-                                "Gemini stream error (status=%s, attempt=%s/%s). Response body: %s",
-                                response.status_code,
-                                attempt + 1,
-                                self.max_retries + 1,
-                                error_body,
-                            )
+        for attempt in range(self.max_retries + 1):
+            is_last_attempt = attempt == self.max_retries
+            try:
+                async with client.stream(
+                    "POST",
+                    url,
+                    params={"alt": "sse"},
+                    headers={"x-goog-api-key": self.api_key},
+                    json=request,
+                    timeout=self.timeout_seconds,
+                ) as response:
+                    if response.status_code >= 500 or response.status_code == 429:
+                        error_body = (await response.aread()).decode("utf-8", errors="replace")
+                        logger.warning(
+                            "Gemini stream error (status=%s, attempt=%s/%s). Response body: %s",
+                            response.status_code,
+                            attempt + 1,
+                            self.max_retries + 1,
+                            error_body,
+                        )
 
-                            if is_last_attempt:
-                                response.raise_for_status()
+                        if is_last_attempt:
+                            response.raise_for_status()
 
-                            base_delay = min(5 * (2**attempt), 60)
-                            jitter = random.uniform(0.8, 1.2)
-                            delay = base_delay * jitter
+                        base_delay = min(5 * (2**attempt), 60)
+                        jitter = random.uniform(0.8, 1.2)
+                        delay = base_delay * jitter
 
-                            logger.info("Retrying Gemini stream in %.2f seconds...", delay)
-                            await asyncio.sleep(delay)
+                        logger.info("Retrying Gemini stream in %.2f seconds...", delay)
+                        await asyncio.sleep(delay)
+                        continue
+
+                    response.raise_for_status()
+                    produced = False
+                    last_payload: dict = {}
+
+                    async for line in response.aiter_lines():
+                        if not line.startswith("data:"):
                             continue
+                        raw = line.removeprefix("data:").strip()
+                        if not raw or raw == "[DONE]":
+                            continue
+                        try:
+                            payload = json.loads(raw)
+                        except json.JSONDecodeError:
+                            logger.warning("Skipping malformed SSE chunk: %r", raw)
+                            continue
+                        last_payload = payload
+                        self._log_usage(payload)
 
-                        response.raise_for_status()
-                        produced = False
-                        last_payload: dict = {}
+                        for part in self._extract_parts(payload):
+                            produced = True
+                            yield part
 
-                        async for line in response.aiter_lines():
-                            if not line.startswith("data:"):
-                                continue
-                            raw = line.removeprefix("data:").strip()
-                            if not raw or raw == "[DONE]":
-                                continue
-                            try:
-                                payload = json.loads(raw)
-                            except json.JSONDecodeError:
-                                logger.warning("Skipping malformed SSE chunk: %r", raw)
-                                continue
-                            last_payload = payload
-                            self._log_usage(payload)
+                    if not produced:
+                        raise RuntimeError(
+                            f"Gemini returned an empty answer ({self._empty_reason(last_payload)})"
+                        )
+                    return
 
-                            for part in self._extract_parts(payload):
-                                produced = True
-                                yield part
-
-                        if not produced:
-                            raise RuntimeError(
-                                f"Gemini returned an empty answer ({self._empty_reason(last_payload)})"
-                            )
-                        return
-
-                except _RETRYABLE_EXCEPTIONS as err:
-                    if isinstance(err, httpx.HTTPStatusError):
-                        status = err.response.status_code
-                        if status != 429 and status < 500:
-                            raise
-
-                    if is_last_attempt:
+            except _RETRYABLE_EXCEPTIONS as err:
+                if isinstance(err, httpx.HTTPStatusError):
+                    status = err.response.status_code
+                    if status != 429 and status < 500:
                         raise
 
-                    delay = min(5 * (2**attempt), 60) * random.uniform(0.8, 1.2)
-                    logger.warning(
-                        "Caught exception during Gemini stream (attempt=%s/%s): %s. Retrying in %.2fs",
-                        attempt + 1,
-                        self.max_retries + 1,
-                        err,
-                        delay,
-                    )
-                    await asyncio.sleep(delay)
+                if is_last_attempt:
+                    raise
+
+                delay = min(5 * (2**attempt), 60) * random.uniform(0.8, 1.2)
+                logger.warning(
+                    "Caught exception during Gemini stream (attempt=%s/%s): %s. Retrying in %.2fs",
+                    attempt + 1,
+                    self.max_retries + 1,
+                    err,
+                    delay,
+                )
+                await asyncio.sleep(delay)
 
     def _request(self, question: str, context: str, history: list[tuple[str, str]]) -> dict:
         contents = [
@@ -204,39 +211,39 @@ class GeminiChatModel:
 
     def _post_with_retries(self, operation: str, request: dict) -> httpx.Response:
         url = f"{self.base_url}/models/{self.model}:{operation}"
-        with httpx.Client(timeout=self.timeout_seconds) as client:
-            for attempt in range(self.max_retries + 1):
-                is_last_attempt = attempt == self.max_retries
-                try:
-                    response = client.post(
-                        url,
-                        headers={"x-goog-api-key": self.api_key},
-                        json=request,
-                    )
-                except _RETRYABLE_EXCEPTIONS:
-                    if is_last_attempt:
-                        raise
-                    time.sleep(min(2**attempt, 8))
-                    continue
-
-                if response.status_code < 500 and response.status_code != 429:
-                    try:
-                        response.raise_for_status()
-                    except httpx.HTTPStatusError as error:
-                        if response.status_code == 404:
-                            raise RuntimeError(
-                                f"Gemini model '{self.model}' is unavailable for generateContent. "
-                                "Create the experiment variant with a model enabled by this deployment."
-                            ) from error
-                        raise
-                    return response
-
+        for attempt in range(self.max_retries + 1):
+            is_last_attempt = attempt == self.max_retries
+            try:
+                response = self.client.post(
+                    url,
+                    headers={"x-goog-api-key": self.api_key},
+                    json=request,
+                    timeout=self.timeout_seconds,
+                )
+            except _RETRYABLE_EXCEPTIONS:
                 if is_last_attempt:
-                    response.raise_for_status()
+                    raise
+                time.sleep(min(2**attempt, 8))
+                continue
 
-                retry_after = response.headers.get("retry-after")
-                response.close()
-                time.sleep(float(retry_after) if retry_after else min(2**attempt, 8))
+            if response.status_code < 500 and response.status_code != 429:
+                try:
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as error:
+                    if response.status_code == 404:
+                        raise RuntimeError(
+                            f"Gemini model '{self.model}' is unavailable for generateContent. "
+                            "Create the experiment variant with a model enabled by this deployment."
+                        ) from error
+                    raise
+                return response
+
+            if is_last_attempt:
+                response.raise_for_status()
+
+            retry_after = response.headers.get("retry-after")
+            response.close()
+            time.sleep(float(retry_after) if retry_after else min(2**attempt, 8))
 
         raise RuntimeError("Gemini request failed without a response")
 

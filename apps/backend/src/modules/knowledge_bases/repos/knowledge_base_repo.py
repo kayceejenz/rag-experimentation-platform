@@ -1,6 +1,7 @@
 import psycopg
 from modules.knowledge_bases.models.knowledge_base_model import KnowledgeBase
 from psycopg.rows import dict_row
+from integrations.database import db_connection
 
 
 class KnowledgeBaseRepository:
@@ -8,7 +9,7 @@ class KnowledgeBaseRepository:
         self.database_url = database_url
 
     def get_for_user(self, knowledge_base_id, user_id):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "select kb.* from ragapp.knowledge_bases kb "
                 "where kb.id=%s and ragapp.has_project_permission(kb.project_id,%s,'knowledge','view') "
@@ -18,7 +19,7 @@ class KnowledgeBaseRepository:
         return self._model(row) if row else None
 
     def get_for_project(self, project_id, user_id):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "select kb.* from ragapp.project_sources ps "
                 "join ragapp.knowledge_bases kb on kb.id=ps.knowledge_base_id "

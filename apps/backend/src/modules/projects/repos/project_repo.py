@@ -1,6 +1,6 @@
 from modules.projects.models.project_model import Project, ProjectAccess, ProjectRole
-from psycopg import AsyncConnection
 from psycopg.rows import dict_row
+from integrations.database import async_db_connection
 
 
 class ProjectRepository:
@@ -18,8 +18,8 @@ class ProjectRepository:
     def __init__(self, database_url: str) -> None:
         self.database_url = database_url
 
-    async def connect(self):
-        return await AsyncConnection.connect(self.database_url, row_factory=dict_row)
+    def connect(self):
+        return async_db_connection(self.database_url, row_factory=dict_row)
 
     @staticmethod
     def project(row) -> Project:
@@ -35,7 +35,7 @@ class ProjectRepository:
         )
 
     async def create(self, owner_id, name, description):
-        async with await self.connect() as db:
+        async with self.connect() as db:
             async with db.transaction():
                 curr = await db.execute(
                     "insert into ragapp.projects(workspace_id,owner_id,name,description) "
@@ -58,7 +58,7 @@ class ProjectRepository:
         return self.project(row)
 
     async def get_access(self, project_id, user_id):
-        async with await self.connect() as db:
+        async with self.connect() as db:
             curr = await db.execute(
                 "select p.*,m.role,(p.id=u.default_project_id) is_default,"
                 "(select jsonb_object_agg(acl.feature,jsonb_build_object('view',acl.can_view,'manage',acl.can_manage)) "
@@ -79,7 +79,7 @@ class ProjectRepository:
         )
 
     async def list_for_user(self, user_id):
-        async with await self.connect() as db:
+        async with self.connect() as db:
             curr = await db.execute(
                 "select p.*,m.role,(p.id=u.default_project_id) is_default,"
                 "(select jsonb_object_agg(acl.feature,jsonb_build_object('view',acl.can_view,'manage',acl.can_manage)) "
@@ -100,7 +100,7 @@ class ProjectRepository:
         ]
 
     async def update(self, project_id, name, description, update_description):
-        async with await self.connect() as db:
+        async with self.connect() as db:
             curr = await db.execute(
                 "update ragapp.projects set name=coalesce(%s,name), "
                 "description=case when %s then %s else description end "
@@ -111,13 +111,13 @@ class ProjectRepository:
         return self.project(row)
 
     async def delete(self, project_id):
-        async with await self.connect() as db:
+        async with self.connect() as db:
             await db.execute(
                 "update ragapp.projects set deleted_at=now() where id=%s", (project_id,)
             )
 
     async def has_permission(self, project_id, user_id, feature, action="view"):
-        async with await self.connect() as db:
+        async with self.connect() as db:
             row = await (
                 await db.execute(
                     "select ragapp.has_project_permission(%s,%s,%s,%s) allowed",
@@ -127,7 +127,7 @@ class ProjectRepository:
         return bool(row["allowed"])
 
     async def list_members(self, project_id):
-        async with await self.connect() as db:
+        async with self.connect() as db:
             rows = await (
                 await db.execute(
                     "select pm.user_id,u.email,u.display_name,pm.role,pm.joined_at,"
@@ -143,7 +143,7 @@ class ProjectRepository:
         return rows
 
     async def add_member(self, project_id, email, permissions):
-        async with await self.connect() as db:
+        async with self.connect() as db:
             async with db.transaction():
                 user = await (
                     await db.execute(
@@ -166,7 +166,7 @@ class ProjectRepository:
         return user["id"]
 
     async def update_member_permissions(self, project_id, member_id, permissions):
-        async with await self.connect() as db:
+        async with self.connect() as db:
             member = await (
                 await db.execute(
                     "select role from ragapp.project_members where project_id=%s and user_id=%s",
@@ -179,7 +179,7 @@ class ProjectRepository:
         return True
 
     async def remove_member(self, project_id, member_id):
-        async with await self.connect() as db:
+        async with self.connect() as db:
             row = await (
                 await db.execute(
                     "delete from ragapp.project_members where project_id=%s and user_id=%s and role<>'owner' returning user_id",

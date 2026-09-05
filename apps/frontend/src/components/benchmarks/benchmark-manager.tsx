@@ -14,6 +14,7 @@ import type {
 	BenchmarkVersion,
 	Project,
 } from '@/types/workspace';
+import { formatDateTime } from '@/lib/format';
 
 type Detail = {
 	dataset: BenchmarkDataset & { content: BenchmarkCase[] };
@@ -190,7 +191,7 @@ export function BenchmarkManager({
 									<td>{dataset.example_count}</td>
 									<td>{dataset.version_count}</td>
 									<td>
-										{new Date(dataset.created_at).toLocaleString()}
+										{formatDateTime(dataset.created_at)}
 									</td>
 									<td>
 										<ChevronRight size={14} />

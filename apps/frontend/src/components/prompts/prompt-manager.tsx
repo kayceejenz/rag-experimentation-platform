@@ -9,6 +9,7 @@ import {
 	X,
 } from 'lucide-react';
 import type { Project, PromptAsset, PromptVersion } from '@/types/workspace';
+import { formatDateTime } from '@/lib/format';
 type Detail = { prompt: PromptAsset; versions: PromptVersion[] };
 type PromptTypeFilter = 'all' | PromptAsset['prompt_type'];
 export function PromptManager({
@@ -287,9 +288,7 @@ export function PromptManager({
 										</span>
 									</td>
 									<td>
-										{new Date(
-											p.updated_at,
-										).toLocaleString()}
+										{formatDateTime(p.updated_at)}
 									</td>
 									<td>
 										<ChevronRight
@@ -401,9 +400,7 @@ export function PromptManager({
 												}
 											</strong>
 											<span>
-												{new Date(
-													v.created_at,
-												).toLocaleString()}
+												{formatDateTime(v.created_at)}
 											</span>
 										</header>
 										<div className='prompt-variable-list'>

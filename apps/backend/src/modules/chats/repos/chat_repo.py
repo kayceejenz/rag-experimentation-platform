@@ -1,14 +1,14 @@
 from modules.chats.models.chat_model import Chat, ChatStatus
-from psycopg import AsyncConnection
 from psycopg.rows import dict_row
+from integrations.database import async_db_connection
 
 
 class ChatRepository:
     def __init__(self, database_url: str) -> None:
         self.database_url = database_url
 
-    async def connect(self) -> AsyncConnection:
-        return await AsyncConnection.connect(self.database_url, row_factory=dict_row)
+    def connect(self):
+        return async_db_connection(self.database_url, row_factory=dict_row)
 
     @staticmethod
     def chat(row: dict) -> Chat:
@@ -26,7 +26,7 @@ class ChatRepository:
     async def create_for_assistant(
         self, assistant_id, project_id, created_by, title
     ) -> Chat:
-        async with await self.connect() as db:
+        async with self.connect() as db:
             async with db.transaction():
                 cur = await db.execute(
                     "insert into ragapp.conversations(project_id,assistant_id,created_by,title) "
@@ -37,7 +37,7 @@ class ChatRepository:
         return self.chat(chat)
 
     async def get(self, chat_id, user_id) -> Chat | None:
-        async with await self.connect() as db:
+        async with self.connect() as db:
             cur = await db.execute(
                 "select c.* from ragapp.conversations c "
                 "join ragapp.project_members pm on pm.project_id=c.project_id "
@@ -49,7 +49,7 @@ class ChatRepository:
         return self.chat(row) if row else None
 
     async def list_for_project(self, project_id, user_id) -> list[Chat]:
-        async with await self.connect() as db:
+        async with self.connect() as db:
             cur = await db.execute(
                 "select c.* from ragapp.conversations c "
                 "join ragapp.project_members pm on pm.project_id=c.project_id "
@@ -61,7 +61,7 @@ class ChatRepository:
         return [self.chat(row) for row in rows]
 
     async def list_for_assistant(self, assistant_id, user_id) -> list[Chat]:
-        async with await self.connect() as db:
+        async with self.connect() as db:
             cur = await db.execute(
                 "select c.* from ragapp.conversations c "
                 "join ragapp.project_members pm on pm.project_id=c.project_id "
@@ -73,7 +73,7 @@ class ChatRepository:
         return [self.chat(row) for row in rows]
 
     async def update(self, chat_id, title, chat_status) -> Chat:
-        async with await self.connect() as db:
+        async with self.connect() as db:
             async with db.transaction():
                 cur = await db.execute(
                     "update ragapp.conversations set title=coalesce(%s,title), "
@@ -85,7 +85,7 @@ class ChatRepository:
         return self.chat(row)
 
     async def delete(self, chat_id) -> None:
-        async with await self.connect() as db:
+        async with self.connect() as db:
             await db.execute(
                 "update ragapp.conversations set deleted_at=now() "
                 "where id=%s and deleted_at is null",

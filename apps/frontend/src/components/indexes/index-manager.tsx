@@ -18,6 +18,7 @@ import type {
 	Project,
 	Source,
 } from '@/types/workspace';
+import { formatDateTime } from '@/lib/format';
 
 type EmbeddingModel = {
 	id: string;
@@ -108,9 +109,8 @@ function vectorPreview(value: unknown) {
 
 function traceDuration(trace: IndexTrace) {
 	if (!trace.started_at) return '—';
-	const end = trace.completed_at
-		? new Date(trace.completed_at).getTime()
-		: Date.now();
+	if (!trace.completed_at) return 'In progress';
+	const end = new Date(trace.completed_at).getTime();
 	const milliseconds = Math.max(
 		0,
 		end - new Date(trace.started_at).getTime(),
@@ -692,9 +692,7 @@ export function IndexManager({
 											</span>
 										</td>
 										<td>
-											{new Date(
-												build.created_at,
-											).toLocaleString()}
+											{formatDateTime(build.created_at)}
 										</td>
 										<td className='catalog-open'>
 											<button
@@ -1472,9 +1470,9 @@ export function IndexManager({
 															</td>
 															<td>
 																{trace.started_at
-																	? new Date(
-																			trace.started_at,
-																		).toLocaleString()
+																			? formatDateTime(
+																					trace.started_at,
+																				)
 																	: 'Not started'}
 															</td>
 															<td>

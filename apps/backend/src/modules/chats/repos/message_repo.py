@@ -1,8 +1,8 @@
 from modules.chats.models.citation_model import Citation
 from modules.chats.models.message_model import Message, MessageRole
-from psycopg import AsyncConnection
 from psycopg.rows import dict_row
 from psycopg.types.json import Json
+from integrations.database import async_db_connection
 
 
 class MessageRepository:
@@ -10,7 +10,7 @@ class MessageRepository:
         self.database_url = database_url
 
     async def add(self, message: Message) -> None:
-        async with await AsyncConnection.connect(self.database_url) as db:
+        async with async_db_connection(self.database_url) as db:
             await db.execute(
                 "insert into ragapp.messages(id,conversation_id,role,content,completed_at) "
                 "values(%s,%s,%s,%s,now())",
@@ -44,7 +44,7 @@ class MessageRepository:
                 )
 
     async def list_for_conversation(self, conversation_id) -> list[Message]:
-        async with await AsyncConnection.connect(
+        async with async_db_connection(
             self.database_url, row_factory=dict_row
         ) as db:
             msg_cur = await db.execute(

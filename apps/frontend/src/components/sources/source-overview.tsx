@@ -14,6 +14,7 @@ import {
 	X,
 } from 'lucide-react';
 import { SmoothLink } from '@/components/navigation/smooth-link';
+import { formatDateTime } from '@/lib/format';
 import type {
 	KnowledgeActivityEvent,
 	KnowledgeBase,
@@ -337,9 +338,7 @@ export function SourceOverview({
 												dateTime={
 													folder.created_at
 												}>
-												{new Date(
-													folder.created_at,
-												).toLocaleString()}
+												{formatDateTime(folder.created_at)}
 											</time>
 										</td>
 										<td />
@@ -398,9 +397,7 @@ export function SourceOverview({
 												dateTime={
 													document.created_at
 												}>
-												{new Date(
-													document.created_at,
-												).toLocaleString()}
+												{formatDateTime(document.created_at)}
 											</time>
 										</td>
 										<td className='document-row-action'>
@@ -971,9 +968,7 @@ function KnowledgeActivity({ events }: { events: KnowledgeActivityEvent[] }) {
 											dateTime={
 												event.occurred_at
 											}>
-											{new Date(
-												event.occurred_at,
-											).toLocaleString()}
+											{formatDateTime(event.occurred_at)}
 										</time>
 									</td>
 								</tr>

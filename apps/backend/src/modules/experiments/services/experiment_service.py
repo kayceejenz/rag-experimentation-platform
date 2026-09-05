@@ -83,7 +83,7 @@ class ExperimentService:
             result["runs"] = self.runs.runs(experiment_id)
         return result
 
-    def start_run(self, project_id, user_id, experiment_id):
+    def start_run(self, project_id, user_id, experiment_id, variant_ids):
         self._authorise(project_id, user_id, "manage")
         if not self.repository.detail(project_id, experiment_id):
             raise LookupError("Experiment not found")
@@ -93,6 +93,7 @@ class ExperimentService:
             user_id,
             self.code_revision,
             self.generation_models,
+            variant_ids,
         )
 
     def run_detail(self, project_id, user_id, experiment_id, run_id):

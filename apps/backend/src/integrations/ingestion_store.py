@@ -3,6 +3,7 @@ from io import BytesIO
 
 import psycopg
 from psycopg.rows import dict_row
+from integrations.database import db_connection
 
 from integrations.storage import upload_file
 from modules.ingestion.models.ingestion_model import DocumentElement
@@ -13,7 +14,7 @@ class ElementRepository:
         self.database_url = database_url
 
     def replace_for_source(self, source_version_id, elements) -> None:
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             db.execute(
                 "delete from ragapp.source_elements where source_version_id=%s",
                 (source_version_id,),
@@ -51,7 +52,7 @@ class ElementRepository:
                 )
 
     def get_for_source(self, source_version_id) -> list[DocumentElement]:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             rows = db.execute(
                 "select element_id,parent_element_id,category,content,page_number,"
                 "coordinates,table_html,visual_storage_key,metadata "
@@ -91,25 +92,34 @@ class ElementAssetStore:
 
 
 class ChunkRepository:
-    def __init__(self, database_url: str, provider: str, model_name: str) -> None:
+    def __init__(
+        self, database_url: str, provider: str, model_name: str, specification_id=None
+    ) -> None:
         self.database_url = database_url
         self.provider = provider
         self.model_name = model_name
+        self.specification_id = specification_id
 
     def replace_chunks(self, project_id, source_version_id, chunks) -> None:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
-            db.execute("delete from ragapp.chunks where source_version_id=%s", (source_version_id,))
+        if self.specification_id is None:
+            raise ValueError("A specification is required to persist index chunks")
+        with db_connection(self.database_url, row_factory=dict_row) as db:
+            db.execute(
+                "delete from ragapp.chunks where source_version_id=%s and specification_id=%s",
+                (source_version_id, self.specification_id),
+            )
             for chunk in chunks:
                 row = db.execute(
                     "insert into ragapp.chunks(id,project_id,knowledge_base_id,source_id,"
-                    "source_version_id,position,content,page_from,page_to,metadata) "
-                    "values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) returning id",
+                    "source_version_id,specification_id,position,content,page_from,page_to,metadata) "
+                    "values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) returning id",
                     (
                         chunk.id,
                         project_id,
                         chunk.knowledge_base_id,
                         chunk.source_id,
                         source_version_id,
+                        self.specification_id,
                         chunk.position,
                         chunk.text,
                         chunk.page_number,
@@ -125,20 +135,26 @@ class ChunkRepository:
                 )
 
     def texts_for_source(self, source_version_id) -> list[str]:
-        with psycopg.connect(self.database_url) as db:
+        if self.specification_id is None:
+            raise ValueError("A specification is required to read index chunks")
+        with db_connection(self.database_url) as db:
             return [row[0] for row in db.execute(
-                "select content from ragapp.chunks where source_version_id=%s order by position",
-                (source_version_id,),
+                "select content from ragapp.chunks where source_version_id=%s "
+                "and specification_id=%s order by position",
+                (source_version_id, self.specification_id),
             ).fetchall()]
 
     def replace_embeddings(self, source_version_id, embeddings) -> None:
+        if self.specification_id is None:
+            raise ValueError("A specification is required to persist index embeddings")
         dimensions = len(embeddings[0]) if embeddings else None
         if any(len(vector) != dimensions for vector in embeddings):
             raise ValueError("Embedding provider returned inconsistent vector dimensions")
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             chunks = db.execute(
-                "select id from ragapp.chunks where source_version_id=%s order by position",
-                (source_version_id,),
+                "select id from ragapp.chunks where source_version_id=%s "
+                "and specification_id=%s order by position",
+                (source_version_id, self.specification_id),
             ).fetchall()
             if len(chunks) != len(embeddings):
                 raise ValueError("Embedding count does not match the chunk dataset")
@@ -152,11 +168,19 @@ class ChunkRepository:
             ).fetchone()["id"]
             db.execute(
                 "delete from ragapp.chunk_embeddings where chunk_id in "
-                "(select id from ragapp.chunks where source_version_id=%s) and embedding_model_id=%s",
-                (source_version_id, model_id),
+                "(select id from ragapp.chunks where source_version_id=%s and specification_id=%s) "
+                "and embedding_model_id=%s",
+                (source_version_id, self.specification_id, model_id),
             )
             for chunk, vector in zip(chunks, embeddings, strict=True):
                 db.execute(
-                    "insert into ragapp.chunk_embeddings(chunk_id,embedding_model_id,embedding) values(%s,%s,%s::vector)",
-                    (chunk["id"], model_id, "[" + ",".join(str(float(value)) for value in vector) + "]"),
+                    "insert into ragapp.chunk_embeddings"
+                    "(chunk_id,embedding_model_id,specification_id,embedding) "
+                    "values(%s,%s,%s,%s::vector)",
+                    (
+                        chunk["id"],
+                        model_id,
+                        self.specification_id,
+                        "[" + ",".join(str(float(value)) for value in vector) + "]",
+                    ),
                 )

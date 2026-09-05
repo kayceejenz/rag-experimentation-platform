@@ -109,6 +109,7 @@ class IngestionTracker:
                 {
                     "dataset": "ragapp.chunks",
                     "source_version_id": str(job.source_version_id),
+                    "specification_id": str(specification.id),
                 },
             )
             input_role = "chunks"

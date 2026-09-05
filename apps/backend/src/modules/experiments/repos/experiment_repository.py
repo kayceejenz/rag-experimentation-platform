@@ -1,6 +1,7 @@
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
+from integrations.database import db_connection
 
 
 class ExperimentRepository:
@@ -8,14 +9,14 @@ class ExperimentRepository:
         self.database_url = database_url
 
     def can_access(self, project_id, user_id, action="view"):
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             return db.execute(
                 "select ragapp.has_project_permission(%s,%s,'experiments',%s)",
                 (project_id, user_id, action),
             ).fetchone()[0]
 
     def catalog(self, project_id):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             experiments = db.execute(
                 "select e.*,b.name benchmark_name,b.version benchmark_version,"
                 "jsonb_array_length(b.content) benchmark_cases,count(v.id) variant_count "
@@ -53,7 +54,7 @@ class ExperimentRepository:
         }
 
     def dataset_exists(self, project_id, dataset_id):
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             return db.execute(
                 "select exists(select 1 from ragapp.benchmark_datasets where id=%s and project_id=%s)",
                 (dataset_id, project_id),
@@ -70,7 +71,7 @@ class ExperimentRepository:
         metrics,
         primary_metric,
     ):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             return db.execute(
                 "insert into ragapp.experiments(project_id,name,description,hypothesis,"
                 "benchmark_dataset_id,metrics,primary_metric,created_by) "
@@ -88,7 +89,7 @@ class ExperimentRepository:
             ).fetchone()
 
     def detail(self, project_id, experiment_id):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             experiment = db.execute(
                 "select e.*,b.name benchmark_name,b.version benchmark_version,"
                 "jsonb_array_length(b.content) benchmark_cases,b.content_sha256 benchmark_hash "
@@ -115,7 +116,7 @@ class ExperimentRepository:
     def variant_assets(
         self, project_id, experiment_id, index_id, system_version_id, rag_version_id
     ):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             experiment = db.execute(
                 "select metrics from ragapp.experiments where id=%s and project_id=%s and status<>'archived'",
                 (experiment_id, project_id),
@@ -158,7 +159,7 @@ class ExperimentRepository:
         generation,
         configuration_hash,
     ):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             variant = db.execute(
                 "insert into ragapp.experiment_variants(project_id,experiment_id,name,"
                 "index_specification_id,system_prompt_version_id,rag_prompt_version_id,"
@@ -185,7 +186,7 @@ class ExperimentRepository:
         return variant
 
     def delete_variant(self, project_id, experiment_id, variant_id):
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             variant = db.execute(
                 "select exists(select 1 from ragapp.experiment_variants "
                 "where id=%s and experiment_id=%s and project_id=%s)",

@@ -54,9 +54,11 @@ class IndexService:
                 },
                 "chunking": {"strategy": strategy},
                 "embedding": {
+                    "model_id": str(model["id"]),
                     "provider": model["provider"],
                     "model": model["model_name"],
                     "dimensions": model["dimensions"],
+                    "distance_metric": model["distance_metric"],
                 },
                 "knowledge": {
                     "knowledge_base_id": str(knowledge_base_id),
@@ -65,6 +67,7 @@ class IndexService:
                 },
             },
         )
+        self.repository.ensure_vector_index(specification.id, model["id"])
         queued, documents = self.repository.enqueue(
             project_id, knowledge_base_id, specification.id, folder_ids
         )

@@ -1,9 +1,17 @@
+from contextlib import asynccontextmanager
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.error_handlers import global_error_handler
 from core.settings import Settings
+from integrations.database import (
+    close_database_pools,
+    configure_database_pools,
+    open_database_pools,
+)
+from integrations.http_client import close_http_clients
 from modules.auth.controllers.auth_controller import router as auth_router
 from modules.benchmarks.controller import router as benchmark_router
 from modules.experiments.controllers.experiment_controller import router as experiment_router
@@ -20,7 +28,21 @@ from modules.sources.controllers.source_controller import router as source_route
 
 def create_app() -> FastAPI:
     config = Settings()
-    app = FastAPI(title="RagApp API", version="0.2.0", docs_url="/docs")
+    configure_database_pools(
+        config.database_pool_min_size,
+        config.database_pool_max_size,
+        config.database_pool_timeout_seconds,
+    )
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        if config.database_url:
+            await open_database_pools(config.database_url)
+        yield
+        await close_database_pools()
+        await close_http_clients()
+
+    app = FastAPI(title="RagApp API", version="0.2.0", docs_url="/docs", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=config.allowed_origins,

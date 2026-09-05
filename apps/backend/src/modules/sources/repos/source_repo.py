@@ -2,6 +2,7 @@ import psycopg
 from modules.sources.models.source_model import Source, SourceStatus
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
+from integrations.database import db_connection
 
 
 class SourceRepository:
@@ -9,7 +10,7 @@ class SourceRepository:
         self.database_url = database_url
 
     def create(self, source: Source, content_sha256: str) -> Source:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             exists = db.execute(
                 "select exists(select 1 from ragapp.sources where id=%s)",
                 (source.id,),
@@ -74,7 +75,7 @@ class SourceRepository:
     def enqueue_stage(self, knowledge_base_id, user_id, stage: str) -> int:
         if not self.has_write_access(knowledge_base_id, user_id):
             return -1
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             if stage == "chunk":
                 rows = db.execute(
                     "select sv.id from ragapp.sources s join lateral "
@@ -106,7 +107,7 @@ class SourceRepository:
         return len(rows)
 
     def version_target(self, knowledge_base_id, filename, folder_id=None):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             return db.execute(
                 "select s.id,coalesce(max(sv.version),0)+1 next_version "
                 "from ragapp.sources s join ragapp.source_versions sv on sv.source_id=s.id "
@@ -117,7 +118,7 @@ class SourceRepository:
             ).fetchone()
 
     def folder_exists(self, knowledge_base_id, folder_id):
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             return db.execute(
                 "select exists(select 1 from ragapp.knowledge_folders where id=%s and knowledge_base_id=%s)",
                 (folder_id, knowledge_base_id),
@@ -126,7 +127,7 @@ class SourceRepository:
     def list_folders(self, knowledge_base_id, user_id):
         if not self.has_read_access(knowledge_base_id, user_id):
             return None
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             return db.execute(
                 "select id,knowledge_base_id,parent_id,name,created_at from ragapp.knowledge_folders "
                 "where knowledge_base_id=%s order by lower(name),id",
@@ -138,7 +139,7 @@ class SourceRepository:
             return None
         if parent_id and not self.folder_exists(knowledge_base_id, parent_id):
             return None
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             folder = db.execute(
                 "insert into ragapp.knowledge_folders(knowledge_base_id,parent_id,name,created_by) "
                 "values(%s,%s,%s,%s) returning id,knowledge_base_id,parent_id,name,created_at",
@@ -167,7 +168,7 @@ class SourceRepository:
         return folder
 
     def has_write_access(self, knowledge_base_id, user_id) -> bool:
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             return db.execute(
                 "select exists(select 1 from ragapp.knowledge_bases kb where kb.id=%s "
                 "and ragapp.has_project_permission(kb.project_id,%s,'knowledge','manage') "
@@ -176,7 +177,7 @@ class SourceRepository:
             ).fetchone()[0]
 
     def project_id(self, knowledge_base_id):
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             row = db.execute(
                 "select project_id from ragapp.knowledge_bases where id=%s and deleted_at is null",
                 (knowledge_base_id,),
@@ -184,7 +185,7 @@ class SourceRepository:
         return row[0] if row else None
 
     def has_read_access(self, knowledge_base_id, user_id) -> bool:
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             return db.execute(
                 "select exists(select 1 from ragapp.knowledge_bases kb where kb.id=%s "
                 "and ragapp.has_project_permission(kb.project_id,%s,'knowledge','view') "
@@ -193,7 +194,7 @@ class SourceRepository:
             ).fetchone()[0]
 
     def list_for_user(self, knowledge_base_id, user_id):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             rows = db.execute(
                 "select s.*,sv.id version_id,sv.version,sv.filename,sv.content_type,sv.storage_key,"
                 "sv.byte_size,sv.status,ij.id job_id from ragapp.sources s "
@@ -211,7 +212,7 @@ class SourceRepository:
     def list_activity(self, knowledge_base_id, user_id, limit=100):
         if not self.has_read_access(knowledge_base_id, user_id):
             return None
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             return db.execute(
                 "select id,event_type,entity_id,actor_user_id,payload,occurred_at "
                 "from ragapp.audit_events where knowledge_base_id=%s "
@@ -222,7 +223,7 @@ class SourceRepository:
     def latest_version(self, knowledge_base_id, source_id, user_id):
         if not self.has_read_access(knowledge_base_id, user_id):
             return None
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             return db.execute(
                 "select sv.* from ragapp.sources s join lateral "
                 "(select candidate.* from ragapp.source_versions candidate "
@@ -234,7 +235,7 @@ class SourceRepository:
             ).fetchone()
 
     def delete(self, knowledge_base_id, source_id, user_id):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             allowed = db.execute(
                 "select exists(select 1 from ragapp.sources s "
                 "where s.id=%s and s.knowledge_base_id=%s "

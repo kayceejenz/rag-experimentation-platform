@@ -11,6 +11,7 @@ from modules.core.models.lineage_model import ArtifactLink, ExecutionLineage
 from modules.core.models.specification_model import Specification, SpecificationKind
 from modules.core.repos.execution_repo import ExecutionRepository
 from psycopg.rows import dict_row
+from integrations.database import db_connection
 
 
 class LineageRepository:
@@ -18,7 +19,7 @@ class LineageRepository:
         self.database_url = database_url
 
     def list_executions(self, project_id: UUID, limit: int) -> list[Execution]:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             rows = db.execute(
                 "select * from ragapp.executions where project_id=%s "
                 "order by created_at desc,id desc limit %s",
@@ -29,7 +30,7 @@ class LineageRepository:
     def get_execution(
         self, project_id: UUID, execution_id: UUID
     ) -> ExecutionLineage | None:
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             execution_row = db.execute(
                 "select * from ragapp.executions where id=%s and project_id=%s",
                 (execution_id, project_id),

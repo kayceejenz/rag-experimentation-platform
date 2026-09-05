@@ -1,6 +1,7 @@
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
+from integrations.database import db_connection
 
 
 class PromptRepository:
@@ -8,14 +9,14 @@ class PromptRepository:
         self.database_url = database_url
 
     def can_access(self, project_id, user_id, action="view"):
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             return db.execute(
                 "select ragapp.has_project_permission(%s,%s,'prompts',%s)",
                 (project_id, user_id, action),
             ).fetchone()[0]
 
     def list(self, project_id):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             return db.execute(
                 "select p.*,v.id latest_version_id,v.version latest_version,v.variables,v.content_sha256 "
                 "from ragapp.prompts p left join lateral(select id,version,variables,content_sha256 from ragapp.prompt_versions "
@@ -38,7 +39,7 @@ class PromptRepository:
         digest,
         change_note,
     ):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             prompt = db.execute(
                 "insert into ragapp.prompts(project_id,name,purpose,description,prompt_type,created_by) values(%s,%s,%s,%s,%s,%s) returning *",
                 (project_id, name, purpose, description, prompt_type, user_id),
@@ -58,7 +59,7 @@ class PromptRepository:
         return prompt, version
 
     def detail(self, project_id, prompt_id):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             prompt = db.execute(
                 "select * from ragapp.prompts where id=%s and project_id=%s",
                 (prompt_id, project_id),
@@ -74,7 +75,7 @@ class PromptRepository:
     def add_version(
         self, project_id, prompt_id, user_id, template, variables, digest, change_note
     ):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "insert into ragapp.prompt_versions(prompt_id,project_id,version,template,variables,content_sha256,change_note,created_by) "
                 "select id,project_id,coalesce((select max(version)+1 from ragapp.prompt_versions where prompt_id=%s),1),%s,%s,%s,%s,%s "
@@ -98,7 +99,7 @@ class PromptRepository:
         return row
 
     def archive(self, project_id, prompt_id):
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             return (
                 db.execute(
                     "update ragapp.prompts set status='archived' where id=%s and project_id=%s and status='active' returning id",

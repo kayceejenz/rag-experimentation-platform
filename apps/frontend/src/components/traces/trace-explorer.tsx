@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { SmoothLink } from '@/components/navigation/smooth-link';
+import { formatDateTimeWithSeconds } from '@/lib/format';
 import type { Project } from '@/types/workspace';
 import type {
 	ArtifactLink,
@@ -53,13 +54,7 @@ const statusLabels: Record<ExecutionStatus, string> = {
 
 function formatDate(value: string | null): string {
 	if (!value) return '—';
-	return new Intl.DateTimeFormat(undefined, {
-		month: 'short',
-		day: 'numeric',
-		hour: '2-digit',
-		minute: '2-digit',
-		second: '2-digit',
-	}).format(new Date(value));
+	return formatDateTimeWithSeconds(value);
 }
 
 function duration(execution: Execution): string {

@@ -2,6 +2,7 @@ from uuid import UUID
 
 import psycopg
 from psycopg.rows import dict_row
+from integrations.database import db_connection
 
 
 class IndexRepository:
@@ -9,35 +10,35 @@ class IndexRepository:
         self.database_url = database_url
 
     def can_access(self, project_id, user_id, write=False):
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             return db.execute(
                 "select ragapp.has_project_permission(%s,%s,'indexes',%s)",
                 (project_id, user_id, "manage" if write else "view"),
             ).fetchone()[0]
 
     def models(self):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             return db.execute(
                 "select id,provider,model_name,dimensions,distance_metric,configuration "
                 "from ragapp.embedding_models where is_active order by provider,model_name,dimensions"
             ).fetchall()
 
     def model(self, model_id):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             return db.execute(
                 "select * from ragapp.embedding_models where id=%s and is_active",
                 (model_id,),
             ).fetchone()
 
     def knowledge_base_exists(self, project_id, knowledge_base_id):
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             return db.execute(
                 "select exists(select 1 from ragapp.knowledge_bases where id=%s and project_id=%s and deleted_at is null)",
                 (knowledge_base_id, project_id),
             ).fetchone()[0]
 
     def folders_exist(self, knowledge_base_id, folder_ids):
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             return db.execute(
                 "select count(*)=%s from ragapp.knowledge_folders "
                 "where knowledge_base_id=%s and id=any(%s)",
@@ -46,7 +47,7 @@ class IndexRepository:
 
     def enqueue(self, project_id, knowledge_base_id, specification_id, folder_ids=None):
         queued = 0
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             folder_filter = ""
             parameters = [project_id, knowledge_base_id]
             if folder_ids:
@@ -89,8 +90,15 @@ class IndexRepository:
                     )
         return queued, len(versions)
 
+    def ensure_vector_index(self, specification_id, model_id):
+        with db_connection(self.database_url) as db:
+            return db.execute(
+                "select ragapp.ensure_specification_hnsw_index(%s,%s)",
+                (specification_id, model_id),
+            ).fetchone()[0]
+
     def specification_scope(self, project_id, specification_id):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             row = db.execute(
                 "select configuration from ragapp.specifications where id=%s and project_id=%s "
                 "and kind='pipeline' and not exists(select 1 from ragapp.index_retirements r "
@@ -108,7 +116,7 @@ class IndexRepository:
         ]
 
     def specification_exists(self, project_id, specification_id):
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             return db.execute(
                 "select exists(select 1 from ragapp.specifications "
                 "where id=%s and project_id=%s and kind='pipeline' "
@@ -118,7 +126,7 @@ class IndexRepository:
             ).fetchone()[0]
 
     def builds(self, project_id):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             return db.execute(
                 "select s.id,s.configuration,s.configuration_hash,s.created_at,"
                 "count(j.id) job_count,count(j.id) filter(where j.status='completed') completed_jobs,"
@@ -132,7 +140,7 @@ class IndexRepository:
             ).fetchall()
 
     def detail(self, project_id, specification_id):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             specification = db.execute(
                 "select id,configuration,configuration_hash,created_at from ragapp.specifications "
                 "where id=%s and project_id=%s and kind='pipeline' "
@@ -174,7 +182,7 @@ class IndexRepository:
         return {"specification": specification, "jobs": jobs, "traces": traces}
 
     def artifact_preview(self, project_id, specification_id, artifact_id):
-        with psycopg.connect(self.database_url, row_factory=dict_row) as db:
+        with db_connection(self.database_url, row_factory=dict_row) as db:
             artifact = db.execute(
                 "select distinct a.id,a.kind,a.storage_type,a.storage_key,a.manifest,a.content_sha256,a.created_at "
                 "from ragapp.artifacts a join ragapp.execution_outputs eo on eo.artifact_id=a.id "
@@ -198,21 +206,23 @@ class IndexRepository:
             elif source_version_id and artifact["kind"] == "chunk_dataset":
                 records = db.execute(
                     "select id,position,content,page_from,page_to,metadata "
-                    "from ragapp.chunks where source_version_id=%s order by position limit 100",
-                    (source_version_id,),
+                    "from ragapp.chunks where source_version_id=%s and specification_id=%s "
+                    "order by position limit 100",
+                    (source_version_id, specification_id),
                 ).fetchall()
             elif source_version_id and artifact["kind"] == "embedding_dataset":
                 records = db.execute(
                     "select ce.chunk_id,em.provider,em.model_name,em.dimensions,ce.embedding::text embedding "
                     "from ragapp.chunk_embeddings ce join ragapp.chunks c on c.id=ce.chunk_id "
                     "join ragapp.embedding_models em on em.id=ce.embedding_model_id "
-                    "where c.source_version_id=%s order by c.position limit 100",
-                    (source_version_id,),
+                    "where c.source_version_id=%s and c.specification_id=%s "
+                    "order by c.position limit 100",
+                    (source_version_id, specification_id),
                 ).fetchall()
         return {"artifact": artifact, "records": records, "limit": 100}
 
     def retire(self, project_id, specification_id, user_id):
-        with psycopg.connect(self.database_url) as db:
+        with db_connection(self.database_url) as db:
             specification = db.execute(
                 "select id from ragapp.specifications where id=%s and project_id=%s "
                 "and kind='pipeline' and not exists(select 1 from ragapp.index_retirements r "

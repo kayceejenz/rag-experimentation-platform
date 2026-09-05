@@ -6,6 +6,7 @@ from modules.auth.models.error_model import AccountAlreadyExistsError
 from modules.auth.models.password_account_model import PasswordAccount
 from psycopg.errors import UniqueViolation
 from psycopg.rows import dict_row
+from integrations.database import db_connection
 
 
 class UserRepository:
@@ -13,7 +14,7 @@ class UserRepository:
         self.database_url = database_url
 
     def connect(self):
-        return psycopg.connect(self.database_url, row_factory=dict_row)
+        return db_connection(self.database_url, row_factory=dict_row)
 
     @staticmethod
     def account(row) -> PasswordAccount:
