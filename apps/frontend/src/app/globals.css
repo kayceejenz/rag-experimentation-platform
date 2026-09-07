@@ -153,13 +153,83 @@ a {
 	animation: workspace-out 0.16s ease-in both;
 }
 ::view-transition-new(main-content) {
-	animation: workspace-in 0.3s cubic-bezier(0.22, 0.75, 0.2, 1) both;
+	animation: workspace-in 0.16s cubic-bezier(0.22, 0.75, 0.2, 1) both;
 }
 ::view-transition-old(app-sidebar) {
 	animation: sidebar-out 0.14s ease-in both;
 }
 ::view-transition-new(app-sidebar) {
-	animation: sidebar-in 0.24s ease-out both;
+	animation: sidebar-in 0.14s ease-out both;
+}
+
+.navigation-progress {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 2px;
+	z-index: 1000;
+	overflow: hidden;
+	pointer-events: none;
+	opacity: 0;
+}
+.navigation-progress.active {
+	opacity: 1;
+}
+.navigation-progress span {
+	display: block;
+	width: 42%;
+	height: 100%;
+	background: var(--accent);
+	transform: translateX(-110%);
+}
+.navigation-progress.active span {
+	animation: navigation-progress 1s ease-in-out infinite;
+}
+@keyframes navigation-progress {
+	0% { transform: translateX(-110%); }
+	60% { width: 58%; }
+	100% { transform: translateX(245%); }
+}
+
+.module-preloader {
+	display: grid;
+	gap: 18px;
+	padding: 8px 0;
+}
+.preloader-heading,
+.preloader-grid,
+.preloader-table {
+	display: grid;
+	gap: 10px;
+}
+.preloader-heading span,
+.preloader-grid span,
+.preloader-table span {
+	position: relative;
+	overflow: hidden;
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--line) 70%, transparent);
+}
+.preloader-heading span::after,
+.preloader-grid span::after,
+.preloader-table span::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--panel) 75%, transparent), transparent);
+	transform: translateX(-100%);
+	animation: preloader-shimmer 1.25s ease-in-out infinite;
+}
+.preloader-heading span:first-child { width: 210px; height: 28px; }
+.preloader-heading span:last-child { width: min(420px, 70%); height: 14px; }
+.preloader-grid { grid-template-columns: repeat(3, 1fr); }
+.preloader-grid span { height: 92px; }
+.preloader-table { padding-top: 6px; }
+.preloader-table span { height: 48px; }
+@keyframes preloader-shimmer { to { transform: translateX(100%); } }
+@media (max-width: 720px) {
+	.preloader-grid { grid-template-columns: 1fr; }
 }
 html[data-navigation-transition='chat']::view-transition-old(main-content) {
 	animation: chat-out 0.12s ease-in both;

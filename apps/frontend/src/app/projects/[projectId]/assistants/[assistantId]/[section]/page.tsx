@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation';
-import { AppShell } from '@/components/layout/app-shell';
 import { SmoothLink } from '@/components/navigation/smooth-link';
 import { ProjectAccessDenied } from '@/components/projects/project-access-denied';
 import { getAuthUser } from '@/lib/api/auth';
@@ -34,38 +33,25 @@ export default async function AssistantSection({ params }: Props) {
 	const { projectId, assistantId, section } = await params;
 	const definition = sections[section];
 	if (!definition) notFound();
-	const [assistant, projects] = await Promise.all([
+	const [assistant, project] = await Promise.all([
 		backendJson<Assistant>(
 			user.accessToken,
 			`/assistants/${assistantId}`,
 		).catch(() => null),
-		backendJson<{ projects: Project[] }>(
-			user.accessToken,
-			'/projects',
-		)
-			.then(value => value.projects)
-			.catch(() => []),
+		backendJson<Project>(user.accessToken, `/projects/${projectId}`).catch(() => null),
 	]);
-	const project = projects.find(item => item.id === projectId);
 	if (project && project.role !== 'owner' && !project.permissions?.assistants?.view) {
-		return <AppShell user={{ id: user.id, email: user.email, name: user.name }} projects={projects} activeProjectId={projectId}><ProjectAccessDenied projectId={projectId} feature='Assistants'/></AppShell>;
+		return <ProjectAccessDenied projectId={projectId} feature='Assistants'/>;
 	}
-	if (!assistant || assistant.project_id !== projectId) notFound();
+	if (!assistant || !project || assistant.project_id !== projectId) notFound();
 	const lineage = section === 'lineage' ? await backendJson<AssistantLineageData>(user.accessToken, `/assistants/${assistantId}/lineage`).catch(() => null) : null;
 	const base = `/projects/${projectId}/assistants/${assistantId}`;
 	return (
-		<AppShell
-			user={{
-				id: user.id,
-				email: user.email,
-				name: user.name,
-			}}
-			projects={projects}
-			activeProjectId={projectId}
-			title={definition.title}
-			description={definition.description}
-			tabs={
-				<>
+		<>
+			<header className='workspace-header'>
+				<div><h1>{definition.title}</h1><p>{definition.description}</p></div>
+			</header>
+			<div className='workspace-tabs'>
 					<SmoothLink href={base}>
 						Overview
 					</SmoothLink>
@@ -81,8 +67,7 @@ export default async function AssistantSection({ params }: Props) {
 							{sections[key].title}
 						</SmoothLink>
 					))}
-				</>
-			}>
+			</div>
 			{section === 'playground' ? (
 				<AssistantPlayground assistant={assistant} />
 			) : lineage ? (
@@ -93,6 +78,6 @@ export default async function AssistantSection({ params }: Props) {
 					<p>This assistant was not created from a completed experiment run.</p>
 				</section>
 			)}
-		</AppShell>
+		</>
 	);
 }

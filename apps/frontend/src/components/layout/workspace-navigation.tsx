@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
 	Bot,
 	ChevronDown,
@@ -14,7 +14,7 @@ import {
 	FileCode2,
 	Settings,
 } from 'lucide-react';
-import { SmoothLink } from '@/components/navigation/smooth-link';
+import { SmoothLink, useSmoothNavigation } from '@/components/navigation/smooth-link';
 import type { Project, ProjectFeature } from '@/types/workspace';
 
 const groups = [
@@ -67,7 +67,7 @@ export function WorkspaceNavigation({
 	compact?: boolean;
 }) {
 	const pathname = usePathname();
-	const router = useRouter();
+	const navigate = useSmoothNavigation();
 	const resolvedProjectId =
 		activeProjectId ??
 		projects.find(project => project.is_default)?.id ??
@@ -147,9 +147,7 @@ export function WorkspaceNavigation({
 							}
 							value={activeProject.id}
 							onChange={event =>
-								router.push(
-									`/projects/${event.target.value}`,
-								)
+								navigate(`/projects/${event.target.value}`)
 							}>
 							{projects.map(
 								project => (

@@ -91,11 +91,11 @@ export function TraceExplorer({
 	resources = { sources: [], indexes: [] },
 }: Props) {
 	const [executions, setExecutions] = useState(initialExecutions);
-	const [experimentRuns, setExperimentRuns] = useState(initialExperimentRuns);
+	const [experimentRuns, setExperimentRuns] = useState(
+		initialExperimentRuns,
+	);
 	const [selectedId, setSelectedId] = useState(
-		initialLineage?.execution.id ??
-			initialExecutions[0]?.id ??
-			null,
+		initialLineage?.execution.id ?? null,
 	);
 	const [lineage, setLineage] = useState(initialLineage);
 	const [tab, setTab] = useState<Tab>('lineage');
@@ -201,7 +201,10 @@ export function TraceExplorer({
 				`/api/projects/${project.id}/experiment-runs`,
 			);
 			if (experimentResponse.ok) {
-				const experimentBody = (await experimentResponse.json()) as { runs: ExperimentRun[] };
+				const experimentBody =
+					(await experimentResponse.json()) as {
+						runs: ExperimentRun[];
+					};
 				setExperimentRuns(experimentBody.runs);
 			}
 			if (selectedId) await selectExecution(selectedId);
@@ -289,26 +292,123 @@ export function TraceExplorer({
 				<div className='trace-panel-heading'>
 					<div>
 						<h2>Experiment runs</h2>
-						<p>Evaluated variants and their promoted assistants</p>
+						<p>
+							Evaluated variants and
+							their promoted
+							assistants
+						</p>
 					</div>
 				</div>
 				<div className='trace-table-wrap'>
 					<table className='trace-table'>
-						<thead><tr><th>Run</th><th>Experiment</th><th>Variant</th><th>Assistant</th><th>State</th><th>Started</th></tr></thead>
+						<thead>
+							<tr>
+								<th>Run</th>
+								<th>
+									Experiment
+								</th>
+								<th>Variant</th>
+								<th>
+									Assistant
+								</th>
+								<th>State</th>
+								<th>Started</th>
+							</tr>
+						</thead>
 						<tbody>
-							{experimentRuns.map(run => (
-								<tr key={run.variant_run_id}>
-									<td><strong>{shortId(run.run_id)}</strong><small className='trace-cell-note'>Revision {run.code_revision}</small></td>
-									<td><SmoothLink href={`/projects/${project.id}/experiments`}>{run.experiment_name}</SmoothLink></td>
-									<td>{run.variant_name}</td>
-									<td>{run.assistant_id ? <SmoothLink href={`/projects/${project.id}/assistants/${run.assistant_id}`}>{run.assistant_name}<small className='trace-cell-note'>Revision v{run.assistant_revision}</small></SmoothLink> : <span className='trace-muted'>Not promoted</span>}</td>
-									<td><span className={`trace-status ${run.variant_status}`}>{statusLabels[run.variant_status]}</span></td>
-									<td>{formatDate(run.started_at ?? run.created_at)}</td>
-								</tr>
-							))}
+							{experimentRuns.map(
+								run => (
+									<tr
+										key={
+											run.variant_run_id
+										}>
+										<td>
+											<strong>
+												{shortId(
+													run.run_id,
+												)}
+											</strong>
+											<small className='trace-cell-note'>
+												Revision{' '}
+												{
+													run.code_revision
+												}
+											</small>
+										</td>
+										<td>
+											<SmoothLink
+												href={`/projects/${project.id}/experiments`}>
+												{
+													run.experiment_name
+												}
+											</SmoothLink>
+										</td>
+										<td>
+											{
+												run.variant_name
+											}
+										</td>
+										<td>
+											{run.assistant_id ? (
+												<SmoothLink
+													href={`/projects/${project.id}/assistants/${run.assistant_id}`}>
+													{
+														run.assistant_name
+													}
+													<small className='trace-cell-note'>
+														Revision
+														v
+														{
+															run.assistant_revision
+														}
+													</small>
+												</SmoothLink>
+											) : (
+												<span className='trace-muted'>
+													Not
+													promoted
+												</span>
+											)}
+										</td>
+										<td>
+											<span
+												className={`trace-status ${run.variant_status}`}>
+												{
+													statusLabels[
+														run
+															.variant_status
+													]
+												}
+											</span>
+										</td>
+										<td>
+											{formatDate(
+												run.started_at ??
+													run.created_at,
+											)}
+										</td>
+									</tr>
+								),
+							)}
 						</tbody>
 					</table>
-					{experimentRuns.length === 0 && <div className='trace-empty'><Workflow size={28}/><strong>No experiment runs</strong><span>Run an experiment variant to establish evaluation lineage.</span></div>}
+					{experimentRuns.length === 0 && (
+						<div className='trace-empty'>
+							<Workflow size={28} />
+							<strong>
+								No experiment
+								runs
+							</strong>
+							<span>
+								Run an
+								experiment
+								variant to
+								establish
+								evaluation
+								lineage.
+							</span>
+						</div>
+					)}
 				</div>
 			</section>
 
@@ -687,7 +787,8 @@ export function TraceExplorer({
 						<h2>Select an execution</h2>
 						<p>
 							Choose a run to inspect
-							its lineage and execution trace.
+							its lineage and
+							execution trace.
 						</p>
 					</div>
 				)}

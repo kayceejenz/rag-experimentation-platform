@@ -1,18 +1,13 @@
 'use client';
 
 import { ReactNode } from 'react';
-import {
-	SessionExpiredProvider,
-} from '@/components/auth/session-expired-provider';
+import { SessionExpiredProvider } from '@/components/auth/session-expired-provider';
+import { NavigationProgress } from '@/components/navigation/navigation-progress';
 
-export function ClientProviders({
-	children,
-}: {
-	children: ReactNode;
-}) {
+export function ClientProviders({ children }: { children: ReactNode }) {
 	return (
 		<SessionExpiredProvider>
-			{children}
+			<NavigationProgress>{children}</NavigationProgress>
 		</SessionExpiredProvider>
 	);
 }
