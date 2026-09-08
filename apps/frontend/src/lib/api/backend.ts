@@ -7,7 +7,10 @@ type BackendRequest = Omit<RequestInit, 'headers'> & {
 };
 
 export class BackendRequestError extends Error {
-	constructor(message: string, public readonly status: number) {
+	constructor(
+		message: string,
+		public readonly status: number,
+	) {
 		super(message);
 		this.name = 'BackendRequestError';
 	}
@@ -34,11 +37,27 @@ export async function backendFetch(
 		headers.set('content-type', 'application/json');
 	}
 
-	return fetch(`${serverEnv.BACKEND_API_URL}/api/v1${path}`, {
-		...req,
-		headers,
-		cache: req.cache ?? 'no-store',
-	});
+	const started = performance.now();
+	const response = await fetch(
+		`${serverEnv.BACKEND_API_URL}/api/v1${path}`,
+		{
+			...req,
+			headers,
+			cache: req.cache ?? 'no-store',
+		},
+	);
+	const duration = performance.now() - started;
+	if (duration >= 150) {
+		console.warn('[backendFetch] slow request', {
+			path,
+			method: req.method ?? 'GET',
+			status: response.status,
+			durationMs: Math.round(duration),
+			requestId: response.headers.get('x-request-id'),
+			serverTiming: response.headers.get('server-timing'),
+		});
+	}
+	return response;
 }
 
 export async function backendJson<T>(

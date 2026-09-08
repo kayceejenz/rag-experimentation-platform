@@ -1,10 +1,13 @@
 from functools import lru_cache
 from typing import Annotated
 
+from core.settings import Settings
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-
-from core.settings import Settings
+from integrations.assistant_runtime import AssistantRuntimeFactory
+from integrations.embeddings import GeminiEmbedder
+from integrations.gemini_chat import GeminiChatModel
+from integrations.retrieval_store import PgVectorKnowledgeSearch
 from modules.auth.helpers.passwords import Argon2idPasswordHasher
 from modules.auth.helpers.tokens import JwtAccessTokenIssuer
 from modules.auth.models.auth_user_model import AuthenticatedUser
@@ -14,23 +17,25 @@ from modules.auth.repos.user_repo import UserRepository
 from modules.auth.services.auth_service import AuthenticationService
 from modules.benchmarks.repository import BenchmarkRepository
 from modules.benchmarks.service import BenchmarkService
-from modules.experiments.repos.experiment_repository import ExperimentRepository
-from modules.experiments.services.experiment_service import ExperimentService
-from modules.experiments.repos.run_repository import ExperimentRunRepository
 from modules.chats.repos.chat_repo import ChatRepository
 from modules.chats.repos.message_repo import MessageRepository
 from modules.chats.services.chat_service import ChatService
 from modules.core.repos.lineage_repo import LineageRepository
+from modules.core.repos.specification_repo import SpecificationRepository
 from modules.core.services.lineage_service import LineageService
-from modules.knowledge_bases.repos.knowledge_base_repo import KnowledgeBaseRepository
-from modules.knowledge_bases.services.knowledge_base_service import KnowledgeBaseService
-from modules.jobs.repos.job_repo import JobRepository
-from modules.jobs.services.job_service import JobService
+from modules.core.services.specification_service import SpecificationService
+from modules.experiments.repos.experiment_repository import ExperimentRepository
+from modules.experiments.repos.run_repository import ExperimentRunRepository
+from modules.experiments.services.experiment_service import ExperimentService
 from modules.indexes.repos.index_repository import IndexRepository
 from modules.indexes.services.index_service import IndexService
-from modules.core.repos.specification_repo import SpecificationRepository
-from modules.core.services.specification_service import SpecificationService
-from modules.ingestion.services.ingestion_specification import IngestionSpecificationRegistry
+from modules.ingestion.services.ingestion_specification import (
+    IngestionSpecificationRegistry,
+)
+from modules.jobs.repos.job_repo import JobRepository
+from modules.jobs.services.job_service import JobService
+from modules.knowledge_bases.repos.knowledge_base_repo import KnowledgeBaseRepository
+from modules.knowledge_bases.services.knowledge_base_service import KnowledgeBaseService
 from modules.knowledge_bots.repos.knowledge_bot_repository import KnowledgeBotRepository
 from modules.knowledge_bots.services.knowledge_bot_service import KnowledgeBotService
 from modules.projects.repos.project_repo import ProjectRepository
@@ -39,10 +44,6 @@ from modules.prompts.repos.prompt_repository import PromptRepository
 from modules.prompts.services.prompt_service import PromptService
 from modules.sources.repos.source_repo import SourceRepository
 from modules.sources.services.source_service import SourceService
-from integrations.embeddings import GeminiEmbedder
-from integrations.gemini_chat import GeminiChatModel
-from integrations.retrieval_store import PgVectorKnowledgeSearch
-from integrations.assistant_runtime import AssistantRuntimeFactory
 
 bearer = HTTPBearer(
     auto_error=False,
@@ -67,7 +68,9 @@ def auth_repository() -> UserRepository:
 @lru_cache
 def token_issuer() -> JwtAccessTokenIssuer:
     c = settings()
-    return JwtAccessTokenIssuer(c.jwt_secret, c.jwt_issuer, c.jwt_audience, c.access_token_minutes)
+    return JwtAccessTokenIssuer(
+        c.jwt_secret, c.jwt_issuer, c.jwt_audience, c.access_token_minutes
+    )
 
 
 @lru_cache
@@ -105,15 +108,17 @@ def chat_service() -> ChatService:
     c = settings()
     if not c.database_url:
         raise RuntimeError("DATABASE_URL is required")
-    
+
     if c.llm_provider.lower() != "gemini" or c.embedding_provider.lower() != "gemini":
-        raise RuntimeError("Chat currently requires Gemini for generation and embeddings")
-    
+        raise RuntimeError(
+            "Chat currently requires Gemini for generation and embeddings"
+        )
+
     api_key = c.llm_api_key or c.embedding_api_key
     embedding_key = c.embedding_api_key or c.llm_api_key
     if not api_key or not embedding_key or not c.llm_model:
         raise RuntimeError("LLM_API_KEY, EMBEDDING_API_KEY, and LLM_MODEL are required")
-    
+
     embedder = GeminiEmbedder(
         embedding_key,
         c.embedding_model,
@@ -156,7 +161,9 @@ def knowledge_base_service() -> KnowledgeBaseService:
 def source_service() -> SourceService:
     if not settings().database_url:
         raise RuntimeError("DATABASE_URL is required")
-    return SourceService(SourceRepository(settings().database_url), settings().source_storage_dir)
+    return SourceService(
+        SourceRepository(settings().database_url), settings().source_storage_dir
+    )
 
 
 @lru_cache
@@ -183,7 +190,9 @@ def index_service() -> IndexService:
         raise RuntimeError("DATABASE_URL is required")
     return IndexService(
         IndexRepository(c.database_url),
-        SpecificationService(SpecificationRepository(c.database_url), IngestionSpecificationRegistry()),
+        SpecificationService(
+            SpecificationRepository(c.database_url), IngestionSpecificationRegistry()
+        ),
     )
 
 

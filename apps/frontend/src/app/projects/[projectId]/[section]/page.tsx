@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation';
-import { AppShell } from '@/components/layout/app-shell';
 import {
 	ProjectSectionMock,
 	type ProjectSection,
@@ -17,7 +16,7 @@ import { ExperimentManager, type ExperimentCatalog } from '@/components/experime
 import { AssistantManager, type AssistantCandidate } from '@/components/assistants/assistant-manager';
 import { getAuthUser } from '@/lib/api/auth';
 import { backendJson } from '@/lib/api/backend';
-import type { Execution, ExecutionLineage, ExperimentRun } from '@/types/trace';
+import type { Execution, ExperimentRun } from '@/types/trace';
 import type {
 	KnowledgeBase,
 	BenchmarkDataset,
@@ -44,17 +43,11 @@ export default async function ProjectSectionPage({ params }: Props) {
 	if (!user) return null;
 	const { projectId, section } = await params;
 	if (!sections.has(section as ProjectSection)) notFound();
-	const projects = await backendJson<{ projects: Project[] }>(
-		user.accessToken,
-		'/projects',
-	)
-		.then(value => value.projects)
-		.catch(() => []);
-	const project = projects.find(item => item.id === projectId);
+	const project = await backendJson<Project>(user.accessToken, `/projects/${projectId}`).catch(() => null);
 	if (!project) notFound();
 	const feature = section as 'indexes' | 'experiments' | 'benchmarks' | 'prompts' | 'assistants' | 'runs' | 'settings';
 	if (project.role !== 'owner' && !project.permissions?.[feature]?.view) {
-		return <AppShell user={{ id: user.id, email: user.email, name: user.name }} projects={projects} activeProjectId={projectId}><ProjectAccessDenied projectId={projectId} feature={feature}/></AppShell>;
+		return <ProjectAccessDenied projectId={projectId} feature={feature}/>;
 	}
 	if (section === 'indexes') {
 		const [catalog, knowledgeBase] = await Promise.all([
@@ -81,53 +74,35 @@ export default async function ProjectSectionPage({ params }: Props) {
 				.then(value => value.sources)
 				.catch(() => []),
 		]);
-		return (
-			<AppShell
-				user={{
-					id: user.id,
-					email: user.email,
-					name: user.name,
-				}}
-				projects={projects}
-				activeProjectId={projectId}>
-				<IndexManager
+		return <IndexManager
 					project={project}
 					knowledgeBase={knowledgeBase}
 					folders={folders}
 					sources={sources}
 					initialCatalog={catalog}
-				/>
-			</AppShell>
-		);
+				/>;
 	}
 	if (section === 'prompts') {
 		const prompts=await backendJson<{prompts:PromptAsset[]}>(user.accessToken,`/projects/${projectId}/prompts`).then(value=>value.prompts);
-		return <AppShell user={{id:user.id,email:user.email,name:user.name}} projects={projects} activeProjectId={projectId}><PromptManager project={project} initialPrompts={prompts}/></AppShell>;
+		return <PromptManager project={project} initialPrompts={prompts}/>;
 	}
 	if (section === 'benchmarks') {
 		const datasets = await backendJson<{ datasets: BenchmarkDataset[] }>(
 			user.accessToken,
 			`/projects/${projectId}/benchmarks`,
 		).then(value => value.datasets);
-		return (
-			<AppShell
-				user={{ id: user.id, email: user.email, name: user.name }}
-				projects={projects}
-				activeProjectId={projectId}>
-				<BenchmarkManager project={project} initialDatasets={datasets} />
-			</AppShell>
-		);
+		return <BenchmarkManager project={project} initialDatasets={datasets} />;
 	}
 	if (section === 'experiments') {
 		const catalog=await backendJson<ExperimentCatalog>(user.accessToken,`/projects/${projectId}/experiments`);
-		return <AppShell user={{id:user.id,email:user.email,name:user.name}} projects={projects} activeProjectId={projectId}><ExperimentManager project={project} initialCatalog={catalog}/></AppShell>;
+		return <ExperimentManager project={project} initialCatalog={catalog}/>;
 	}
 	if (section === 'assistants') {
 		const [assistantResult, candidateResult] = await Promise.all([
 			backendJson<{ assistants: Assistant[] }>(user.accessToken, `/projects/${projectId}/assistants`),
 			backendJson<{ candidates: AssistantCandidate[] }>(user.accessToken, `/projects/${projectId}/assistant-candidates`),
 		]);
-		return <AppShell user={{ id: user.id, email: user.email, name: user.name }} projects={projects} activeProjectId={projectId}><AssistantManager project={project} initialAssistants={assistantResult.assistants} candidates={candidateResult.candidates}/></AppShell>;
+		return <AssistantManager project={project} initialAssistants={assistantResult.assistants} candidates={candidateResult.candidates}/>;
 	}
 	if (section === 'runs') {
 		const [executionResult, experimentRunResult, catalog, knowledgeBase] =
@@ -161,28 +136,13 @@ export default async function ProjectSectionPage({ params }: Props) {
 					.then(value => value.sources)
 					.catch(() => [])
 			: [];
-		const initialLineage = executionResult.executions[0]
-			? await backendJson<ExecutionLineage>(
-					user.accessToken,
-					`/projects/${projectId}/executions/${executionResult.executions[0].id}`,
-				).catch(() => null)
-			: null;
-		return (
-			<AppShell
-				user={{
-					id: user.id,
-					email: user.email,
-					name: user.name,
-				}}
-				projects={projects}
-				activeProjectId={projectId}>
-				<TraceExplorer
+		return <TraceExplorer
 					project={project}
 					initialExecutions={
 						executionResult.executions
 					}
 					initialExperimentRuns={experimentRunResult.runs}
-					initialLineage={initialLineage}
+					initialLineage={null}
 					resources={{
 						sources,
 						indexes: catalog.indexes.map(
@@ -194,27 +154,14 @@ export default async function ProjectSectionPage({ params }: Props) {
 							}),
 						),
 					}}
-				/>
-			</AppShell>
-		);
+				/>;
 	}
 	if (section === 'settings') {
 		const members = await backendJson<{ members: ProjectMember[] }>(user.accessToken, `/projects/${projectId}/members`).then(value => value.members).catch(() => []);
-		return <AppShell user={{ id: user.id, email: user.email, name: user.name }} projects={projects} activeProjectId={projectId}><ProjectSettings project={project} initialMembers={members} currentUserId={user.id}/></AppShell>;
+		return <ProjectSettings project={project} initialMembers={members} currentUserId={user.id}/>;
 	}
-	return (
-		<AppShell
-			user={{
-				id: user.id,
-				email: user.email,
-				name: user.name,
-			}}
-			projects={projects}
-			activeProjectId={projectId}>
-			<ProjectSectionMock
+	return <ProjectSectionMock
 				project={project}
 				section={section as ProjectSection}
-			/>
-		</AppShell>
-	);
+			/>;
 }

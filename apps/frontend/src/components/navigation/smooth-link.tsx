@@ -4,11 +4,13 @@ import type { ComponentProps, MouseEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Route } from 'next';
+import { useNavigationProgress } from '@/components/navigation/navigation-progress';
 
 type Props = Omit<ComponentProps<typeof Link>, 'href'> & { href: string };
 
 export function useSmoothNavigation() {
 	const router = useRouter();
+	const startProgress = useNavigationProgress();
 	return (href: string) => {
 		const navigate = () => router.push(href as Route);
 		const destination = new URL(href, window.location.href);
@@ -18,6 +20,7 @@ export function useSmoothNavigation() {
 			destination.search === current.search
 		)
 			return;
+		startProgress();
 
 		const reducedMotion = window.matchMedia(
 			'(prefers-reduced-motion: reduce)',
