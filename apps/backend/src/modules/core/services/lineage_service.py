@@ -1,4 +1,3 @@
-import asyncio
 from uuid import UUID
 
 from modules.core.contracts.lineage_contract import LineageRepositoryContract
@@ -24,17 +23,13 @@ class LineageService:
         self, project_id: UUID, user_id: UUID, limit: int
     ) -> list[Execution]:
         await self.projects.require_permission(project_id, user_id, "runs")
-        return await asyncio.to_thread(
-            self.repository.list_executions, project_id, limit
-        )
+        return await self.repository.list_executions(project_id, limit)
 
     async def get_execution(
         self, project_id: UUID, execution_id: UUID, user_id: UUID
     ) -> ExecutionLineage:
         await self.projects.require_permission(project_id, user_id, "runs")
-        lineage = await asyncio.to_thread(
-            self.repository.get_execution, project_id, execution_id
-        )
+        lineage = await self.repository.get_execution(project_id, execution_id)
         if lineage is None:
             raise ExecutionNotFoundError
         return lineage

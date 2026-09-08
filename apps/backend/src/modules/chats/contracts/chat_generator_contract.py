@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
 from typing import Protocol, TypedDict
 
 
@@ -8,10 +8,10 @@ class StreamPart(TypedDict):
 
 
 class ChatGenerator(Protocol):
-    def generate(
+    async def generate(
         self, question: str, context: str, history: list[tuple[str, str]]
     ) -> str: ...
 
     def generate_stream(
         self, question: str, context: str, history: list[tuple[str, str]]
-    ) -> Iterator[StreamPart]: ...
+    ) -> AsyncIterator[StreamPart]: ...

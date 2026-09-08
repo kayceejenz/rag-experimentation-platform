@@ -5,6 +5,6 @@ from modules.chats.models.retrieval_model import RetrievedChunk
 
 
 class KnowledgeSearch(Protocol):
-    def search(
+    async def search(
         self, knowledge_base_id: UUID, query: str, limit: int = 8
     ) -> list[RetrievedChunk]: ...

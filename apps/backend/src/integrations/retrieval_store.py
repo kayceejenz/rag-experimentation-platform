@@ -252,7 +252,11 @@ class PgVectorKnowledgeSearch:
         return vector
 
     async def _embed_query(self, query: str) -> list[float]:
-        result = self.embedder.embed([query])
-        if inspect.isawaitable(result):
-            result = await result
+        embed_async = getattr(self.embedder, "embed_async", None)
+        if embed_async is not None:
+            result = await embed_async([query])
+        elif inspect.iscoroutinefunction(self.embedder.embed):
+            result = await self.embedder.embed([query])
+        else:
+            result = await asyncio.to_thread(self.embedder.embed, [query])
         return result[0]

@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import json
 import socket
 import time
@@ -65,27 +66,31 @@ class RateLimitedEmbedder:
 
     async def embed(self, texts):
         async with self.limiter.limit():
+            embed_async = getattr(self.embedder, "embed_async", None)
+            if embed_async is not None:
+                return await embed_async(texts)
             return await asyncio.to_thread(self.embedder.embed, texts)
 
 
 async def provider_call(limiter, operation, *args):
     async with limiter.limit() as wait_ms:
-        result = await asyncio.to_thread(operation, *args)
+        if inspect.iscoroutinefunction(operation):
+            result = await operation(*args)
+        else:
+            result = await asyncio.to_thread(operation, *args)
     return result, wait_ms
 
 
 async def heartbeat(repo, run_id, worker_id, interval):
     while True:
         await asyncio.sleep(interval)
-        await asyncio.to_thread(repo.heartbeat, run_id, worker_id)
+        await repo.heartbeat(run_id, worker_id)
 
 
 async def run_once(config):
     repo = ExperimentRunRepository(config.database_url)
     worker_id = socket.gethostname()
-    run = await asyncio.to_thread(
-        repo.claim, worker_id, config.experiment_run_lease_seconds
-    )
+    run = await repo.claim(worker_id, config.experiment_run_lease_seconds)
     if not run:
         return False
     heartbeat_task = asyncio.create_task(
@@ -97,7 +102,7 @@ async def run_once(config):
         )
     )
     try:
-        payload, variants = await asyncio.to_thread(repo.payload, run["id"])
+        payload, variants = await repo.payload(run["id"])
         query_embedding_cache = QueryEmbeddingCache()
         provider_limiter = AsyncRateLimiter(
             config.experiment_provider_max_concurrency,
@@ -127,11 +132,9 @@ async def run_once(config):
             return_exceptions=True,
         )
         errors = [str(result) for result in variant_results if result]
-        await asyncio.to_thread(
-            repo.finish, run["id"], "; ".join(errors)[:2000] if errors else None
-        )
+        await repo.finish(run["id"], "; ".join(errors)[:2000] if errors else None)
     except Exception as error:
-        await asyncio.to_thread(repo.finish, run["id"], str(error)[:2000])
+        await repo.finish(run["id"], str(error)[:2000])
     finally:
         heartbeat_task.cancel()
         await asyncio.gather(heartbeat_task, return_exceptions=True)
@@ -148,7 +151,7 @@ async def _run_variant(
     case_semaphore,
     evaluator_semaphore,
 ):
-    await asyncio.to_thread(repo.start_variant, variant["variant_run_id"])
+    await repo.start_variant(variant["variant_run_id"])
     try:
         idx = variant["index_configuration"]
         embedding = idx["embedding"]
@@ -189,9 +192,7 @@ async def _run_variant(
             max_output_tokens=generation["max_output_tokens"],
         )
 
-        completed = await asyncio.to_thread(
-            repo.completed_cases, variant["variant_run_id"]
-        )
+        completed = await repo.completed_cases(variant["variant_run_id"])
         completed_ids = {str(row["case_id"]) for row in completed}
         all_metrics = [row["metrics"] for row in completed]
 
@@ -233,13 +234,10 @@ async def _run_variant(
             if values:
                 aggregate[metric] = mean(values)
         error = "; ".join(errors)[:2000] if errors else None
-        await asyncio.to_thread(
-            repo.finish_variant, variant["variant_run_id"], aggregate, error
-        )
+        await repo.finish_variant(variant["variant_run_id"], aggregate, error)
         return error
     except Exception as error:
-        await asyncio.to_thread(
-            repo.finish_variant,
+        await repo.finish_variant(
             variant["variant_run_id"],
             {},
             str(error)[:2000],
@@ -333,8 +331,7 @@ async def _run_case(
     }
     metrics.update(evaluations)
     metrics["total_latency"] = (time.perf_counter() - case_started) * 1000
-    await asyncio.to_thread(
-        repo.save_case,
+    await repo.save_case(
         variant["variant_run_id"],
         case,
         position,

@@ -7,6 +7,7 @@ from integrations.database import (
     configure_database_pools,
     open_database_pools,
 )
+from integrations.http_client import close_http_clients
 from modules.ingestion.services.ingestion_worker import run_once
 from modules.experiments.services.experiment_runner import run_once as run_experiment_once
 
@@ -25,6 +26,7 @@ async def run_worker(config: Settings, once: bool) -> None:
                 await asyncio.sleep(config.worker_poll_interval_seconds)
     finally:
         await close_database_pools()
+        await close_http_clients()
 
 
 def main() -> None:

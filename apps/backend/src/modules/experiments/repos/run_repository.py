@@ -1,7 +1,6 @@
-import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
-from integrations.database import db_connection
+from integrations.database import async_db_connection, db_connection
 
 
 class ExperimentRunRepository:
@@ -94,9 +93,9 @@ class ExperimentRunRepository:
             ).fetchall()
             return {"run": run, "variants": variants, "cases": cases}
 
-    def claim(self, worker, lease_seconds=900):
-        with db_connection(self.url, row_factory=dict_row) as db:
-            return db.execute(
+    async def claim(self, worker, lease_seconds=900):
+        async with async_db_connection(self.url, row_factory=dict_row) as db:
+            cursor = await db.execute(
                 "update ragapp.experiment_runs set status='running',"
                 "started_at=coalesce(started_at,now()),heartbeat_at=now(),worker_id=%s,attempt=attempt+1 "
                 "where id=(select id from ragapp.experiment_runs "
@@ -104,23 +103,25 @@ class ExperimentRunRepository:
                 "or heartbeat_at < now()-(%s*interval '1 second'))) "
                 "order by created_at for update skip locked limit 1) returning *",
                 (worker, lease_seconds),
-            ).fetchone()
+            )
+            return await cursor.fetchone()
 
-    def heartbeat(self, run_id, worker):
-        with db_connection(self.url) as db:
-            db.execute(
+    async def heartbeat(self, run_id, worker):
+        async with async_db_connection(self.url) as db:
+            await db.execute(
                 "update ragapp.experiment_runs set heartbeat_at=now() "
                 "where id=%s and worker_id=%s and status='running'",
                 (run_id, worker),
             )
 
-    def payload(self, run_id):
-        with db_connection(self.url, row_factory=dict_row) as db:
-            run = db.execute(
+    async def payload(self, run_id):
+        async with async_db_connection(self.url, row_factory=dict_row) as db:
+            cursor = await db.execute(
                 "select r.*,e.metrics,e.benchmark_dataset_id,b.content from ragapp.experiment_runs r join ragapp.experiments e on e.id=r.experiment_id join ragapp.benchmark_datasets b on b.id=e.benchmark_dataset_id where r.id=%s",
                 (run_id,),
-            ).fetchone()
-            variants = db.execute(
+            )
+            run = await cursor.fetchone()
+            cursor = await db.execute(
                 "select vr.id variant_run_id,vr.status variant_run_status,v.*,s.configuration index_configuration,"
                 "coalesce(s.configuration#>>'{embedding,model_id}',(select em.id::text "
                 "from ragapp.embedding_models em where em.provider=s.configuration#>>'{embedding,provider}' "
@@ -141,41 +142,57 @@ class ExperimentRunRepository:
                 "join ragapp.prompt_versions rpv on rpv.id=v.rag_prompt_version_id "
                 "where vr.run_id=%s order by v.created_at",
                 (run_id,),
-            ).fetchall()
-            for v in variants:
-                ids = list(v["evaluator_prompt_versions"].values())
-                rows = (
-                    db.execute(
-                        "select p.purpose,pv.template from ragapp.prompt_versions pv join ragapp.prompts p on p.id=pv.prompt_id where pv.id=any(%s::uuid[])",
-                        (ids,),
-                    ).fetchall()
-                    if ids
-                    else []
+            )
+            variants = await cursor.fetchall()
+            evaluator_ids = {
+                evaluator_id
+                for variant in variants
+                for evaluator_id in variant["evaluator_prompt_versions"].values()
+            }
+            evaluator_rows = []
+            if evaluator_ids:
+                cursor = await db.execute(
+                    "select pv.id,p.purpose,pv.template from ragapp.prompt_versions pv "
+                    "join ragapp.prompts p on p.id=pv.prompt_id "
+                    "where pv.id=any(%s::uuid[])",
+                    (list(evaluator_ids),),
                 )
-                v["evaluators"] = {x["purpose"]: x["template"] for x in rows}
+                evaluator_rows = await cursor.fetchall()
+            evaluators_by_id = {
+                str(row["id"]): (row["purpose"], row["template"])
+                for row in evaluator_rows
+            }
+            for v in variants:
+                v["evaluators"] = {}
+                for evaluator_id in v["evaluator_prompt_versions"].values():
+                    evaluator = evaluators_by_id.get(str(evaluator_id))
+                    if evaluator is not None:
+                        purpose, template = evaluator
+                        v["evaluators"][purpose] = template
             return run, variants
 
-    def start_variant(self, id):
-        with db_connection(self.url) as db:
-            db.execute(
+    async def start_variant(self, id):
+        async with async_db_connection(self.url) as db:
+            await db.execute(
                 "update ragapp.experiment_variant_runs set status='running',"
                 "started_at=coalesce(started_at,now()),completed_at=null,error_message=null where id=%s",
                 (id,),
             )
 
-    def completed_cases(self, variant_run_id):
-        with db_connection(self.url, row_factory=dict_row) as db:
-            return db.execute(
+    async def completed_cases(self, variant_run_id):
+        async with async_db_connection(self.url, row_factory=dict_row) as db:
+            cursor = await db.execute(
                 "select case_id,metrics from ragapp.experiment_case_results "
                 "where variant_run_id=%s and error_message is null",
                 (variant_run_id,),
-            ).fetchall()
+            )
+            return await cursor.fetchall()
 
-    def save_case(
+    async def save_case(
         self, variant_run_id, case, position, context, answer, metrics, error=None
     ):
-        with db_connection(self.url) as db:
-            db.execute(
+        async with async_db_connection(self.url) as db:
+            await db.execute(
                 "insert into ragapp.experiment_case_results(variant_run_id,case_id,position,question,reference_answer,retrieved_context,generated_answer,metrics,error_message) values(%s,%s,%s,%s,%s,%s,%s,%s,%s) "
                 "on conflict(variant_run_id,case_id) do nothing",
                 (
@@ -191,16 +208,16 @@ class ExperimentRunRepository:
                 ),
             )
 
-    def finish_variant(self, id, metrics, error=None):
-        with db_connection(self.url) as db:
-            db.execute(
+    async def finish_variant(self, id, metrics, error=None):
+        async with async_db_connection(self.url) as db:
+            await db.execute(
                 "update ragapp.experiment_variant_runs set status=%s,aggregate_metrics=%s,error_message=%s,completed_at=now() where id=%s",
                 ("failed" if error else "completed", Jsonb(metrics), error, id),
             )
 
-    def finish(self, id, error=None):
-        with db_connection(self.url) as db:
-            db.execute(
+    async def finish(self, id, error=None):
+        async with async_db_connection(self.url) as db:
+            await db.execute(
                 "update ragapp.experiment_runs set status=%s,error_message=%s,"
                 "completed_at=now(),heartbeat_at=now() where id=%s",
                 ("failed" if error else "completed", error, id),
