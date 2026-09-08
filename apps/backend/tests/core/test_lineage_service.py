@@ -11,6 +11,8 @@ from modules.projects.models.project_model import ProjectNotFoundError
 class LineageServiceTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.repository = MagicMock()
+        self.repository.list_executions = AsyncMock()
+        self.repository.get_execution = AsyncMock()
         self.projects = MagicMock()
         self.projects.require_permission = AsyncMock()
         self.service = LineageService(self.repository, self.projects)
@@ -23,7 +25,7 @@ class LineageServiceTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ProjectNotFoundError):
             await self.service.list_executions(self.project_id, self.user_id, 50)
 
-        self.repository.list_executions.assert_not_called()
+        self.repository.list_executions.assert_not_awaited()
 
     async def test_list_is_scoped_to_authorized_project(self) -> None:
         execution = Execution(
@@ -33,21 +35,19 @@ class LineageServiceTests(unittest.IsolatedAsyncioTestCase):
         )
         self.repository.list_executions.return_value = [execution]
 
-        result = await self.service.list_executions(
-            self.project_id, self.user_id, 25
-        )
+        result = await self.service.list_executions(self.project_id, self.user_id, 25)
 
-        self.projects.require_permission.assert_awaited_once_with(self.project_id, self.user_id, "runs")
-        self.repository.list_executions.assert_called_once_with(self.project_id, 25)
+        self.projects.require_permission.assert_awaited_once_with(
+            self.project_id, self.user_id, "runs"
+        )
+        self.repository.list_executions.assert_awaited_once_with(self.project_id, 25)
         self.assertEqual([execution], result)
 
     async def test_missing_execution_returns_domain_not_found(self) -> None:
         self.repository.get_execution.return_value = None
 
         with self.assertRaises(ExecutionNotFoundError):
-            await self.service.get_execution(
-                self.project_id, uuid4(), self.user_id
-            )
+            await self.service.get_execution(self.project_id, uuid4(), self.user_id)
 
     async def test_detail_returns_typed_lineage(self) -> None:
         execution = Execution(
@@ -63,7 +63,7 @@ class LineageServiceTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(lineage, result)
-        self.repository.get_execution.assert_called_once_with(
+        self.repository.get_execution.assert_awaited_once_with(
             self.project_id, execution.id
         )
 

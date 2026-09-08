@@ -1,6 +1,6 @@
 from uuid import UUID
 
-import psycopg
+from integrations.database import async_db_connection
 from modules.core.models.artifact_model import (
     Artifact,
     ArtifactKind,
@@ -11,40 +11,42 @@ from modules.core.models.lineage_model import ArtifactLink, ExecutionLineage
 from modules.core.models.specification_model import Specification, SpecificationKind
 from modules.core.repos.execution_repo import ExecutionRepository
 from psycopg.rows import dict_row
-from integrations.database import db_connection
 
 
 class LineageRepository:
     def __init__(self, database_url: str) -> None:
         self.database_url = database_url
 
-    def list_executions(self, project_id: UUID, limit: int) -> list[Execution]:
-        with db_connection(self.database_url, row_factory=dict_row) as db:
-            rows = db.execute(
+    async def list_executions(self, project_id: UUID, limit: int) -> list[Execution]:
+        async with async_db_connection(self.database_url, row_factory=dict_row) as db:
+            cursor = await db.execute(
                 "select * from ragapp.executions where project_id=%s "
                 "order by created_at desc,id desc limit %s",
                 (project_id, limit),
-            ).fetchall()
+            )
+            rows = await cursor.fetchall()
         return [ExecutionRepository._model(row) for row in rows]
 
-    def get_execution(
+    async def get_execution(
         self, project_id: UUID, execution_id: UUID
     ) -> ExecutionLineage | None:
-        with db_connection(self.database_url, row_factory=dict_row) as db:
-            execution_row = db.execute(
+        async with async_db_connection(self.database_url, row_factory=dict_row) as db:
+            cursor = await db.execute(
                 "select * from ragapp.executions where id=%s and project_id=%s",
                 (execution_id, project_id),
-            ).fetchone()
+            )
+            execution_row = await cursor.fetchone()
             if execution_row is None:
                 return None
             specification_row = None
             if execution_row["specification_id"] is not None:
-                specification_row = db.execute(
+                cursor = await db.execute(
                     "select * from ragapp.specifications where id=%s and project_id=%s",
                     (execution_row["specification_id"], project_id),
-                ).fetchone()
-            inputs = self._links(db, "execution_inputs", project_id, execution_id)
-            outputs = self._links(db, "execution_outputs", project_id, execution_id)
+                )
+                specification_row = await cursor.fetchone()
+            inputs = await self._links(db, "execution_inputs", project_id, execution_id)
+            outputs = await self._links(db, "execution_outputs", project_id, execution_id)
         return ExecutionLineage(
             execution=ExecutionRepository._model(execution_row),
             specification=self._specification(specification_row)
@@ -55,13 +57,14 @@ class LineageRepository:
         )
 
     @staticmethod
-    def _links(db, table: str, project_id: UUID, execution_id: UUID):
-        rows = db.execute(
+    async def _links(db, table: str, project_id: UUID, execution_id: UUID):
+        cursor = await db.execute(
             f"select l.role,l.position,a.* from ragapp.{table} l "
             "join ragapp.artifacts a on a.id=l.artifact_id and a.project_id=l.project_id "
             "where l.project_id=%s and l.execution_id=%s order by l.role,l.position",
             (project_id, execution_id),
-        ).fetchall()
+        )
+        rows = await cursor.fetchall()
         return [
             ArtifactLink(
                 role=row["role"],

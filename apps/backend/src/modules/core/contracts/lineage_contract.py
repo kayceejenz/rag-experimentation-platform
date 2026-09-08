@@ -6,8 +6,10 @@ from modules.core.models.lineage_model import ExecutionLineage
 
 
 class LineageRepositoryContract(Protocol):
-    def list_executions(self, project_id: UUID, limit: int) -> list[Execution]: ...
+    async def list_executions(
+        self, project_id: UUID, limit: int
+    ) -> list[Execution]: ...
 
-    def get_execution(
+    async def get_execution(
         self, project_id: UUID, execution_id: UUID
     ) -> ExecutionLineage | None: ...
