@@ -847,9 +847,7 @@ export function SourceOverview({
 							</button>
 						</header>
 						<div className='document-preview-content'>
-							{preview.content_type.startsWith(
-								'image/',
-							) ? (
+							{isSafeImagePreview(preview) ? (
 								<Image
 									unoptimized
 									width={
@@ -863,13 +861,18 @@ export function SourceOverview({
 										preview.display_name
 									}
 								/>
-							) : (
+							) : isSafeFramePreview(preview) ? (
 								<iframe
+									sandbox=''
 									title={
 										preview.display_name
 									}
 									src={`/api/knowledge-bases/${source.id}/sources/${preview.id}/file#toolbar=0&navpanes=0`}
 								/>
+							) : (
+								<div className='mock-empty'>
+									This document type cannot be previewed safely.
+								</div>
 							)}
 						</div>
 					</section>
@@ -877,6 +880,21 @@ export function SourceOverview({
 			)}
 		</div>
 	);
+}
+
+const SAFE_IMAGE_EXTENSIONS = new Set(['gif', 'jpeg', 'jpg', 'png', 'webp']);
+const SAFE_FRAME_EXTENSIONS = new Set(['csv', 'json', 'md', 'pdf', 'txt']);
+
+function sourceExtension(source: Source): string {
+	return source.display_name.split('.').pop()?.toLowerCase() ?? '';
+}
+
+function isSafeImagePreview(source: Source): boolean {
+	return SAFE_IMAGE_EXTENSIONS.has(sourceExtension(source));
+}
+
+function isSafeFramePreview(source: Source): boolean {
+	return SAFE_FRAME_EXTENSIONS.has(sourceExtension(source));
 }
 
 function KnowledgeActivity({ events }: { events: KnowledgeActivityEvent[] }) {

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from api.dependencies import auth_service, current_user, settings
+from api.dependencies import auth_rate_limiter, auth_service, current_user, settings
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from modules.auth.dtos.login_dto import LoginRequest
 from modules.auth.dtos.register_dto import RegisterRequest
@@ -9,13 +9,32 @@ from modules.auth.dtos.user_dto import UserResponse
 from modules.auth.models.auth_user_model import AuthenticatedUser
 from modules.auth.models.error_model import (
     AccountAlreadyExistsError,
+    AuthRateLimitExceededError,
     InvalidCredentialsError,
+    InvalidInvitationCodeError,
     InvalidRefreshTokenError,
 )
 from modules.auth.models.token_model import TokenPair
 from modules.auth.services.auth_service import AuthenticationService
+from modules.auth.services.rate_limit_service import AuthRateLimiter
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+
+def enforce_auth_rate_limit(
+    request: Request,
+    limiter: AuthRateLimiter,
+    action: str,
+) -> None:
+    client_identifier = request.client.host if request.client else "unknown"
+    try:
+        limiter.check(action, client_identifier)
+    except AuthRateLimitExceededError as error:
+        raise HTTPException(
+            429,
+            "Too many authentication attempts. Please try again later.",
+            headers={"Retry-After": str(error.retry_after_seconds)},
+        ) from None
 
 
 def set_refresh_cookie(response: Response, pair: TokenPair) -> None:
@@ -42,10 +61,20 @@ def token_response(pair: TokenPair) -> TokenResponse:
 @router.post("/register", response_model=UserResponse, status_code=201)
 def register(
     body: RegisterRequest,
+    request: Request,
     service: Annotated[AuthenticationService, Depends(auth_service)],
+    limiter: Annotated[AuthRateLimiter, Depends(auth_rate_limiter)],
 ):
+    enforce_auth_rate_limit(request, limiter, "register")
     try:
-        user = service.register(body.email, body.password, body.display_name)
+        user = service.register(
+            body.email,
+            body.password,
+            body.display_name,
+            body.invitation_code,
+        )
+    except InvalidInvitationCodeError:
+        raise HTTPException(403, "A valid invitation code is required") from None
     except AccountAlreadyExistsError:
         raise HTTPException(409, "Account already exists") from None
     return UserResponse(
@@ -59,7 +88,9 @@ def login(
     request: Request,
     response: Response,
     service: Annotated[AuthenticationService, Depends(auth_service)],
+    limiter: Annotated[AuthRateLimiter, Depends(auth_rate_limiter)],
 ):
+    enforce_auth_rate_limit(request, limiter, "login")
     try:
         pair = service.login(
             body.email,

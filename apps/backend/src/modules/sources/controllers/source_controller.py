@@ -20,6 +20,7 @@ from modules.sources.dtos.source_dto import (
 from modules.sources.models.error_model import (
     SourceNotFoundError,
     SourcePermissionError,
+    SourcePreviewUnsupportedError,
     SourceTooLargeError,
 )
 from modules.sources.services.source_service import SourceService
@@ -225,14 +226,24 @@ def download_source_file(
         )
     except SourceNotFoundError:
         raise HTTPException(404, "Source not found") from None
+    except SourcePreviewUnsupportedError:
+        raise HTTPException(
+            415,
+            "This document type cannot be previewed safely",
+        ) from None
     background = BackgroundTask(cleanup_temp, path) if temporary else None
-    return FileResponse(
+    response = FileResponse(
         path,
         media_type=content_type,
         filename=filename,
         content_disposition_type="inline",
         background=background,
     )
+    response.headers["Content-Security-Policy"] = (
+        "sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'"
+    )
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @router.delete(

@@ -8,6 +8,7 @@ from integrations.storage import delete_file, resolve_file, upload_file
 from modules.sources.models.error_model import (
     SourceNotFoundError,
     SourcePermissionError,
+    SourcePreviewUnsupportedError,
     SourceTooLargeError,
 )
 from modules.sources.models.source_model import (
@@ -18,6 +19,18 @@ from modules.sources.models.source_model import (
 
 class SourceService:
     MAX_FILE_SIZE = 10 * 1024 * 1024
+    PREVIEW_MEDIA_TYPES = {
+        ".csv": "text/plain; charset=utf-8",
+        ".gif": "image/gif",
+        ".jpeg": "image/jpeg",
+        ".jpg": "image/jpeg",
+        ".json": "text/plain; charset=utf-8",
+        ".md": "text/plain; charset=utf-8",
+        ".pdf": "application/pdf",
+        ".png": "image/png",
+        ".txt": "text/plain; charset=utf-8",
+        ".webp": "image/webp",
+    }
 
     def __init__(self, repository, storage_dir: str) -> None:
         self.repository = repository
@@ -134,11 +147,16 @@ class SourceService:
         version = self.repository.latest_version(knowledge_base_id, source_id, user_id)
         if not version:
             raise SourceNotFoundError
+        preview_media_type = self.PREVIEW_MEDIA_TYPES.get(
+            Path(version["filename"]).suffix.lower()
+        )
+        if preview_media_type is None:
+            raise SourcePreviewUnsupportedError
         path, temporary = resolve_file(version["storage_key"], self.storage_dir)
         return (
             path,
             temporary,
-            version["content_type"] or "application/octet-stream",
+            preview_media_type,
             version["filename"],
         )
 

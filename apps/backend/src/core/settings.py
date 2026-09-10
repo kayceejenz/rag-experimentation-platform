@@ -1,4 +1,6 @@
-from pydantic import Field
+from typing import Self
+
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,6 +27,35 @@ class Settings(BaseSettings):
     jwt_audience: str = Field(default="ragapp-api", alias="JWT_AUDIENCE")
     access_token_minutes: int = Field(default=15, alias="ACCESS_TOKEN_MINUTES")
     refresh_token_days: int = Field(default=30, alias="REFRESH_TOKEN_DAYS")
+    registration_invitation_code: str | None = Field(
+        default=None,
+        alias="REGISTRATION_INVITATION_CODE",
+        max_length=256,
+    )
+    registration_rate_limit: int = Field(
+        default=5,
+        alias="REGISTRATION_RATE_LIMIT",
+        ge=1,
+        le=100,
+    )
+    registration_rate_window_seconds: int = Field(
+        default=3600,
+        alias="REGISTRATION_RATE_WINDOW_SECONDS",
+        ge=60,
+        le=86400,
+    )
+    login_rate_limit: int = Field(
+        default=10,
+        alias="LOGIN_RATE_LIMIT",
+        ge=1,
+        le=1000,
+    )
+    login_rate_window_seconds: int = Field(
+        default=900,
+        alias="LOGIN_RATE_WINDOW_SECONDS",
+        ge=60,
+        le=86400,
+    )
     source_storage_dir: str = Field(
         default="storage/sources", alias="SOURCE_STORAGE_DIR"
     )
@@ -104,6 +135,47 @@ class Settings(BaseSettings):
     r2_bucket_name: str | None = Field(default=None, alias="R2_BUCKET_NAME")
     r2_access_key_id: str | None = Field(default=None, alias="R2_ACCESS_KEY_ID")
     r2_secret_access_key: str | None = Field(default=None, alias="R2_SECRET_ACCESS_KEY")
+
+    @model_validator(mode="after")
+    def validate_production_configuration(self) -> Self:
+        if self.app_env.strip().lower() != "production":
+            return self
+
+        errors: list[str] = []
+        if not self.database_url:
+            errors.append("DATABASE_URL is required")
+        if (
+            len(self.jwt_secret.strip()) < 32
+            or self.jwt_secret == "local-jwt-secret-change-me"
+        ):
+            errors.append("JWT_SECRET must be a unique secret of at least 32 characters")
+        if (
+            not self.registration_invitation_code
+            or len(self.registration_invitation_code.strip()) < 16
+        ):
+            errors.append(
+                "REGISTRATION_INVITATION_CODE must contain at least 16 characters"
+            )
+        if not self.allowed_origins:
+            errors.append("CORS_ORIGINS must contain at least one trusted origin")
+        if "*" in self.allowed_origins:
+            errors.append("CORS_ORIGINS cannot contain a wildcard")
+
+        configured_r2_values = {
+            "R2_API": self.r2_api,
+            "R2_BUCKET_NAME": self.r2_bucket_name,
+            "R2_ACCESS_KEY_ID": self.r2_access_key_id,
+            "R2_SECRET_ACCESS_KEY": self.r2_secret_access_key,
+        }
+        if any(configured_r2_values.values()) and not all(configured_r2_values.values()):
+            missing = [
+                name for name, value in configured_r2_values.items() if not value
+            ]
+            errors.append(f"R2 storage configuration is incomplete: {', '.join(missing)}")
+
+        if errors:
+            raise ValueError("Invalid production configuration: " + "; ".join(errors))
+        return self
 
     @property
     def has_database(self) -> bool:

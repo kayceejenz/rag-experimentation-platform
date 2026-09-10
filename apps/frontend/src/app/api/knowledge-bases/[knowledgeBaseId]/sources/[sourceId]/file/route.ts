@@ -31,9 +31,11 @@ export async function GET(_request: Request, { params }: Params) {
 				'content-type':
 					upstream.headers.get('content-type') ??
 					'application/octet-stream',
-				'content-disposition': 'inline',
-				'x-content-type-options': 'nosniff',
-			},
+					'content-disposition': 'inline',
+					'x-content-type-options': 'nosniff',
+					'content-security-policy':
+						"sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'",
+				},
 		});
 	} catch (error) {
 		return apiError(error);

@@ -8,3 +8,7 @@ class SourcePermissionError(Exception):
 
 class SourceTooLargeError(Exception):
     pass
+
+
+class SourcePreviewUnsupportedError(Exception):
+    pass

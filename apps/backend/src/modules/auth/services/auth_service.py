@@ -12,6 +12,7 @@ from modules.auth.models.error_model import (
     AccountAlreadyExistsError,
     InvalidAccessTokenError,
     InvalidCredentialsError,
+    InvalidInvitationCodeError,
     InvalidRefreshTokenError,
 )
 from modules.auth.models.token_model import TokenPair
@@ -28,6 +29,7 @@ class AuthenticationService:
         refresh_tokens: RefreshTokenRepository,
         account_writer: AccountWriter,
         refresh_token_days: int = 30,
+        registration_invitation_code: str | None = None,
     ) -> None:
         self._accounts = accounts
         self._hasher = hasher
@@ -36,6 +38,7 @@ class AuthenticationService:
         self._refresh_tokens = refresh_tokens
         self._account_writer = account_writer
         self._refresh_token_lifetime = timedelta(days=refresh_token_days)
+        self._registration_invitation_code = registration_invitation_code
         self._dummy_hash = hasher.hash("ragapp-dummy-password-for-timing-equalization")
 
     def authenticate_access_token(self, token: str) -> AuthenticatedUser:
@@ -56,8 +59,20 @@ class AuthenticationService:
         return account.user
 
     def register(
-        self, email: str, password: str, display_name: str | None
+        self,
+        email: str,
+        password: str,
+        display_name: str | None,
+        invitation_code: str | None = None,
     ) -> AuthenticatedUser:
+        if self._registration_invitation_code is not None:
+            supplied_code = invitation_code or ""
+            if not secrets.compare_digest(
+                supplied_code,
+                self._registration_invitation_code,
+            ):
+                raise InvalidInvitationCodeError
+
         normalized_email = email.strip().lower()
 
         if self._accounts.find_by_email(normalized_email):
