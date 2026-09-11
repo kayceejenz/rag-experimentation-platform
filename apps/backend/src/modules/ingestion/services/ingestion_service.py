@@ -3,8 +3,13 @@ from pathlib import Path
 from uuid import UUID
 
 from modules.ingestion.contracts.chunk_writer_contract import ChunkWriter
-from modules.ingestion.contracts.document_partitioner_contract import DocumentPartitioner
-from modules.ingestion.contracts.element_contract import ElementAssetStorage, ElementWriter
+from modules.ingestion.contracts.document_partitioner_contract import (
+    DocumentPartitioner,
+)
+from modules.ingestion.contracts.element_contract import (
+    ElementAssetStorage,
+    ElementWriter,
+)
 from modules.ingestion.contracts.embedder_contract import Embedder
 from modules.ingestion.models.chunk_element_model import Chunk
 from modules.ingestion.models.document_element_model import DocumentElement
