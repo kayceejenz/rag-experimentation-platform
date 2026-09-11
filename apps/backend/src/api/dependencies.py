@@ -13,7 +13,9 @@ from modules.auth.helpers.tokens import JwtAccessTokenIssuer
 from modules.auth.models.auth_user_model import AuthenticatedUser
 from modules.auth.models.error_model import InvalidAccessTokenError
 from modules.auth.repos.refresh_token_repo import RefreshTokenRepository
+from modules.auth.repos.rate_limit_repo import AuthRateLimitRepository
 from modules.auth.repos.user_repo import UserRepository
+from modules.auth.services.rate_limit_service import AuthRateLimiter
 from modules.auth.services.auth_service import AuthenticationService
 from modules.benchmarks.repository import BenchmarkRepository
 from modules.benchmarks.service import BenchmarkService
@@ -84,6 +86,22 @@ def auth_service() -> AuthenticationService:
         RefreshTokenRepository(repository),
         repository,
         c.refresh_token_days,
+        c.registration_invitation_code,
+    )
+
+
+@lru_cache
+def auth_rate_limiter() -> AuthRateLimiter:
+    c = settings()
+    if not c.database_url:
+        raise RuntimeError("DATABASE_URL is required")
+    return AuthRateLimiter(
+        AuthRateLimitRepository(c.database_url),
+        c.jwt_secret,
+        c.registration_rate_limit,
+        c.registration_rate_window_seconds,
+        c.login_rate_limit,
+        c.login_rate_window_seconds,
     )
 
 

@@ -25,6 +25,7 @@ function SignInContent() {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [displayName, setDisplayName] = useState('');
+	const [invitationCode, setInvitationCode] = useState('');
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(
 		initialError
@@ -66,6 +67,8 @@ function SignInContent() {
 							display_name:
 								displayName.trim() ||
 								null,
+							invitation_code:
+								invitationCode,
 						}),
 					},
 				);
@@ -73,18 +76,24 @@ function SignInContent() {
 					.json()
 					.catch(() => ({}))) as {
 					detail?: string;
-					error?: {
-						message?: string;
-						details?: Array<{
-							message?: string;
-						}>;
-					};
+					error?:
+						| string
+						| {
+								message?: string;
+								details?: Array<{
+									message?: string;
+								}>;
+						  };
 				};
 				if (!response.ok) {
+					const registrationError =
+						typeof body.error === 'string'
+							? body.error
+							: body.error?.details?.[0]
+									?.message ??
+								body.error?.message;
 					throw new Error(
-						body.error?.details?.[0]
-							?.message ??
-							body.error?.message ??
+						registrationError ??
 							body.detail ??
 							'Unable to create the account.',
 					);
@@ -272,6 +281,26 @@ function SignInContent() {
 							</small>
 						)}
 					</label>
+					{mode === 'register' && (
+						<label>
+							<span>Invitation code</span>
+							<input
+								type='password'
+								autoComplete='off'
+								value={invitationCode}
+								required
+								disabled={loading}
+								maxLength={256}
+								onChange={event =>
+									setInvitationCode(event.target.value)
+								}
+								placeholder='Provided with your invitation'
+							/>
+							<small>
+								Registration is available by invitation.
+							</small>
+						</label>
+					)}
 					<button
 						type='submit'
 						className='auth-submit'

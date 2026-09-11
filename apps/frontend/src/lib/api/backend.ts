@@ -10,6 +10,7 @@ export class BackendRequestError extends Error {
 	constructor(
 		message: string,
 		public readonly status: number,
+		public readonly retryAfter: string | null = null,
 	) {
 		super(message);
 		this.name = 'BackendRequestError';

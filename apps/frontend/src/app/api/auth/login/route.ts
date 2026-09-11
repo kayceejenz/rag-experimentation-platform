@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loginUser, setAuthCookies } from '@/lib/api/auth';
+import { BackendRequestError } from '@/lib/api/backend';
 
 export async function POST(request: Request) {
 	try {
@@ -31,6 +32,11 @@ export async function POST(request: Request) {
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : 'Login failed.';
-		return NextResponse.json({ error: message }, { status: 401 });
+		const status = error instanceof BackendRequestError ? error.status : 500;
+		const headers =
+			error instanceof BackendRequestError && error.retryAfter
+				? { 'retry-after': error.retryAfter }
+				: undefined;
+		return NextResponse.json({ error: message }, { status, headers });
 	}
 }

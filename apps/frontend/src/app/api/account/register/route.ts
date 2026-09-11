@@ -1,16 +1,18 @@
 import { NextResponse } from 'next/server';
 import { registerUser } from '@/lib/api/auth';
+import { BackendRequestError } from '@/lib/api/backend';
 
 export async function POST(request: Request) {
 	try {
-		const { email, password, display_name } = (await request.json()) as {
+		const { email, password, display_name, invitation_code } = (await request.json()) as {
 			email: string;
 			password: string;
 			display_name: string | null;
+			invitation_code: string;
 		};
-		if (!email || !password) {
+		if (!email || !password || !invitation_code) {
 			return NextResponse.json(
-				{ error: 'Email and password are required.' },
+				{ error: 'Email, password, and invitation code are required.' },
 				{ status: 400 },
 			);
 		}
@@ -18,11 +20,13 @@ export async function POST(request: Request) {
 			email.trim().toLowerCase(),
 			password,
 			display_name?.trim() || null,
+			invitation_code,
 		);
 		return NextResponse.json(user, { status: 201 });
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : 'Registration failed.';
-		return NextResponse.json({ error: message }, { status: 409 });
+		const status = error instanceof BackendRequestError ? error.status : 500;
+		return NextResponse.json({ error: message }, { status });
 	}
 }

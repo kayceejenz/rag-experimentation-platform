@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { serverEnv } from '@/lib/env';
+import { BackendRequestError } from '@/lib/api/backend';
 
 const ACCESS_TOKEN = 'access_token';
 const REFRESH_TOKEN = 'refresh_token';
@@ -53,7 +54,11 @@ export async function loginUser(
 	});
 	if (!loginRes.ok) {
 		const body = await loginRes.json().catch(() => ({})) as { detail?: string; error?: { message?: string } };
-		throw new Error(body.error?.message ?? body.detail ?? 'Invalid credentials');
+		throw new BackendRequestError(
+			body.error?.message ?? body.detail ?? 'Invalid credentials',
+			loginRes.status,
+			loginRes.headers.get('retry-after'),
+		);
 	}
 	const tokens = (await loginRes.json()) as TokenPayload;
 	const refreshToken = extractRefreshToken(loginRes);
@@ -150,20 +155,27 @@ export async function registerUser(
 	email: string,
 	password: string,
 	displayName: string | null,
+	invitationCode: string,
 ): Promise<{ id: string; email: string }> {
 	const res = await fetch(apiUrl('/register'), {
 		method: 'POST',
 		headers: { 'content-type': 'application/json' },
-		body: JSON.stringify({ email, password, display_name: displayName }),
+		body: JSON.stringify({
+			email,
+			password,
+			display_name: displayName,
+			invitation_code: invitationCode,
+		}),
 		cache: 'no-store',
 	});
 	if (!res.ok) {
 		const body = await res.json().catch(() => ({})) as { detail?: string; error?: { message?: string; details?: Array<{ message?: string }> } };
-		throw new Error(
+		throw new BackendRequestError(
 			body.error?.details?.[0]?.message ??
 			body.error?.message ??
 			body.detail ??
 			'Unable to create the account.',
+			res.status,
 		);
 	}
 	const data = (await res.json()) as { id: string; email: string; display_name: string | null };
