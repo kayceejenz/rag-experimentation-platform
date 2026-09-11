@@ -109,15 +109,66 @@ Docker Compose runs PostgreSQL, the API, and the worker locally. Production imag
 
 Database migrations run before the API and worker restart. Production containers use read-only filesystems, drop Linux capabilities, and run with `no-new-privileges`. Images are tagged with the Git commit so deployed code can be traced to repository history.
 
-## What this design provides
+## Start the services:
 
-- One database transaction can preserve application state and RAG lineage.
-- Immutable configurations make experiment comparisons meaningful.
-- Separate API and worker processes keep long-running AI work away from web requests.
-- Model and storage adapters leave room for future providers without changing the core workflow.
-- Database constraints protect important rules during concurrency, not only in the interface.
-- Bounded concurrency, pooling, caching, and resumable execution improve performance without adding a distributed platform.
-- Project isolation, invitations, permissions, and rate limits make the live demonstration safer to share.
+```bash
+cd apps/backend
+docker compose up --build -d
+```
+
+Apply pending migrations:
+
+```bash
+docker compose run --rm api ragapp-migrate
+```
+
+Check migration status:
+
+```bash
+docker compose run --rm api ragapp-migrate --status
+```
+
+### Frontend
+
+Create `apps/frontend/.env.local`:
+
+```dotenv
+BACKEND_API_URL=http://localhost:8000
+APP_VERSION=2.0.0
+```
+
+Start the frontend:
+
+```bash
+cd apps/frontend
+pnpm install
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+## Useful commands
+
+Run backend tests:
+
+```bash
+cd apps/backend
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -p 'test_*.py'
+```
+
+Run frontend checks:
+
+```bash
+cd apps/frontend
+pnpm typecheck
+pnpm lint
+pnpm build
+```
+
+View backend health and API documentation:
+
+- Health: [http://localhost:8000/health](http://localhost:8000/health)
+- API documentation: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ## License
 
