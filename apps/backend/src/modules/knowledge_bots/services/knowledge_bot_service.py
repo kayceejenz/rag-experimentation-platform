@@ -1,6 +1,8 @@
 from uuid import UUID
 
-from modules.knowledge_bots.contracts.knowledge_bot_repo_contracts import KnowledgeBotRepositoryContract
+from modules.knowledge_bots.contracts.knowledge_bot_repo_contracts import (
+    KnowledgeBotRepositoryContract,
+)
 from modules.knowledge_bots.models.models import (
     KnowledgeBot,
     KnowledgeBotNotFoundError,
@@ -30,7 +32,10 @@ class KnowledgeBotService:
             project_id, user_id, "assistants", "manage"
         )
         bot = await self.repository.create(
-            project_id, user_id, name.strip(), self._description(description),
+            project_id,
+            user_id,
+            name.strip(),
+            self._description(description),
             experiment_variant_run_id,
         )
         return bot, access.role
@@ -95,7 +100,7 @@ class KnowledgeBotService:
         return updated, role
 
     async def delete(self, bot_id: UUID, user_id: UUID) -> None:
-        bot, role = await self.get(bot_id, user_id)
+        (bot,) = await self.get(bot_id, user_id)
         await self.projects.require_permission(
             bot.project_id, user_id, "assistants", "manage"
         )

@@ -5,9 +5,9 @@ from api.dependencies import current_user, knowledge_bot_service
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from modules.auth.models.auth_user_model import AuthenticatedUser
 from modules.knowledge_bots.models.dtos import (
-    CreateKnowledgeBotRequest,
     AssistantCandidateListResponse,
     AssistantLineageResponse,
+    CreateKnowledgeBotRequest,
     KnowledgeBotListResponse,
     KnowledgeBotResponse,
     UpdateKnowledgeBotRequest,
@@ -70,7 +70,10 @@ async def create_bot(
 ):
     try:
         bot, role = await service.create(
-            project_id, user.id, body.name, body.description,
+            project_id,
+            user.id,
+            body.name,
+            body.description,
             body.experiment_variant_run_id,
         )
         return response(bot, role.value)
@@ -142,7 +145,11 @@ async def assistant_lineage(
 ):
     try:
         return await service.lineage(bot_id, user.id)
-    except (KnowledgeBotNotFoundError, ProjectNotFoundError, ProjectPermissionError) as error:
+    except (
+        KnowledgeBotNotFoundError,
+        ProjectNotFoundError,
+        ProjectPermissionError,
+    ) as error:
         raise translate(error) from None
 
 

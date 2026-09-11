@@ -1,12 +1,11 @@
 from uuid import UUID
 
-import psycopg
+from integrations.database import db_connection
 from modules.auth.models.auth_user_model import AuthenticatedUser
 from modules.auth.models.error_model import AccountAlreadyExistsError
 from modules.auth.models.password_account_model import PasswordAccount
 from psycopg.errors import UniqueViolation
 from psycopg.rows import dict_row
-from integrations.database import db_connection
 
 
 class UserRepository:

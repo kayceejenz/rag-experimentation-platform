@@ -12,6 +12,8 @@ from modules.experiments.contracts.start_experiment_run import (
     StartExperimentRunRequest,
 )
 
+experiment_dependency = Depends(experiment_service)
+
 router = APIRouter(prefix="/projects/{project_id}/experiments", tags=["experiments"])
 
 
@@ -29,7 +31,7 @@ def translate(error):
 def catalog(
     project_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(experiment_service),
+    service=experiment_dependency,
 ):
     try:
         return service.catalog(project_id, user.id)
@@ -42,7 +44,7 @@ def create_experiment(
     project_id: UUID,
     body: CreateExperimentRequest,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(experiment_service),
+    service=experiment_dependency,
 ):
     try:
         return service.create(
@@ -63,7 +65,7 @@ def create_experiment(
 def project_runs(
     project_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(experiment_service),
+    service=experiment_dependency,
 ):
     try:
         return service.project_runs(project_id, user.id)
@@ -76,7 +78,7 @@ def detail(
     project_id: UUID,
     experiment_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(experiment_service),
+    service=experiment_dependency,
 ):
     try:
         return service.detail(project_id, user.id, experiment_id)
@@ -90,7 +92,7 @@ def create_variant(
     experiment_id: UUID,
     body: CreateVariantRequest,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(experiment_service),
+    service=experiment_dependency,
 ):
     try:
         return service.add_variant(
@@ -114,7 +116,7 @@ def delete_variant(
     experiment_id: UUID,
     variant_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(experiment_service),
+    service=experiment_dependency,
 ):
     try:
         service.delete_variant(project_id, user.id, experiment_id, variant_id)
@@ -128,12 +130,10 @@ def start_run(
     experiment_id: UUID,
     body: StartExperimentRunRequest,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(experiment_service),
+    service=experiment_dependency,
 ):
     try:
-        return service.start_run(
-            project_id, user.id, experiment_id, body.variant_ids
-        )
+        return service.start_run(project_id, user.id, experiment_id, body.variant_ids)
     except (PermissionError, LookupError, ValueError) as error:
         raise translate(error) from None
 
@@ -144,7 +144,7 @@ def run_detail(
     experiment_id: UUID,
     run_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(experiment_service),
+    service=experiment_dependency,
 ):
     try:
         return service.run_detail(project_id, user.id, experiment_id, run_id)

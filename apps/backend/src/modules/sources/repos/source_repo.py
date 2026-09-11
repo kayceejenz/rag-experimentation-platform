@@ -1,8 +1,7 @@
-import psycopg
+from integrations.database import db_connection
 from modules.sources.models.source_model import Source, SourceStatus
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
-from integrations.database import db_connection
 
 
 class SourceRepository:

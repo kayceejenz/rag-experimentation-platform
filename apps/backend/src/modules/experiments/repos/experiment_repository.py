@@ -1,7 +1,6 @@
-import psycopg
+from integrations.database import db_connection
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
-from integrations.database import db_connection
 
 
 class ExperimentRepository:

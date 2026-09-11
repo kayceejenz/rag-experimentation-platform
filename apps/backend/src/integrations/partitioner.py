@@ -7,7 +7,7 @@ from typing import Any
 import unstructured_client
 from unstructured_client.models import operations, shared
 
-from modules.ingestion.models.ingestion_model import DocumentElement
+from modules.ingestion.models.document_element_model import DocumentElement
 
 
 class UnstructuredPartitioner:

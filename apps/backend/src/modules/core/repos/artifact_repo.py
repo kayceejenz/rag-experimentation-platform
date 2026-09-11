@@ -1,6 +1,7 @@
 from uuid import UUID
 
 import psycopg
+from integrations.database import db_connection
 from modules.core.models.artifact_model import (
     Artifact,
     ArtifactKind,
@@ -8,7 +9,6 @@ from modules.core.models.artifact_model import (
 )
 from modules.core.models.error_model import ArtifactIdentityConflictError
 from psycopg.rows import dict_row
-from integrations.database import db_connection
 
 
 class ArtifactRepository:

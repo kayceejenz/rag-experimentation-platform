@@ -1,7 +1,7 @@
 import unittest
 from uuid import uuid4
 
-from modules.benchmarks.service import BenchmarkService
+from modules.benchmarks.services.benchmark_service import BenchmarkService
 
 
 class Repository:

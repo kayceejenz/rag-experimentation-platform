@@ -46,7 +46,9 @@ class LineageRepository:
                 )
                 specification_row = await cursor.fetchone()
             inputs = await self._links(db, "execution_inputs", project_id, execution_id)
-            outputs = await self._links(db, "execution_outputs", project_id, execution_id)
+            outputs = await self._links(
+                db, "execution_outputs", project_id, execution_id
+            )
         return ExecutionLineage(
             execution=ExecutionRepository._model(execution_row),
             specification=self._specification(specification_row)

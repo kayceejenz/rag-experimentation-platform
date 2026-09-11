@@ -1,10 +1,10 @@
 from uuid import UUID
 
 import psycopg
+from integrations.database import db_connection
 from modules.core.models.error_model import SpecificationHashCollisionError
 from modules.core.models.specification_model import Specification, SpecificationKind
 from psycopg.rows import dict_row
-from integrations.database import db_connection
 
 
 class SpecificationRepository:

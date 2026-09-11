@@ -23,23 +23,14 @@ from modules.sources.models.error_model import (
     SourcePreviewUnsupportedError,
     SourceTooLargeError,
 )
+from modules.sources.models.pipeline_model import (
+    PipelinePresetResponse,
+    PipelineTriggerResponse,
+)
 from modules.sources.services.source_service import SourceService
-from pydantic import BaseModel
 from starlette.background import BackgroundTask
 
 router = APIRouter(tags=["knowledge-base sources"])
-
-
-class PipelineTriggerResponse(BaseModel):
-    stage: str
-    queued: int
-
-
-class PipelinePresetResponse(BaseModel):
-    chunking_strategy: str
-    embedding_provider: str
-    embedding_model: str
-    embedding_dimensions: int
 
 
 @router.get(

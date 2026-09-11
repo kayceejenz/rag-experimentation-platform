@@ -17,8 +17,8 @@ from modules.auth.repos.refresh_token_repo import RefreshTokenRepository
 from modules.auth.repos.user_repo import UserRepository
 from modules.auth.services.auth_service import AuthenticationService
 from modules.auth.services.rate_limit_service import AuthRateLimiter
-from modules.benchmarks.repository import BenchmarkRepository
-from modules.benchmarks.service import BenchmarkService
+from modules.benchmarks.repos.benchmark_repository import BenchmarkRepository
+from modules.benchmarks.services.benchmark_service import BenchmarkService
 from modules.chats.repos.chat_repo import ChatRepository
 from modules.chats.repos.message_repo import MessageRepository
 from modules.chats.services.chat_service import ChatService

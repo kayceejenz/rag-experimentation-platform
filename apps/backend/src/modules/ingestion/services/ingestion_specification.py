@@ -47,5 +47,5 @@ def normalize_ingestion_pipeline(configuration: Mapping[str, Any]) -> dict[str, 
 def _mapping(configuration: Mapping[str, Any], key: str) -> Mapping[str, Any]:
     value = configuration.get(key, {})
     if not isinstance(value, Mapping):
-        raise ValueError(f"{key} must be an object")
+        raise TypeError(f"{key} must be an object")
     return value

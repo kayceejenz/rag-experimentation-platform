@@ -1,4 +1,5 @@
 from dataclasses import replace
+from typing import ClassVar
 from uuid import UUID
 
 from modules.projects.contracts.project_repo_contract import ProjectRepositoryContract
@@ -13,7 +14,7 @@ from modules.projects.models.project_model import (
 
 
 class ProjectService:
-    FEATURES = {
+    FEATURES: ClassVar[set[str]] = {
         "knowledge",
         "indexes",
         "experiments",
