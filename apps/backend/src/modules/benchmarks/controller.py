@@ -7,6 +7,7 @@ from modules.auth.models.auth_user_model import AuthenticatedUser
 from pydantic import BaseModel, Field, field_validator
 
 router = APIRouter(prefix="/projects/{project_id}/benchmarks", tags=["benchmarks"])
+benchmark_service_dependency = Depends(benchmark_service)
 
 
 class BenchmarkCaseRequest(BaseModel):
@@ -55,7 +56,7 @@ def translate(error):
 def list_benchmarks(
     project_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(benchmark_service),
+    service=benchmark_service_dependency,
 ):
     try:
         return {"datasets": service.list(project_id, user.id)}
@@ -68,7 +69,7 @@ def create_benchmark(
     project_id: UUID,
     body: CreateBenchmarkRequest,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(benchmark_service),
+    service=benchmark_service_dependency,
 ):
     try:
         return service.create(
@@ -87,7 +88,7 @@ def benchmark_detail(
     project_id: UUID,
     dataset_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(benchmark_service),
+    service=benchmark_service_dependency,
 ):
     try:
         return service.detail(project_id, user.id, dataset_id)
@@ -101,7 +102,7 @@ def create_benchmark_version(
     dataset_id: UUID,
     body: CreateBenchmarkVersionRequest,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(benchmark_service),
+    service=benchmark_service_dependency,
 ):
     try:
         return service.add_version(
