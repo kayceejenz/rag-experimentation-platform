@@ -4,8 +4,16 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from modules.core.models.artifact_model import Artifact, ArtifactKind, ArtifactStorageType
-from modules.core.models.execution_model import Execution, ExecutionKind, ExecutionStatus
+from modules.core.models.artifact_model import (
+    Artifact,
+    ArtifactKind,
+    ArtifactStorageType,
+)
+from modules.core.models.execution_model import (
+    Execution,
+    ExecutionKind,
+    ExecutionStatus,
+)
 from modules.core.models.specification_model import Specification, SpecificationKind
 from modules.ingestion.services.ingestion_specification import (
     normalize_ingestion_pipeline,
@@ -115,7 +123,9 @@ class IngestionTrackingTests(unittest.TestCase):
             create_arguments.kwargs["idempotency_key"],
         )
 
-    def test_completed_previous_attempt_is_recovered_without_new_execution(self) -> None:
+    def test_completed_previous_attempt_is_recovered_without_new_execution(
+        self,
+    ) -> None:
         retried_job = replace(self.job, attempts=2)
         completed = Execution(
             project_id=self.job.project_id,

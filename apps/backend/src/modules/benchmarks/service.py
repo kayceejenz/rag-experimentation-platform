@@ -25,7 +25,9 @@ class BenchmarkService:
                 digest,
             )
         except psycopg.errors.UniqueViolation:
-            raise ValueError("A benchmark dataset with this name already exists") from None
+            raise ValueError(
+                "A benchmark dataset with this name already exists"
+            ) from None
 
     def detail(self, project_id, user_id, dataset_id):
         self._authorise(project_id, user_id)

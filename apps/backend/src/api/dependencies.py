@@ -12,11 +12,11 @@ from modules.auth.helpers.passwords import Argon2idPasswordHasher
 from modules.auth.helpers.tokens import JwtAccessTokenIssuer
 from modules.auth.models.auth_user_model import AuthenticatedUser
 from modules.auth.models.error_model import InvalidAccessTokenError
-from modules.auth.repos.refresh_token_repo import RefreshTokenRepository
 from modules.auth.repos.rate_limit_repo import AuthRateLimitRepository
+from modules.auth.repos.refresh_token_repo import RefreshTokenRepository
 from modules.auth.repos.user_repo import UserRepository
-from modules.auth.services.rate_limit_service import AuthRateLimiter
 from modules.auth.services.auth_service import AuthenticationService
+from modules.auth.services.rate_limit_service import AuthRateLimiter
 from modules.benchmarks.repository import BenchmarkRepository
 from modules.benchmarks.service import BenchmarkService
 from modules.chats.repos.chat_repo import ChatRepository
