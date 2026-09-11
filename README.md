@@ -1,131 +1,115 @@
 # RAG Experimentation and Evaluation System
 
-A workspace for building and evaluating retrieval-augmented generation (RAG) systems.
+A workspace for building, testing, and using retrieval-augmented generation (RAG) systems.
 
-The system takes documents through indexing, evaluation, and deployment as a traceable AI assistant. It is an active prototype focused on practical RAG engineering workflows.
+The platform turns project documents into searchable vector indexes, tests RAG configurations against benchmark questions, and promotes a successful experiment into an assistant. Every execution records its configuration, inputs, outputs, and timing so results can be inspected and compared.
 
-Each project contains:
+This is an active prototype built to explore practical, production-minded RAG engineering.
 
-- **Knowledge Base**: source documents and folders.
-- **Indexes**: chunked and embedded versions of selected documents.
-- **Prompts**: versioned system, answer, and evaluation prompts.
-- **Benchmarks**: test questions and expected answers.
-- **Experiments**: configurations and evaluation runs.
-- **Assistants**: tested configurations promoted for use.
-- **Runs**: execution history, traces, and lineage.
+## Platform components
 
-## Using the platform
+Each account starts with a default project. A project keeps the following components together:
 
-### 1. Create a project
+- **Knowledge Base** stores versioned source documents and folders.
+- **Indexes** turn selected documents into chunks and vector embeddings.
+- **Prompts** store versioned system, RAG answer, and evaluation prompts.
+- **Benchmarks** store questions and expected answers for consistent testing.
+- **Experiments** combine an index, prompts, retrieval settings, and generation settings into testable variants.
+- **Assistants** are created from completed experiment runs and retain the tested configuration.
+- **Runs** provides project-wide execution history, timings, errors, traces, and lineage.
+- **Project settings** controls project details, members, and feature-level permissions.
 
-Register an account and open the default project. A project keeps its knowledge, experiments, assistants, members, and permissions together.
+## How the components work together
 
-### 2. Add knowledge
+1. Documents are uploaded to the Knowledge Base.
+2. An index selects documents or folders from that knowledge base.
+3. The worker partitions the documents, creates chunks, and generates embeddings.
+4. Prompts and benchmark questions are prepared for testing.
+5. An experiment variant references the index, prompt versions, retrieval settings, and Gemini model settings.
+6. The variant runs against the benchmark and records answers, retrieved context, metrics, and latency.
+7. A completed run can be promoted into an assistant.
+8. The assistant playground uses the promoted configuration to answer questions from its selected index.
 
-Open **Knowledge Base** and upload documents. Documents can be organized into folders and previewed within the application.
+This separation makes it possible to change one part of a RAG system without overwriting another. Variants can share a benchmark while using different indexes, prompts, or generation settings.
 
-### 3. Build an index
+## Architecture
 
-Open **Indexes**, select the documents or folders to include, and choose:
+### Web application
 
-- A chunking strategy
-- An embedding model
-- The required model dimensions
+The interface uses Next.js, React, and TypeScript. Next.js server routes sit between the browser and the backend API. They keep authentication tokens in secure cookies and attach access tokens to backend requests without exposing them to client-side code.
 
-The worker creates the chunks and vector embeddings. Index artifacts and stage timings can be inspected after the build completes.
+This boundary keeps authentication handling in one place and allows project data to load on the server before a page is rendered.
 
-### 4. Prepare an experiment
+### API and application modules
 
-Before creating an experiment:
+The backend is a FastAPI modular monolith. Authentication, projects, knowledge, indexing, prompts, benchmarks, experiments, assistants, and lineage have separate application modules inside one deployable service.
 
-1. Add or select versioned prompts.
-2. Create a benchmark dataset with test questions.
-3. Create an experiment and one or more variants.
+This keeps the system simple to run while preserving clear feature boundaries. Shared behavior is expressed through contracts, while Gemini, PostgreSQL, object storage, and document processing remain replaceable integrations.
 
-A variant binds an index, prompts, retrieval settings, and generation settings into one testable configuration.
+Pydantic validates API input and runtime settings. Production refuses to start when required database, authentication, invitation, or CORS settings are unsafe.
 
-### 5. Run and evaluate
+### Background worker
 
-Run a selected variant against a benchmark dataset. The result includes generated answers, retrieved context, evaluation metrics, and latency measurements.
+Document ingestion, index creation, and experiment evaluation run outside the API request cycle. Work is stored in PostgreSQL and claimed by a Python worker using statuses, priorities, attempts, and leases.
 
-Variants can be run independently and compared without rebuilding the underlying project assets.
+Leases allow abandoned work to be recovered if a worker stops. Unique active-job rules prevent the same stage from running twice for one source or index specification. Experiment cases are resumable, so a failed run does not need to repeat completed cases.
 
-### 6. Create an assistant
+### AI and document processing
 
-A completed experiment run can be promoted into an assistant. The assistant uses the exact index, prompts, retrieval settings, and model configuration recorded by that run.
+The Unstructured API partitions documents into elements while preserving useful page and layout metadata. The ingestion pipeline turns those elements into chunks and records which elements contributed to each chunk.
 
-Use the assistant **Playground** to start conversations. Use **Lineage** to inspect where its active configuration came from.
+Google Gemini provides embeddings, answer generation, and evaluation. HTTP clients are reused, query embeddings are cached within a run, context size is bounded, and provider concurrency is limited. These controls reduce connection overhead, repeated model calls, latency, and accidental quota exhaustion.
 
-## Technology
+### Storage
 
-| Layer               | Stack                      |
-| ------------------- | -------------------------- |
-| Frontend            | Next.js, React, TypeScript |
-| API                 | FastAPI, Python, Pydantic  |
-| Database            | PostgreSQL and pgvector    |
-| Worker              | Python background worker   |
-| AI provider         | Google Gemini              |
-| Document processing | Unstructured API           |
-| Local environment   | Docker Compose             |
+Uploaded documents and extracted assets use local storage during development and Cloudflare R2-compatible object storage in production. PostgreSQL stores their identities, versions, hashes, metadata, and relationships instead of storing large files directly in relational tables.
 
-## Repository structure
+This keeps metadata transactional while allowing file storage to scale independently.
 
-```text
-apps/
-├── backend/
-│   ├── src/api/           API setup and dependencies
-│   ├── src/integrations/  Database, model, and storage adapters
-│   ├── src/migrations/    Forward-only SQL migrations
-│   ├── src/modules/       Application modules
-│   ├── src/worker.py      Background worker
-│   └── tests/             Backend tests
-└── frontend/
-    └── src/
-        ├── app/           Pages and API proxy routes
-        ├── components/    Interface components
-        ├── lib/           Auth, environment, and API utilities
-        └── types/         Frontend data contracts
-```
+## PostgreSQL and pgvector
 
-## Local setup
+PostgreSQL is the system of record for users, projects, permissions, documents, configurations, jobs, experiments, assistants, and lineage. It provides the transactions and relational consistency needed by the platform while also supporting vector search through pgvector.
 
-### Requirements
+pgvector stores chunk embeddings beside the chunks and their metadata. Retrieval can apply project and index boundaries before returning results without maintaining a separate vector database and synchronization process.
 
-- Docker and Docker Compose
-- Node.js 20 or newer
-- pnpm
-- Google Gemini API credentials
-- Unstructured API credentials
+The database uses different index types for different access patterns:
 
-### Backend
+- **B-tree indexes** support project, resource, status, and time-based queries. They keep workspace pages, run history, document versions, messages, and audit history efficient as records grow.
+- **Composite indexes** match common access patterns such as project plus creation time, knowledge base plus source version, or conversation plus message time.
+- **Partial indexes** include only active or actionable rows. They improve queries for non-deleted resources, pending jobs, running leases, and unaccepted invitations without indexing unnecessary historical rows.
+- **Unique indexes** enforce rules such as one active email, one active prompt name within a project, one benchmark version, one artifact identity, and one active pipeline stage.
+- **GIN full-text indexes** index the search vector stored with every chunk and support keyword retrieval alongside semantic retrieval.
+- **HNSW vector indexes** provide approximate nearest-neighbour search over chunk embeddings. They use the dimensions and distance operator of the associated embedding model or immutable index specification.
 
-Create `apps/backend/.env`:
+HNSW avoids scanning every stored embedding for each query. Keeping vector indexes specification-aware prevents embeddings created by different models or dimensions from being mixed accidentally.
 
-```dotenv
-POSTGRES_DB=ragapp
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=change-me
-DATABASE_URL=postgresql://postgres:change-me@db:5432/ragapp
+PostgreSQL connection pools are shared by API and asynchronous workflows. Reusing connections avoids opening a new database connection for every request and places a clear limit on database concurrency.
 
-JWT_SECRET=replace-with-a-long-random-secret
-APP_ENV=development
-APP_REVISION=development
-CORS_ORIGINS=http://localhost:3000
+## Data integrity and lineage
 
-LLM_PROVIDER=gemini
-LLM_MODEL=your-gemini-generation-model
-LLM_API_KEY=your-gemini-api-key
+Configurations are stored as immutable specifications with canonical hashes. Documents, chunks, embeddings, benchmark versions, prompt versions, and other outputs are registered as artifacts. Executions connect those artifacts as ordered inputs and outputs.
 
-EMBEDDING_PROVIDER=gemini
-EMBEDDING_MODEL=your-gemini-embedding-model
-EMBEDDING_DIMENSIONS=768
-EMBEDDING_API_KEY=your-gemini-api-key
+Foreign keys include project identity where necessary, preventing resources from one project from being linked to another. Database constraints and triggers protect immutable records and valid execution state changes even if an application code path is incorrect.
 
-UNSTRUCTURED_API_URL=your-unstructured-api-url
-UNSTRUCTURED_API_KEY=your-unstructured-api-key
-```
+Content hashes provide deterministic identity for configurations and artifacts. Idempotency indexes prevent the same logical execution from being created more than once.
 
-Start the services:
+The result is a traceable path from an assistant response back to the experiment, index, chunks, and source documents that produced it.
+
+## Authentication and project access
+
+Passwords are hashed with Argon2id. Access tokens are short-lived, while refresh tokens are stored as hashes and rotated after use. Reusing a revoked refresh token invalidates its token family.
+
+Production account creation requires an invitation code. Registration and login use database-backed rate limits that work across API instances without storing raw IP addresses.
+
+Project roles and feature-level permissions are checked by the backend. The owner retains all privileges, while invited members can receive narrower access to knowledge, indexes, experiments, assistants, runs, or settings.
+
+## Deployment
+
+Docker Compose runs PostgreSQL, the API, and the worker locally. Production images are built by GitHub Actions, stored in Amazon ECR, and deployed to EC2.
+
+Database migrations run before the API and worker restart. Production containers use read-only filesystems, drop Linux capabilities, and run with `no-new-privileges`. Images are tagged with the Git commit so deployed code can be traced to repository history.
+
+## Start the services:
 
 ```bash
 cd apps/backend
