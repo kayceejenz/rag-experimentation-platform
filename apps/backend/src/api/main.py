@@ -12,7 +12,9 @@ from integrations.database import (
 )
 from integrations.http_client import close_http_clients
 from modules.auth.controllers.auth_controller import router as auth_router
-from modules.benchmarks.controllers.benchmark_controller import router as benchmark_router
+from modules.benchmarks.controllers.benchmark_controller import (
+    router as benchmark_router,
+)
 from modules.chats.controllers.chat_controller import router as chat_router
 from modules.core.controllers.lineage_controller import router as lineage_router
 from modules.experiments.controllers.experiment_controller import (
