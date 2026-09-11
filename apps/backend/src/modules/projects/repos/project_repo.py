@@ -1,6 +1,6 @@
+from integrations.database import async_db_connection
 from modules.projects.models.project_model import Project, ProjectAccess, ProjectRole
 from psycopg.rows import dict_row
-from integrations.database import async_db_connection
 
 
 class ProjectRepository:
@@ -35,26 +35,25 @@ class ProjectRepository:
         )
 
     async def create(self, owner_id, name, description):
-        async with self.connect() as db:
-            async with db.transaction():
-                curr = await db.execute(
-                    "insert into ragapp.projects(workspace_id,owner_id,name,description) "
-                    "select wm.workspace_id,%s,%s,%s from ragapp.workspace_members wm "
-                    "where wm.user_id=%s and wm.role='owner' order by wm.joined_at limit 1 "
-                    "returning *",
-                    (owner_id, name, description, owner_id),
-                )
-                row = await curr.fetchone()
-                source_cursor = await db.execute(
-                    "insert into ragapp.knowledge_bases(project_id,created_by,name) "
-                    "values(%s,%s,'Source') returning id",
-                    (row["id"], owner_id),
-                )
-                source = await source_cursor.fetchone()
-                await db.execute(
-                    "insert into ragapp.project_sources(project_id,knowledge_base_id) values(%s,%s)",
-                    (row["id"], source["id"]),
-                )
+        async with self.connect() as db, db.transaction():
+            curr = await db.execute(
+                "insert into ragapp.projects(workspace_id,owner_id,name,description) "
+                "select wm.workspace_id,%s,%s,%s from ragapp.workspace_members wm "
+                "where wm.user_id=%s and wm.role='owner' order by wm.joined_at limit 1 "
+                "returning *",
+                (owner_id, name, description, owner_id),
+            )
+            row = await curr.fetchone()
+            source_cursor = await db.execute(
+                "insert into ragapp.knowledge_bases(project_id,created_by,name) "
+                "values(%s,%s,'Source') returning id",
+                (row["id"], owner_id),
+            )
+            source = await source_cursor.fetchone()
+            await db.execute(
+                "insert into ragapp.project_sources(project_id,knowledge_base_id) values(%s,%s)",
+                (row["id"], source["id"]),
+            )
         return self.project(row)
 
     async def get_access(self, project_id, user_id):
@@ -143,26 +142,25 @@ class ProjectRepository:
         return rows
 
     async def add_member(self, project_id, email, permissions):
-        async with self.connect() as db:
-            async with db.transaction():
-                user = await (
-                    await db.execute(
-                        "select id from ragapp.users where email=%s and deleted_at is null and is_active",
-                        (email,),
-                    )
-                ).fetchone()
-                if not user:
-                    return None
-                inserted = await (
-                    await db.execute(
-                        "insert into ragapp.project_members(project_id,user_id,role) values(%s,%s,'viewer') "
-                        "on conflict do nothing returning user_id",
-                        (project_id, user["id"]),
-                    )
-                ).fetchone()
-                if not inserted:
-                    return False
-                await self._replace_permissions(db, project_id, user["id"], permissions)
+        async with self.connect() as db, db.transaction():
+            user = await (
+                await db.execute(
+                    "select id from ragapp.users where email=%s and deleted_at is null and is_active",
+                    (email,),
+                )
+            ).fetchone()
+            if not user:
+                return None
+            inserted = await (
+                await db.execute(
+                    "insert into ragapp.project_members(project_id,user_id,role) values(%s,%s,'viewer') "
+                    "on conflict do nothing returning user_id",
+                    (project_id, user["id"]),
+                )
+            ).fetchone()
+            if not inserted:
+                return False
+            await self._replace_permissions(db, project_id, user["id"], permissions)
         return user["id"]
 
     async def update_member_permissions(self, project_id, member_id, permissions):

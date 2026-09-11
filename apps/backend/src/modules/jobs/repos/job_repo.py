@@ -1,4 +1,4 @@
-import psycopg
+from integrations.database import db_connection
 from modules.jobs.models.job_model import (
     IngestionJob,
     IngestionJobDetails,
@@ -6,7 +6,6 @@ from modules.jobs.models.job_model import (
     PipelineStage,
 )
 from psycopg.rows import dict_row
-from integrations.database import db_connection
 
 
 class JobRepository:

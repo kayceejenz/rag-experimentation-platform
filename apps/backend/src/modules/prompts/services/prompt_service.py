@@ -1,11 +1,12 @@
 import hashlib
 import re
+from typing import ClassVar
 
 import psycopg.errors
 
 
 class PromptService:
-    TYPES = {"system", "rag_answer", "evaluation"}
+    TYPES: ClassVar[set[str]] = {"system", "rag_answer", "evaluation"}
     VARIABLE = re.compile(r"{{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*}}")
 
     def __init__(self, repository):

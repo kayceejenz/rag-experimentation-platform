@@ -1,34 +1,43 @@
 import hashlib
 import json
+from typing import ClassVar
 
 import psycopg.errors
 
 
 class ExperimentService:
-    SUPPORTED_METRICS = {
-        "context_precision",
-        "context_recall",
-        "faithfulness",
-        "answer_relevance",
-        "hallucination_detection",
-        "retrieval_latency",
-        "total_latency",
-        "token_count",
-        "estimated_cost",
-    }
-    JUDGE_METRICS = {
-        "context_precision",
-        "context_recall",
-        "faithfulness",
-        "answer_relevance",
-        "hallucination_detection",
-    }
+    SUPPORTED_METRICS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "context_precision",
+            "context_recall",
+            "faithfulness",
+            "answer_relevance",
+            "hallucination_detection",
+            "retrieval_latency",
+            "total_latency",
+            "token_count",
+            "estimated_cost",
+        }
+    )
+    JUDGE_METRICS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "context_precision",
+            "context_recall",
+            "faithfulness",
+            "answer_relevance",
+            "hallucination_detection",
+        }
+    )
 
-    def __init__(self, repository, runs=None, code_revision="development", generation_models=None):
+    def __init__(
+        self, repository, runs=None, code_revision="development", generation_models=None
+    ):
         self.repository = repository
         self.runs = runs
         self.code_revision = code_revision
-        self.generation_models = tuple(model for model in (generation_models or []) if model)
+        self.generation_models = tuple(
+            model for model in (generation_models or []) if model
+        )
 
     def catalog(self, project_id, user_id):
         self._authorise(project_id, user_id)

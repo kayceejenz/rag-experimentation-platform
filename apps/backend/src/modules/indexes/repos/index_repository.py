@@ -1,8 +1,7 @@
 from uuid import UUID
 
-import psycopg
-from psycopg.rows import dict_row
 from integrations.database import db_connection
+from psycopg.rows import dict_row
 
 
 class IndexRepository:

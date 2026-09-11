@@ -91,7 +91,7 @@ class ChatService:
         return updated_chat, role
 
     async def delete(self, chat_id: UUID, user_id: UUID) -> None:
-        chat, role = await self.get(chat_id, user_id)
+        chat, _ = await self.get(chat_id, user_id)
         await self.projects.require_permission(
             chat.project_id, user_id, "assistants", "manage"
         )
@@ -102,9 +102,14 @@ class ChatService:
         return await self.messages.list_for_conversation(chat_id)
 
     async def send_message(self, chat_id: UUID, user_id: UUID, content: str) -> Message:
-        chat, question, history, chunks, context, generator = await self._prepare_message(
-            chat_id, user_id, content
-        )
+        (
+            chat,
+            question,
+            history,
+            chunks,
+            context,
+            generator,
+        ) = await self._prepare_message(chat_id, user_id, content)
         try:
             answer = await generator.generate(
                 question,
@@ -136,9 +141,14 @@ class ChatService:
             },
         }
 
-        chat, question, history, chunks, context, generator = await self._prepare_message(
-            chat_id, user_id, content
-        )
+        (
+            chat,
+            question,
+            history,
+            chunks,
+            context,
+            generator,
+        ) = await self._prepare_message(chat_id, user_id, content)
 
         yield {
             "type": "tool_step",
@@ -185,13 +195,18 @@ class ChatService:
         if not self.runtime_factory:
             raise ChatGenerationError("Assistant runtime is not configured")
         try:
-            configuration = await self.bots.runtime_configuration(chat.assistant_id, user_id)
+            configuration = await self.bots.runtime_configuration(
+                chat.assistant_id, user_id
+            )
             search, generator = self.runtime_factory.create(configuration)
             history = await self.messages.list_for_conversation(chat.id)
-            question = Message(conversation_id=chat.id, role=MessageRole.USER, content=content.strip())
+            question = Message(
+                conversation_id=chat.id, role=MessageRole.USER, content=content.strip()
+            )
             await self.messages.add(question)
             chunks = await search.search(
-                configuration["knowledge_base_id"], question.content,
+                configuration["knowledge_base_id"],
+                question.content,
                 int(configuration["retrieval"]["top_k"]),
             )
             context = "\n\n".join(

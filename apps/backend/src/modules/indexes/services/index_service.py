@@ -1,8 +1,10 @@
+from typing import ClassVar
+
 from modules.core.models.specification_model import SpecificationKind
 
 
 class IndexService:
-    STRATEGIES = {"by_title", "basic"}
+    STRATEGIES: ClassVar[set[str]] = {"by_title", "basic"}
 
     def __init__(self, repository, specifications) -> None:
         self.repository = repository

@@ -1,7 +1,6 @@
-import psycopg
+from integrations.database import db_connection
 from modules.knowledge_bases.models.knowledge_base_model import KnowledgeBase
 from psycopg.rows import dict_row
-from integrations.database import db_connection
 
 
 class KnowledgeBaseRepository:

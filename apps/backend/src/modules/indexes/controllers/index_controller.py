@@ -8,13 +8,14 @@ from modules.indexes.contracts.create_index_contract import CreateIndexRequest
 from modules.indexes.contracts.refresh_index_contract import RefreshIndexRequest
 
 router = APIRouter(prefix="/projects/{project_id}/indexes", tags=["indexes"])
+index_dependency = Depends(index_service)
 
 
 @router.get("")
 def list_indexes(
     project_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(index_service),
+    service=index_dependency,
 ):
     try:
         models, builds = service.catalog(project_id, user.id)
@@ -35,7 +36,7 @@ def create_index(
     project_id: UUID,
     body: CreateIndexRequest,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(index_service),
+    service=index_dependency,
 ):
     try:
         specification, queued, documents = service.create(
@@ -68,7 +69,7 @@ def index_detail(
     project_id: UUID,
     specification_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(index_service),
+    service=index_dependency,
 ):
     try:
         return service.detail(project_id, user.id, specification_id)
@@ -84,7 +85,7 @@ def refresh_index(
     specification_id: UUID,
     body: RefreshIndexRequest,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(index_service),
+    service=index_dependency,
 ):
     try:
         return service.refresh(
@@ -103,7 +104,7 @@ def delete_index(
     project_id: UUID,
     specification_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(index_service),
+    service=index_dependency,
 ):
     try:
         service.delete(project_id, user.id, specification_id)
@@ -120,7 +121,7 @@ def preview_index_artifact(
     specification_id: UUID,
     artifact_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(index_service),
+    service=index_dependency,
 ):
     try:
         return service.artifact_preview(

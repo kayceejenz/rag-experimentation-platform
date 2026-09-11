@@ -4,7 +4,7 @@ from io import BytesIO
 import psycopg
 from integrations.database import db_connection
 from integrations.storage import upload_file
-from modules.ingestion.models.ingestion_model import DocumentElement
+from modules.ingestion.models.document_element_model import DocumentElement
 from psycopg.rows import dict_row
 
 

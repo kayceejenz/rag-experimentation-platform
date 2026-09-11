@@ -24,7 +24,7 @@ def parse_score(text):
             text.strip().removeprefix("```json").removesuffix("```").strip()
         )
         return float(value["score"]), value.get("reason", "")
-    except Exception:
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError):
         return None, text[:500]
 
 
@@ -133,7 +133,7 @@ async def run_once(config):
         )
         errors = [str(result) for result in variant_results if result]
         await repo.finish(run["id"], "; ".join(errors)[:2000] if errors else None)
-    except Exception as error:
+    except (KeyError, TypeError, ValueError, RuntimeError) as error:
         await repo.finish(run["id"], str(error)[:2000])
     finally:
         heartbeat_task.cancel()
@@ -214,7 +214,10 @@ async def _run_variant(
                 )
 
         results = await asyncio.gather(
-            *(execute_case(position, case) for position, case in enumerate(run["content"])),
+            *(
+                execute_case(position, case)
+                for position, case in enumerate(run["content"])
+            ),
             return_exceptions=True,
         )
         errors = []
@@ -236,7 +239,7 @@ async def _run_variant(
         error = "; ".join(errors)[:2000] if errors else None
         await repo.finish_variant(variant["variant_run_id"], aggregate, error)
         return error
-    except Exception as error:
+    except (KeyError, TypeError, ValueError, RuntimeError) as error:
         await repo.finish_variant(
             variant["variant_run_id"],
             {},
@@ -313,7 +316,10 @@ async def _run_case(
 
     evaluation_started = time.perf_counter()
     evaluations = await asyncio.gather(
-        *(evaluate(metric, template) for metric, template in variant["evaluators"].items())
+        *(
+            evaluate(metric, template)
+            for metric, template in variant["evaluators"].items()
+        )
     )
     evaluation_ms = (time.perf_counter() - evaluation_started) * 1000
     metrics = {

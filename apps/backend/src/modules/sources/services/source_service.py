@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
+from typing import ClassVar
 from uuid import UUID, uuid4
 
 from integrations.storage import delete_file, resolve_file, upload_file
@@ -19,7 +20,8 @@ from modules.sources.models.source_model import (
 
 class SourceService:
     MAX_FILE_SIZE = 10 * 1024 * 1024
-    PREVIEW_MEDIA_TYPES = {
+
+    PREVIEW_MEDIA_TYPES: ClassVar[dict[str, str]] = {
         ".csv": "text/plain; charset=utf-8",
         ".gif": "image/gif",
         ".jpeg": "image/jpeg",

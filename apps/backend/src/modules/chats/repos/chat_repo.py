@@ -1,6 +1,6 @@
+from integrations.database import async_db_connection
 from modules.chats.models.chat_model import Chat, ChatStatus
 from psycopg.rows import dict_row
-from integrations.database import async_db_connection
 
 
 class ChatRepository:
@@ -26,14 +26,13 @@ class ChatRepository:
     async def create_for_assistant(
         self, assistant_id, project_id, created_by, title
     ) -> Chat:
-        async with self.connect() as db:
-            async with db.transaction():
-                cur = await db.execute(
-                    "insert into ragapp.conversations(project_id,assistant_id,created_by,title) "
-                    "values(%s,%s,%s,%s) returning *",
-                    (project_id, assistant_id, created_by, title),
-                )
-                chat = await cur.fetchone()
+        async with self.connect() as db, db.transaction():
+            cur = await db.execute(
+                "insert into ragapp.conversations(project_id,assistant_id,created_by,title) "
+                "values(%s,%s,%s,%s) returning *",
+                (project_id, assistant_id, created_by, title),
+            )
+            chat = await cur.fetchone()
         return self.chat(chat)
 
     async def get(self, chat_id, user_id) -> Chat | None:
@@ -73,14 +72,13 @@ class ChatRepository:
         return [self.chat(row) for row in rows]
 
     async def update(self, chat_id, title, chat_status) -> Chat:
-        async with self.connect() as db:
-            async with db.transaction():
-                cur = await db.execute(
-                    "update ragapp.conversations set title=coalesce(%s,title), "
-                    "status=coalesce(%s,status) where id=%s and deleted_at is null returning *",
-                    (title, chat_status.value if chat_status else None, chat_id),
-                )
-                row = await cur.fetchone()
+        async with self.connect() as db, db.transaction():
+            cur = await db.execute(
+                "update ragapp.conversations set title=coalesce(%s,title), "
+                "status=coalesce(%s,status) where id=%s and deleted_at is null returning *",
+                (title, chat_status.value if chat_status else None, chat_id),
+            )
+            row = await cur.fetchone()
 
         return self.chat(row)
 

@@ -1,6 +1,6 @@
+from integrations.database import async_db_connection, db_connection
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
-from integrations.database import async_db_connection, db_connection
 
 
 class ExperimentRunRepository:

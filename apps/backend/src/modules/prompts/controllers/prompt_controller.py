@@ -9,6 +9,8 @@ from modules.prompts.contracts.prompt_contract import (
     CreateVersionRequest,
 )
 
+prompt_dependency = Depends(prompt_service)
+
 router = APIRouter(prefix="/projects/{project_id}/prompts", tags=["prompts"])
 
 
@@ -24,7 +26,7 @@ def translate(error):
 def list_prompts(
     project_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(prompt_service),
+    service=prompt_dependency,
 ):
     try:
         return {"prompts": service.list(project_id, user.id)}
@@ -37,7 +39,7 @@ def create_prompt(
     project_id: UUID,
     body: CreatePromptRequest,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(prompt_service),
+    service=prompt_dependency,
 ):
     try:
         prompt, version = service.create(
@@ -60,7 +62,7 @@ def prompt_detail(
     project_id: UUID,
     prompt_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(prompt_service),
+    service=prompt_dependency,
 ):
     try:
         return service.detail(project_id, user.id, prompt_id)
@@ -74,7 +76,7 @@ def add_version(
     prompt_id: UUID,
     body: CreateVersionRequest,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(prompt_service),
+    service=prompt_dependency,
 ):
     try:
         return service.add_version(
@@ -89,7 +91,7 @@ def archive_prompt(
     project_id: UUID,
     prompt_id: UUID,
     user: Annotated[AuthenticatedUser, Depends(current_user)],
-    service=Depends(prompt_service),
+    service=prompt_dependency,
 ):
     try:
         service.archive(project_id, user.id, prompt_id)

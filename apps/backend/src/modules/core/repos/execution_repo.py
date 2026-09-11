@@ -3,6 +3,7 @@ from typing import Any
 from uuid import UUID
 
 import psycopg
+from integrations.database import db_connection
 from modules.core.models.error_model import (
     ExecutionIdentityConflictError,
     InvalidExecutionTransitionError,
@@ -14,7 +15,6 @@ from modules.core.models.execution_model import (
     ExecutionStatus,
 )
 from psycopg.rows import dict_row
-from integrations.database import db_connection
 
 
 class ExecutionRepository:
