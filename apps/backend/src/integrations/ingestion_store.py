@@ -2,11 +2,10 @@ import base64
 from io import BytesIO
 
 import psycopg
-from psycopg.rows import dict_row
 from integrations.database import db_connection
-
 from integrations.storage import upload_file
 from modules.ingestion.models.ingestion_model import DocumentElement
+from psycopg.rows import dict_row
 
 
 class ElementRepository:
@@ -88,7 +87,9 @@ class ElementAssetStore:
     def save_base64(self, source_id, element_id, payload, content_type) -> str:
         extension = content_type.split("/")[-1].replace("jpeg", "jpg")
         key = f"elements/{source_id}/{element_id}.{extension}"
-        return upload_file(key, BytesIO(base64.b64decode(payload)), content_type, self.storage_dir)
+        return upload_file(
+            key, BytesIO(base64.b64decode(payload)), content_type, self.storage_dir
+        )
 
 
 class ChunkRepository:
@@ -138,18 +139,23 @@ class ChunkRepository:
         if self.specification_id is None:
             raise ValueError("A specification is required to read index chunks")
         with db_connection(self.database_url) as db:
-            return [row[0] for row in db.execute(
-                "select content from ragapp.chunks where source_version_id=%s "
-                "and specification_id=%s order by position",
-                (source_version_id, self.specification_id),
-            ).fetchall()]
+            return [
+                row[0]
+                for row in db.execute(
+                    "select content from ragapp.chunks where source_version_id=%s "
+                    "and specification_id=%s order by position",
+                    (source_version_id, self.specification_id),
+                ).fetchall()
+            ]
 
     def replace_embeddings(self, source_version_id, embeddings) -> None:
         if self.specification_id is None:
             raise ValueError("A specification is required to persist index embeddings")
         dimensions = len(embeddings[0]) if embeddings else None
         if any(len(vector) != dimensions for vector in embeddings):
-            raise ValueError("Embedding provider returned inconsistent vector dimensions")
+            raise ValueError(
+                "Embedding provider returned inconsistent vector dimensions"
+            )
         with db_connection(self.database_url, row_factory=dict_row) as db:
             chunks = db.execute(
                 "select id from ragapp.chunks where source_version_id=%s "

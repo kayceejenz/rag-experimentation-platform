@@ -4,7 +4,11 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
-from modules.core.models.artifact_model import Artifact, ArtifactKind, ArtifactStorageType
+from modules.core.models.artifact_model import (
+    Artifact,
+    ArtifactKind,
+    ArtifactStorageType,
+)
 from modules.core.models.error_model import (
     ExecutionIdentityConflictError,
     InvalidExecutionTransitionError,
@@ -156,8 +160,13 @@ class InMemoryExecutionRepository:
         completed_at: datetime,
     ) -> Execution:
         current = self.executions[execution_id]
-        if current.project_id != project_id or current.status is not ExecutionStatus.RUNNING:
-            raise InvalidExecutionTransitionError("Only running executions can be finalized")
+        if (
+            current.project_id != project_id
+            or current.status is not ExecutionStatus.RUNNING
+        ):
+            raise InvalidExecutionTransitionError(
+                "Only running executions can be finalized"
+            )
         for output in outputs:
             key = (output.execution_id, output.role, output.position)
             existing = self.outputs.get(key)

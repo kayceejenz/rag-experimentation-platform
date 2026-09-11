@@ -1,7 +1,11 @@
 import unittest
 from uuid import UUID, uuid4
 
-from modules.core.models.artifact_model import Artifact, ArtifactKind, ArtifactStorageType
+from modules.core.models.artifact_model import (
+    Artifact,
+    ArtifactKind,
+    ArtifactStorageType,
+)
 from modules.core.services.artifact_service import ArtifactService
 
 
@@ -12,7 +16,9 @@ class InMemoryArtifactRepository:
     def register(self, artifact: Artifact) -> Artifact:
         digest = artifact.content_sha256 or artifact.manifest_hash
         assert digest is not None
-        return self.records.setdefault((artifact.project_id, artifact.kind, digest), artifact)
+        return self.records.setdefault(
+            (artifact.project_id, artifact.kind, digest), artifact
+        )
 
     def get(self, artifact_id: UUID, project_id: UUID) -> Artifact | None:
         return next(

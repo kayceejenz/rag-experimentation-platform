@@ -28,11 +28,15 @@ class CanonicalJsonTests(unittest.TestCase):
     def test_non_finite_numbers_are_rejected_with_location(self) -> None:
         for value in (math.nan, math.inf, -math.inf):
             with self.subTest(value=value):
-                with self.assertRaisesRegex(InvalidCanonicalJsonError, r"\$\.temperature"):
+                with self.assertRaisesRegex(
+                    InvalidCanonicalJsonError, r"\$\.temperature"
+                ):
                     canonical_json({"temperature": value})
 
     def test_non_json_values_are_rejected(self) -> None:
-        with self.assertRaisesRegex(InvalidCanonicalJsonError, "unsupported JSON value set"):
+        with self.assertRaisesRegex(
+            InvalidCanonicalJsonError, "unsupported JSON value set"
+        ):
             canonical_json({"values": {"one", "two"}})
 
 

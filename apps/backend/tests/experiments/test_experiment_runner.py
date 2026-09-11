@@ -2,8 +2,8 @@ import asyncio
 import unittest
 from uuid import uuid4
 
-from integrations.retrieval_store import PgVectorKnowledgeSearch, QueryEmbeddingCache
 from integrations.rate_limit import AsyncRateLimiter
+from integrations.retrieval_store import PgVectorKnowledgeSearch, QueryEmbeddingCache
 from modules.chats.models.retrieval_model import RetrievedChunk
 from modules.experiments.services.experiment_runner import bounded_context
 

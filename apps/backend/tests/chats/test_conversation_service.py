@@ -82,9 +82,7 @@ def service(repository, bot, role=ProjectRole.VIEWER):
 
 class ConversationServiceTests(unittest.TestCase):
     def test_member_creates_multiple_conversations_for_one_bot(self):
-        bot = KnowledgeBot(
-            project_id=uuid4(), created_by=uuid4(), name="Support"
-        )
+        bot = KnowledgeBot(project_id=uuid4(), created_by=uuid4(), name="Support")
         repository = Conversations()
         conversations = service(repository, bot)
         user_id = uuid4()
@@ -103,9 +101,7 @@ class ConversationServiceTests(unittest.TestCase):
         self.assertIs(role, ProjectRole.VIEWER)
 
     def test_bot_conversation_list_excludes_other_bots(self):
-        bot = KnowledgeBot(
-            project_id=uuid4(), created_by=uuid4(), name="Support"
-        )
+        bot = KnowledgeBot(project_id=uuid4(), created_by=uuid4(), name="Support")
         other_bot = KnowledgeBot(
             project_id=bot.project_id,
             created_by=bot.created_by,
@@ -115,18 +111,20 @@ class ConversationServiceTests(unittest.TestCase):
         conversations = service(repository, bot)
         user_id = uuid4()
 
-        asyncio.run(repository.create_for_assistant(bot.id, bot.project_id, user_id, "Included"))
         asyncio.run(
-            repository.create_for_assistant(other_bot.id, bot.project_id, user_id, "Excluded")
+            repository.create_for_assistant(bot.id, bot.project_id, user_id, "Included")
+        )
+        asyncio.run(
+            repository.create_for_assistant(
+                other_bot.id, bot.project_id, user_id, "Excluded"
+            )
         )
         listed, _ = asyncio.run(conversations.list_for_assistant(bot.id, user_id))
 
         self.assertEqual([chat.title for chat in listed], ["Included"])
 
     def test_deleting_conversation_only_targets_conversation(self):
-        bot = KnowledgeBot(
-            project_id=uuid4(), created_by=uuid4(), name="Support"
-        )
+        bot = KnowledgeBot(project_id=uuid4(), created_by=uuid4(), name="Support")
         repository = Conversations()
         conversations = service(repository, bot, ProjectRole.EDITOR)
         user_id = uuid4()
