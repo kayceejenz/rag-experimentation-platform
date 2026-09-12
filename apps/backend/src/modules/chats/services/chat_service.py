@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+import re
 from uuid import UUID
 
 from modules.chats.contracts.chat_generator_contract import ChatGenerator
@@ -119,11 +120,12 @@ class ChatService:
         except Exception as error:
             raise ChatGenerationError(str(error)) from error
 
+        answer, citations = self._grounded_response(answer, chunks)
         assistant = Message(
             conversation_id=chat.id,
             role=MessageRole.ASSISTANT,
             content=answer,
-            citations=self._citations(chunks),
+            citations=citations,
         )
         await self.messages.add(assistant)
         return assistant
@@ -177,11 +179,14 @@ class ChatService:
         except Exception as error:
             raise ChatGenerationError(str(error)) from error
 
+        answer, citations = self._grounded_response(
+            "".join(answer_parts).strip(), chunks
+        )
         assistant = Message(
             conversation_id=chat.id,
             role=MessageRole.ASSISTANT,
-            content="".join(answer_parts).strip(),
-            citations=self._citations(chunks),
+            content=answer,
+            citations=citations,
         )
         await self.messages.add(assistant)
         yield {
@@ -233,6 +238,28 @@ class ChatService:
             )
             for chunk in chunks
         )
+
+    @classmethod
+    def _grounded_response(cls, answer: str, chunks) -> tuple[str, tuple[Citation, ...]]:
+        """Keep only cited chunks and make their visible numbering contiguous."""
+        selected = []
+        citation_numbers: dict[int, int] = {}
+
+        def replace_reference(match: re.Match) -> str:
+            source_number = int(match.group(1))
+            if source_number < 1 or source_number > len(chunks):
+                return match.group(0)
+            display_number = citation_numbers.get(source_number)
+            if display_number is None:
+                selected.append(chunks[source_number - 1])
+                display_number = len(selected)
+                citation_numbers[source_number] = display_number
+            return f"[{display_number}]"
+
+        normalized = re.sub(r"\[(\d+)\]", replace_reference, answer)
+        normalized = re.sub(r"\[\s*\]", "", normalized)
+        normalized = re.sub(r"[ \t]{2,}", " ", normalized).strip()
+        return normalized, cls._citations(selected)
 
     @staticmethod
     def _require_editor(role: ProjectRole) -> None:

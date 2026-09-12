@@ -8,6 +8,29 @@ from integrations.gemini_chat import GeminiChatModel
 
 
 class AsyncProviderTests(unittest.IsolatedAsyncioTestCase):
+    def test_assistant_request_preserves_configured_system_prompt(self) -> None:
+        model = GeminiChatModel(
+            "key",
+            "generation-model",
+            system_prompt="Configured assistant behaviour",
+            rag_prompt="Context: {{context}}\nQuestion: {{question}}",
+        )
+
+        request = model._request("What happened?", "[1] Evidence", [])
+
+        self.assertEqual(
+            "Configured assistant behaviour",
+            request["systemInstruction"]["parts"][0]["text"],
+        )
+        rendered = request["contents"][-1]["parts"][0]["text"]
+        self.assertIn("Context: [1] Evidence", rendered)
+        self.assertIn("Do not cite every retrieved passage", rendered)
+        self.assertIn("never output empty brackets []", rendered)
+        self.assertEqual(
+            {"thinkingLevel": "low", "includeThoughts": True},
+            request["generationConfig"]["thinkingConfig"],
+        )
+
     async def test_embedding_uses_async_http_client(self) -> None:
         async_client = MagicMock()
         async_client.post = AsyncMock(

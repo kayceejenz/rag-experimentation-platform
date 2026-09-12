@@ -1,5 +1,5 @@
 .experiment-detail-panel {
-	width: min(760px, calc(100vw - 24px));
+	width: min(1180px, calc(100vw - 32px));
 	overflow-x: hidden;
 	overflow-y: auto;
 	overscroll-behavior: contain;
@@ -10,10 +10,27 @@
 	padding: 22px 24px;
 }
 
+.catalog-row-open {
+	width: 36px;
+	height: 36px;
+	display: inline-grid;
+	place-items: center;
+	border: 0;
+	border-radius: 7px;
+	background: transparent;
+	color: var(--muted);
+	cursor: pointer;
+}
+
+.catalog-row-open:hover {
+	background: var(--subtle);
+	color: var(--foreground);
+}
+
 .experiment-detail-panel > header p {
 	max-width: 560px;
-	font-size: 11px;
-	line-height: 1.5;
+	font-size: 14px;
+	line-height: 1.6;
 }
 
 .experiment-summary {
@@ -24,8 +41,8 @@
 
 .experiment-summary p {
 	margin: 0;
-	font-size: 11px;
-	line-height: 1.55;
+	font-size: 14px;
+	line-height: 1.6;
 }
 
 .experiment-summary > div {
@@ -41,7 +58,7 @@
 	border-radius: 999px;
 	background: var(--panel);
 	color: var(--muted);
-	font-size: 9px;
+	font-size: 12px;
 	font-weight: 500;
 }
 
@@ -58,12 +75,13 @@
 }
 
 .experiment-panel-tabs button {
-	padding: 9px 11px 10px;
+	min-height: 44px;
+	padding: 10px 14px;
 	border: 0;
 	border-bottom: 2px solid transparent;
 	background: transparent;
 	color: var(--muted);
-	font-size: 10px;
+	font-size: 13px;
 	font-weight: 600;
 	cursor: pointer;
 }
@@ -92,7 +110,7 @@
 	border-radius: 8px;
 	background: color-mix(in srgb, var(--danger) 8%, var(--panel));
 	color: var(--danger);
-	font-size: 10px;
+	font-size: 13px;
 	line-height: 1.45;
 	overflow-wrap: anywhere;
 }
@@ -103,8 +121,8 @@
 	right: 8px;
 	display: grid;
 	place-items: center;
-	width: 24px;
-	height: 24px;
+	width: 32px;
+	height: 32px;
 	border: 0;
 	border-radius: 5px;
 	background: transparent;
@@ -123,7 +141,8 @@
 .table-inspect {
 	display: inline-flex;
 	width: auto;
-	min-width: 58px;
+	min-width: 72px;
+	min-height: 36px;
 	gap: 5px;
 	padding: 0 8px;
 }
@@ -154,13 +173,13 @@
 	border-radius: 8px;
 	background: var(--subtle);
 	color: var(--muted);
-	font-size: 8px;
+	font-size: 12px;
 	line-height: 1.45;
 }
 
 .metric-rating-guide strong {
 	color: var(--foreground);
-	font-size: 9px;
+	font-size: 12px;
 }
 
 .aggregate-metric-value {
@@ -171,11 +190,11 @@
 }
 
 .aggregate-metric-value > strong {
-	font-size: 10px;
+	font-size: 14px;
 }
 
 .aggregate-metric-value > small {
-	font-size: 7px;
+	font-size: 11px;
 }
 
 .aggregate-metric-value > .metric-rating {
@@ -189,7 +208,7 @@
 	border-radius: 999px;
 	background: var(--subtle);
 	color: var(--muted);
-	font-size: 7px;
+	font-size: 11px;
 	font-weight: 600;
 	white-space: nowrap;
 }
@@ -212,6 +231,97 @@
 .metric-rating.poor {
 	background: color-mix(in srgb, var(--danger) 10%, transparent);
 	color: var(--danger);
+}
+
+.results-header,
+.results-section > header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.results-header h3,
+.results-header p,
+.results-section h4,
+.results-section p {
+	margin: 0;
+}
+
+.results-section h4 { font-size: 16px; }
+.results-section > header p { margin-top: 3px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+
+.run-outcome-grid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	overflow: hidden;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+}
+
+.run-outcome { display: grid; gap: 4px; min-width: 0; padding: 10px 12px; }
+.run-outcome + .run-outcome { border-left: 1px solid var(--line); }
+.run-outcome span { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.run-outcome strong { overflow-wrap: anywhere; font-size: 16px; }
+.run-outcome.positive strong { color: #168052; }
+.run-outcome.warning strong { color: #a96908; }
+.run-outcome.danger strong { color: var(--danger); }
+
+.run-error-summary {
+	border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--line));
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--danger) 5%, var(--panel));
+}
+
+.run-error-summary summary { min-height: 42px; padding: 10px 12px; color: var(--danger); font-size: 13px; font-weight: 650; cursor: pointer; }
+.run-error-summary ul { display: grid; gap: 8px; margin: 0; padding: 0 28px 14px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.results-section { display: grid; gap: 9px; }
+.experiment-comparison thead th small { display: block; margin-top: 3px; font-size: 11px; font-weight: 500; text-transform: capitalize; }
+.experiment-comparison th,
+.experiment-comparison td { padding: 12px 14px; font-size: 13px; line-height: 1.45; }
+.experiment-comparison tbody th { min-width: 175px; padding: 12px 14px; border-bottom: 1px solid var(--line); color: var(--foreground); font-size: 13px; font-weight: 650; text-align: left; }
+
+.primary-metric-label,
+.best-label { display: inline-flex; margin-left: 6px; padding: 2px 6px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.experiment-comparison td.metric-winner { background: color-mix(in srgb, #169b62 6%, var(--panel)); }
+.best-label { margin: 4px 0 0; background: color-mix(in srgb, #169b62 12%, transparent); color: #168052; }
+
+.result-variant-tabs { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
+.result-variant-tabs button { min-height: 40px; display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--muted); font-size: 13px; white-space: nowrap; cursor: pointer; }
+.result-variant-tabs button.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.result-variant-tabs span { font-size: 11px; opacity: .8; }
+
+.case-browser { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .9fr); align-items: start; gap: 10px; }
+.case-list-table,
+.case-inspection { overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.case-list-table table { width: 100%; border-collapse: collapse; }
+.case-list-table th,
+.case-list-table td { padding: 11px 12px; border-bottom: 1px solid var(--line); font-size: 13px; text-align: left; vertical-align: middle; }
+.case-list-table th { padding: 11px 12px; background: var(--subtle); color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.case-list-table tbody tr:hover,
+.case-list-table tbody tr.selected { background: var(--subtle); }
+.case-list-table td:nth-child(2) { max-width: 230px; line-height: 1.4; }
+.case-list-table .aggregate-metric-value .metric-rating { display: none; }
+.case-list-table button { min-height: 36px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--accent); font-size: 13px; font-weight: 650; cursor: pointer; }
+.case-list-table button:hover { background: var(--accent-soft); }
+
+.case-inspection > header,
+.case-inspection > section { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.case-inspection > header span,
+.case-inspection h6 { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.case-inspection h5,
+.case-inspection h6,
+.case-inspection p { margin: 0; }
+.case-inspection h5 { margin-top: 5px; font-size: 14px; line-height: 1.5; }
+.case-inspection h6 { margin-bottom: 5px; }
+.case-inspection p { max-height: 220px; overflow-y: auto; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+.case-inspection .case-metrics-table { max-height: 310px; overflow: auto; }
+
+@media (max-width: 900px) {
+	.run-outcome-grid { grid-template-columns: 1fr 1fr; }
+	.run-outcome:nth-child(3) { border-top: 1px solid var(--line); border-left: 0; }
+	.run-outcome:nth-child(4) { border-top: 1px solid var(--line); }
+	.case-browser { grid-template-columns: 1fr; }
 }
 
 .experiment-variant-title {
@@ -249,7 +359,7 @@
 .variant-model {
 	overflow: hidden;
 	color: var(--muted);
-	font-size: 9px;
+	font-size: 13px;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
@@ -261,8 +371,8 @@
 .variant-delete {
 	display: grid;
 	place-items: center;
-	width: 30px;
-	height: 30px;
+	width: 36px;
+	height: 36px;
 	border: 0;
 	border-radius: 7px;
 	background: transparent;
@@ -364,9 +474,9 @@
 
 .experiment-data-table th,
 .experiment-data-table td {
-	padding: 10px 12px;
+	padding: 12px 14px;
 	border-bottom: 1px solid var(--line);
-	font-size: 10px;
+	font-size: 13px;
 	text-align: left;
 	white-space: nowrap;
 }
@@ -374,7 +484,7 @@
 .experiment-data-table th {
 	background: var(--subtle);
 	color: var(--muted);
-	font-size: 8px;
+	font-size: 11px;
 	font-weight: 600;
 	letter-spacing: .04em;
 	text-transform: uppercase;
@@ -402,8 +512,8 @@
 .variant-inspector > header button {
 	display: inline-grid;
 	place-items: center;
-	width: 28px;
-	height: 28px;
+	width: 36px;
+	height: 36px;
 	padding: 0;
 	border: 0;
 	border-radius: 6px;
@@ -440,7 +550,7 @@
 
 .variant-inspector h4 {
 	margin: 2px 0 0;
-	font-size: 11px;
+	font-size: 15px;
 }
 
 .variant-inspector table {
@@ -450,9 +560,9 @@
 
 .variant-inspector th,
 .variant-inspector td {
-	padding: 9px 12px;
+	padding: 11px 14px;
 	border-bottom: 1px solid var(--line);
-	font-size: 10px;
+	font-size: 13px;
 	text-align: left;
 }
 
@@ -464,7 +574,7 @@
 .variant-inspector th {
 	width: 135px;
 	color: var(--muted);
-	font-size: 8px;
+	font-size: 11px;
 	font-weight: 500;
 	text-transform: uppercase;
 }
@@ -472,7 +582,7 @@
 .variant-warning {
 	margin-left: 8px;
 	color: var(--danger);
-	font-size: 8px;
+	font-size: 11px;
 	text-transform: uppercase;
 }
 
@@ -491,7 +601,7 @@
 .variant-run-section > header > div:first-child p {
 	margin: 3px 0 0;
 	color: var(--muted);
-	font-size: 9px;
+	font-size: 13px;
 }
 
 .variant-run-groups {

@@ -3,7 +3,14 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { MessageComposer } from '@/components/chat/message-composer';
 import { MessageList } from '@/components/chat/message-list';
-import type { Assistant, Chat, Message } from '@/types/workspace';
+import type { Assistant, Chat, Message, ToolCall } from '@/types/workspace';
+
+type StreamEvent =
+	| { type: 'token'; content: string }
+	| { type: 'thinking_delta'; content: string }
+	| { type: 'tool_step'; tool: ToolCall }
+	| { type: 'done'; message: Message; reasoning?: string }
+	| { type: 'error'; message: string };
 
 function errorMessage(value: unknown): string {
 	if (!value || typeof value !== 'object') return 'The request could not be completed.';
@@ -29,6 +36,7 @@ export function AssistantPlayground({ assistant }: { assistant: Assistant }) {
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [sending, setSending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [streamingId, setStreamingId] = useState<string | null>(null);
 	const [copiedId, setCopiedId] = useState<string | null>(null);
 	const endRef = useRef<HTMLDivElement>(null);
 	const abortRef = useRef<AbortController | null>(null);
@@ -66,13 +74,25 @@ export function AssistantPlayground({ assistant }: { assistant: Assistant }) {
 			citations: [],
 			created_at: new Date().toISOString(),
 		};
-		setMessages(current => [...current, optimistic]);
+		const assistantId = `streaming-${crypto.randomUUID()}`;
+		const assistantPlaceholder: Message = {
+			id: assistantId,
+			conversation_id: conversationId ?? 'pending',
+			role: 'assistant',
+			content: '',
+			citations: [],
+			reasoning: '',
+			tool_calls: [],
+			created_at: new Date().toISOString(),
+		};
+		setMessages(current => [...current, optimistic, assistantPlaceholder]);
+		setStreamingId(assistantId);
 		const controller = new AbortController();
 		abortRef.current = controller;
 		try {
 			const id = await ensureConversation(question);
-			const answer = await requestJson<Message>(
-				`/api/conversations/${id}/messages`,
+			const response = await fetch(
+				`/api/conversations/${id}/messages/stream`,
 				{
 					method: 'POST',
 					headers: { 'content-type': 'application/json' },
@@ -80,13 +100,81 @@ export function AssistantPlayground({ assistant }: { assistant: Assistant }) {
 					signal: controller.signal,
 				},
 			);
-			setMessages(current => [...current, answer]);
+			if (!response.ok || !response.body) {
+				const body = await response.json().catch(() => null);
+				throw new Error(errorMessage(body));
+			}
+
+			const reader = response.body.getReader();
+			const decoder = new TextDecoder();
+			let buffer = '';
+			while (true) {
+				const { value, done } = await reader.read();
+				buffer += decoder.decode(value, { stream: !done });
+				const frames = buffer.split(/\r?\n\r?\n/);
+				buffer = frames.pop() ?? '';
+				for (const frame of frames) {
+					const data = frame
+						.split(/\r?\n/)
+						.filter(line => line.startsWith('data:'))
+						.map(line => line.slice(5).trimStart())
+						.join('\n');
+					if (!data) continue;
+					const event = JSON.parse(data) as StreamEvent;
+					if (event.type === 'token') {
+						setMessages(current => current.map(message =>
+							message.id === assistantId
+								? { ...message, content: message.content + event.content }
+								: message,
+						));
+					} else if (event.type === 'thinking_delta') {
+						setMessages(current => current.map(message =>
+							message.id === assistantId
+								? { ...message, reasoning: (message.reasoning ?? '') + event.content }
+								: message,
+						));
+					} else if (event.type === 'tool_step') {
+						setMessages(current => current.map(message => {
+							if (message.id !== assistantId) return message;
+							const tools = message.tool_calls ?? [];
+							const exists = tools.some(tool => tool.id === event.tool.id);
+							return {
+								...message,
+								tool_calls: exists
+									? tools.map(tool => tool.id === event.tool.id ? event.tool : tool)
+									: [...tools, event.tool],
+							};
+						}));
+					} else if (event.type === 'done') {
+						setMessages(current => current.map(message =>
+							message.id === assistantId
+								? {
+									...event.message,
+									reasoning: event.reasoning ?? message.reasoning,
+									tool_calls: [],
+								}
+								: message,
+						));
+					} else {
+						throw new Error(event.message);
+					}
+				}
+				if (done) break;
+			}
 		} catch (requestError) {
-			if (!(requestError instanceof DOMException && requestError.name === 'AbortError')) {
+			if (requestError instanceof DOMException && requestError.name === 'AbortError') {
+				setMessages(current => current.map(message =>
+					message.id === assistantId && !message.content
+						? { ...message, content: '_Response stopped._' }
+						: message,
+				));
+			} else {
+				setMessages(current => current.filter(message => message.id !== assistantId));
 				setError(requestError instanceof Error ? requestError.message : 'The assistant could not respond.');
 			}
 		} finally {
 			abortRef.current = null;
+			setStreamingId(null);
 			setSending(false);
 		}
 	}
@@ -125,7 +213,7 @@ export function AssistantPlayground({ assistant }: { assistant: Assistant }) {
 				{error && <div className='workspace-error' role='alert'>{error}</div>}
 				<MessageList
 					messages={messages}
-					streamingId={null}
+					streamingId={streamingId}
 					copiedId={copiedId}
 					onCopy={message => void copy(message)}
 					onSuggest={send}

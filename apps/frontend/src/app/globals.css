@@ -99,13 +99,17 @@ body {
 }
 button,
 input,
-textarea {
+textarea,
+select {
 	font: inherit;
 }
 button,
 a,
 input,
-textarea {
+textarea,
+select,
+summary,
+[tabindex] {
 	outline-color: var(--accent);
 	outline-offset: 3px;
 }
@@ -118,6 +122,14 @@ select {
 :focus-visible {
 	outline: 3px solid color-mix(in srgb, var(--accent) 75%, white);
 	outline-offset: 3px;
+}
+
+.auth-form input:focus-visible,
+.workspace-modal input:focus-visible,
+.workspace-modal textarea:focus-visible,
+.workspace-modal select:focus-visible {
+	outline: 3px solid color-mix(in srgb, var(--accent) 75%, white);
+	outline-offset: 2px;
 }
 a {
 	color: inherit;
@@ -832,12 +844,12 @@ html[data-navigation-transition='chat']::view-transition-new(app-sidebar) {
 .rail-user-name {
 	overflow: hidden;
 	text-overflow: ellipsis;
-	font-size: 11px;
+	font-size: 13px;
 	font-weight: 700;
 }
 .rail-user-role {
 	color: var(--muted);
-	font-size: 9px;
+	font-size: 12px;
 }
 .rail-user-signout {
 	width: 34px;
@@ -904,7 +916,7 @@ html[data-navigation-transition='chat']::view-transition-new(app-sidebar) {
 .nav-workspace-identity small,
 .nav-project-name small {
 	color: var(--nav-muted);
-	font-size: 8px;
+	font-size: 10px;
 	font-weight: 800;
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
@@ -913,7 +925,7 @@ html[data-navigation-transition='chat']::view-transition-new(app-sidebar) {
 .nav-project-name strong {
 	overflow: hidden;
 	color: var(--nav-foreground);
-	font-size: 12px;
+	font-size: 13px;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
@@ -924,20 +936,20 @@ html[data-navigation-transition='chat']::view-transition-new(app-sidebar) {
 .nav-group-label {
 	padding: 0 9px 5px;
 	color: var(--nav-muted);
-	font-size: 8px;
+	font-size: 10px;
 	font-weight: 850;
 	letter-spacing: 0.12em;
 	text-transform: uppercase;
 }
 .nav-group a {
-	min-height: 36px;
+	min-height: 40px;
 	display: flex;
 	align-items: center;
 	gap: 10px;
 	padding: 0 9px;
 	border-radius: 7px;
 	color: var(--nav-muted);
-	font-size: 12px;
+	font-size: 13px;
 	font-weight: 650;
 	text-decoration: none;
 }
@@ -1148,7 +1160,7 @@ html[data-navigation-transition='chat']::view-transition-new(app-sidebar) {
 .catalog-table-panel p {
 	margin-top: 3px;
 	color: var(--muted);
-	font-size: 9px;
+	font-size: 13px;
 }
 .overview-panel header a {
 	color: var(--accent);
@@ -1296,22 +1308,22 @@ html[data-navigation-transition='chat']::view-transition-new(app-sidebar) {
 	border-collapse: collapse;
 }
 .catalog-table-panel th {
-	height: 36px;
+	height: 42px;
 	padding: 0 13px;
 	border-bottom: 1px solid var(--line);
 	background: var(--panel-strong);
 	color: var(--muted);
-	font-size: 8px;
+	font-size: 11px;
 	letter-spacing: 0.07em;
 	text-align: left;
 	text-transform: uppercase;
 }
 .catalog-table-panel td {
-	height: 54px;
+	height: 58px;
 	padding: 0 13px;
 	border-bottom: 1px solid var(--line);
 	color: var(--muted);
-	font-size: 10px;
+	font-size: 13px;
 	white-space: nowrap;
 }
 .catalog-table-panel tr:last-child td {
