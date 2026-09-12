@@ -1,4 +1,5 @@
 from integrations.database import db_connection
+from integrations.job_notifications import notify_worker
 from modules.sources.models.source_model import Source, SourceStatus
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
@@ -103,6 +104,8 @@ class SourceRepository:
                     "update ragapp.source_versions set status='queued',error_code=null,error_message=null where id=%s",
                     (version_id,),
                 )
+            if rows:
+                notify_worker(db, "ingestion")
         return len(rows)
 
     def version_target(self, knowledge_base_id, filename, folder_id=None):

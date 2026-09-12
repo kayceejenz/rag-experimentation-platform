@@ -54,6 +54,8 @@ Document ingestion, index creation, and experiment evaluation run outside the AP
 
 Leases allow abandoned work to be recovered if a worker stops. Unique active-job rules prevent the same stage from running twice for one source or index specification. Experiment cases are resumable, so a failed run does not need to repeat completed cases.
 
+PostgreSQL notifications wake the worker when new work is committed, avoiding constant queue checks and reducing job-start delay. The notification is only a signal: job records remain the durable source of truth, and a timed fallback check recovers missed notifications. This saves idle database work without adding a separate queue service, at the cost of one dedicated database connection per worker.
+
 ### AI and document processing
 
 The Unstructured API partitions documents into elements while preserving useful page and layout metadata. The ingestion pipeline turns those elements into chunks and records which elements contributed to each chunk.

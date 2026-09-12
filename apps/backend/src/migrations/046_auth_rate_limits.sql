@@ -1,3 +1,5 @@
+begin;
+
 create table ragapp.auth_rate_limits (
   action text not null,
   client_key text not null,
@@ -10,3 +12,5 @@ create table ragapp.auth_rate_limits (
 
 create index auth_rate_limits_window_idx
   on ragapp.auth_rate_limits (window_started_at);
+
+commit;

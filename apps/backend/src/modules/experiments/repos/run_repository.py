@@ -1,4 +1,5 @@
 from integrations.database import async_db_connection, db_connection
+from integrations.job_notifications import notify_worker
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
@@ -44,6 +45,7 @@ class ExperimentRunRepository:
                     "insert into ragapp.experiment_variant_runs(run_id,variant_id,project_id) values(%s,%s,%s)",
                     (run["id"], variant["id"], project_id),
                 )
+            notify_worker(db, "experiment")
             return run
 
     def runs(self, experiment_id):
