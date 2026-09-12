@@ -212,7 +212,10 @@ class GeminiChatModel:
             "maxOutputTokens": self.max_output_tokens,
         }
         if self.thinking_level:
-            generation_config["thinkingConfig"] = {"thinkingLevel": self.thinking_level}
+            generation_config["thinkingConfig"] = {
+                "thinkingLevel": self.thinking_level,
+                "includeThoughts": True,
+            }
         return {
             "systemInstruction": {
                 "parts": [
@@ -235,9 +238,16 @@ class GeminiChatModel:
 
     def _render_prompt(self, question: str, context: str) -> str:
         if not self.rag_prompt:
-            return f"Knowledge-base context:\n{context}\n\nQuestion: {question}\n\nAnswer concisely using the context and cite supporting passages."
-        return self.rag_prompt.replace("{{context}}", context).replace(
-            "{{question}}", question
+            prompt = f"Knowledge-base context:\n{context}\n\nQuestion: {question}\n\nAnswer concisely using the context."
+        else:
+            prompt = self.rag_prompt.replace("{{context}}", context).replace(
+                "{{question}}", question
+            )
+        return (
+            f"{prompt}\n\nCitation rules: Cite only passages that directly support the "
+            "answer, using their numbered reference such as [1]. Do not cite every "
+            "retrieved passage. If no passage supports the answer, include no citation "
+            "marker and never output empty brackets []."
         )
 
     async def _post_with_retries_async(

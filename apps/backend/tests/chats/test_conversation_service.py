@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from modules.chats.models.chat_model import Chat, ChatStatus
+from modules.chats.models.retrieval_model import RetrievedChunk
 from modules.chats.services.chat_service import ChatService
 from modules.knowledge_bots.models.models import KnowledgeBot
 from modules.projects.models.project_model import Project, ProjectAccess, ProjectRole
@@ -136,3 +137,54 @@ class ConversationServiceTests(unittest.TestCase):
 
         self.assertEqual(repository.deleted, [chat.id])
         self.assertEqual(bot.status.value, "active")
+
+    def test_only_answered_sources_become_citations(self):
+        first = RetrievedChunk(
+            chunk_id=uuid4(),
+            source_id=uuid4(),
+            source_filename="first.pdf",
+            text="First passage",
+            score=0.9,
+            page_number=1,
+            element_ids=(),
+            coordinates=(),
+            metadata={},
+        )
+        second = RetrievedChunk(
+            chunk_id=uuid4(),
+            source_id=uuid4(),
+            source_filename="second.pdf",
+            text="Second passage",
+            score=0.8,
+            page_number=2,
+            element_ids=(),
+            coordinates=(),
+            metadata={},
+        )
+
+        answer, citations = ChatService._grounded_response(
+            "The answer comes from the second passage [2].", [first, second]
+        )
+
+        self.assertEqual("The answer comes from the second passage [1].", answer)
+        self.assertEqual([second.chunk_id], [item.chunk_id for item in citations])
+
+    def test_answer_without_references_has_no_citations_or_empty_marker(self):
+        chunk = RetrievedChunk(
+            chunk_id=uuid4(),
+            source_id=uuid4(),
+            source_filename="guide.pdf",
+            text="Passage",
+            score=0.9,
+            page_number=None,
+            element_ids=(),
+            coordinates=(),
+            metadata={},
+        )
+
+        answer, citations = ChatService._grounded_response(
+            "I do not have enough information. []", [chunk]
+        )
+
+        self.assertEqual("I do not have enough information.", answer)
+        self.assertEqual((), citations)
