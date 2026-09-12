@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from integrations.database import db_connection
+from integrations.job_notifications import notify_worker
 from psycopg.rows import dict_row
 
 
@@ -87,6 +88,8 @@ class IndexRepository:
                         "update ragapp.source_versions set status='queued' where id=%s",
                         (version["id"],),
                     )
+            if queued:
+                notify_worker(db, "ingestion")
         return queued, len(versions)
 
     def ensure_vector_index(self, specification_id, model_id):

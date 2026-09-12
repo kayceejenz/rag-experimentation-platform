@@ -8,14 +8,18 @@ from integrations.database import (
     open_database_pools,
 )
 from integrations.http_client import close_http_clients
+from integrations.job_notifications import JobNotificationListener
 from modules.ingestion.services.ingestion_worker import run_once
 from modules.experiments.services.experiment_runner import run_once as run_experiment_once
 
 
 async def run_worker(config: Settings, once: bool) -> None:
+    listener = None
     try:
         if config.database_url:
             await open_database_pools(config.database_url)
+            listener = JobNotificationListener(config.database_url)
+            await listener.open()
         while True:
             processed = await run_experiment_once(config)
             if not processed:
@@ -23,8 +27,11 @@ async def run_worker(config: Settings, once: bool) -> None:
             if once or not config.has_database:
                 break
             if not processed:
-                await asyncio.sleep(config.worker_poll_interval_seconds)
+                assert listener is not None
+                await listener.wait(config.worker_poll_interval_seconds)
     finally:
+        if listener is not None:
+            await listener.close()
         await close_database_pools()
         await close_http_clients()
 

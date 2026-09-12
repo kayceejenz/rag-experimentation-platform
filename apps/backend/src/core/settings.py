@@ -60,7 +60,10 @@ class Settings(BaseSettings):
         default="storage/sources", alias="SOURCE_STORAGE_DIR"
     )
     worker_poll_interval_seconds: float = Field(
-        default=5.0, alias="WORKER_POLL_INTERVAL_SECONDS"
+        default=30.0,
+        alias="WORKER_POLL_INTERVAL_SECONDS",
+        ge=5.0,
+        le=300.0,
     )
     job_lease_seconds: int = Field(
         default=1200, alias="JOB_LEASE_SECONDS", ge=60, le=3600

@@ -55,6 +55,7 @@ class ProductionSettingsTests(unittest.TestCase):
 
         self.assertEqual(settings.app_env, "development")
         self.assertEqual(settings.jwt_secret, "local-jwt-secret-change-me")
+        self.assertEqual(settings.worker_poll_interval_seconds, 30.0)
 
 
 if __name__ == "__main__":
