@@ -16,19 +16,13 @@ import {
 	FileText,
 } from 'lucide-react';
 import type { Source } from '@/types/workspace';
+import { formatBytes } from '@/lib/format';
 
 const activeStatuses = new Set([
 	'uploaded',
 	'queued',
 	'processing',
 ]);
-
-function formatBytes(bytes: number) {
-	if (bytes < 1024) return `${bytes} B`;
-	if (bytes < 1024 * 1024)
-		return `${(bytes / 1024).toFixed(1)} KB`;
-	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 export function SourcesPanel({
 	sources,

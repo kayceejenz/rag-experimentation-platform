@@ -19,7 +19,7 @@ from modules.sources.models.source_model import (
 
 
 class SourceService:
-    MAX_FILE_SIZE = 10 * 1024 * 1024
+    MAX_FILE_SIZE = 20 * 1024 * 1024
 
     PREVIEW_MEDIA_TYPES: ClassVar[dict[str, str]] = {
         ".csv": "text/plain; charset=utf-8",
