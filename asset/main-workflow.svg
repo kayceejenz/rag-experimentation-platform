@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="820" viewBox="0 0 1800 820" role="img" aria-labelledby="title desc">
+  <title id="title">RAG platform main workflow</title>
+  <desc id="desc">Documents move through a knowledge base, index specification, immutable vector index, experiment variant, evaluation run, assistant revision, and conversations.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
+    <filter id="shadow" x="-15%" y="-20%" width="130%" height="150%"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0f172a" flood-opacity=".08"/></filter>
+    <style>.title{font:700 30px Inter,Segoe UI,Arial,sans-serif;fill:#111827}.subtitle{font:400 16px Inter,Segoe UI,Arial,sans-serif;fill:#64748b}.label{font:700 17px Inter,Segoe UI,Arial,sans-serif;fill:#172033}.small{font:400 13px Inter,Segoe UI,Arial,sans-serif;fill:#64748b}.step{font:700 12px Inter,Segoe UI,Arial,sans-serif;fill:#fff}.line{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#arrow)}</style>
+  </defs>
+  <rect width="1800" height="1040" fill="#f8fafc"/>
+  <text class="title" x="900" y="58" text-anchor="middle">RAG workflow</text>
+
+  <g filter="url(#shadow)">
+    <rect x="100" y="190" width="310" height="120" rx="17" fill="#e8edf3" stroke="#475569" stroke-width="2.5"/>
+    <rect x="545" y="190" width="310" height="120" rx="17" fill="#dff3ff" stroke="#0878b8" stroke-width="2.5"/>
+    <rect x="990" y="190" width="310" height="120" rx="17" fill="#e4f8eb" stroke="#168447" stroke-width="2.5"/>
+    <rect x="1435" y="190" width="265" height="120" rx="17" fill="#eee9ff" stroke="#6d4dc3" stroke-width="2.5"/>
+  </g>
+  <text class="label" x="255" y="244" text-anchor="middle">Documents</text><text class="small" x="255" y="275" text-anchor="middle">Versioned uploads</text>
+  <text class="label" x="700" y="244" text-anchor="middle">Knowledge base</text><text class="small" x="700" y="275" text-anchor="middle">Root or folder scope</text>
+  <text class="label" x="1145" y="244" text-anchor="middle">Index configuration</text><text class="small" x="1145" y="275" text-anchor="middle">Partitioning, chunking, embedding</text>
+  <text class="label" x="1568" y="244" text-anchor="middle">Vector index</text><text class="small" x="1568" y="275" text-anchor="middle">Immutable build</text>
+  <path class="line" d="M410 250H535"/><path class="line" d="M855 250H980"/><path class="line" d="M1300 250H1425"/>
+  <text class="small" x="472" y="228" text-anchor="middle">upload</text><text class="small" x="917" y="228" text-anchor="middle">select scope</text><text class="small" x="1362" y="228" text-anchor="middle">build</text>
+
+  <path class="line" d="M1568 310V435H1320"/>
+  <g filter="url(#shadow)">
+    <rect x="990" y="390" width="320" height="120" rx="17" fill="#fff0d2" stroke="#bd6b00" stroke-width="2.5"/>
+    <rect x="545" y="390" width="310" height="120" rx="17" fill="#ffe7d6" stroke="#c15a13" stroke-width="2.5"/>
+    <rect x="100" y="390" width="310" height="120" rx="17" fill="#dcf8f4" stroke="#087f72" stroke-width="2.5"/>
+  </g>
+  <text class="label" x="1150" y="444" text-anchor="middle">Experiment variant</text><text class="small" x="1150" y="475" text-anchor="middle">Index, prompts, retrieval, model</text>
+  <text class="label" x="700" y="444" text-anchor="middle">Evaluation run</text><text class="small" x="700" y="475" text-anchor="middle">Benchmark, metrics, latency</text>
+  <text class="label" x="255" y="444" text-anchor="middle">Assistant revision</text><text class="small" x="255" y="475" text-anchor="middle">Tested configuration</text>
+  <path class="line" d="M990 450H865"/><path class="line" d="M545 450H420"/>
+  <text class="small" x="927" y="428" text-anchor="middle">execute</text><text class="small" x="482" y="428" text-anchor="middle">promote</text>
+
+  <path class="line" d="M255 510V635"/>
+  <rect x="100" y="640" width="310" height="120" rx="17" fill="#d9f7e4" stroke="#168447" stroke-width="2.5" filter="url(#shadow)"/>
+  <text class="label" x="255" y="694" text-anchor="middle">Conversations</text><text class="small" x="255" y="725" text-anchor="middle">Responses and citations</text>
+
+</svg>

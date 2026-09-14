@@ -101,7 +101,7 @@ def upload_source(
     except SourceTooLargeError:
         raise HTTPException(
             413,
-            {"code": "file_too_large", "message": "File size must not exceed 10 MB"},
+            {"code": "file_too_large", "message": "File size must not exceed 20 MB"},
         ) from None
 
 
@@ -230,9 +230,12 @@ def download_source_file(
         content_disposition_type="inline",
         background=background,
     )
-    response.headers["Content-Security-Policy"] = (
-        "sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'"
-    )
+    # Browser PDF viewers cannot render inside a CSP sandbox. Other inline document
+    # types remain sandboxed because they are rendered as browser content.
+    if content_type != "application/pdf":
+        response.headers["Content-Security-Policy"] = (
+            "sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'"
+        )
     response.headers["X-Content-Type-Options"] = "nosniff"
     return response
 

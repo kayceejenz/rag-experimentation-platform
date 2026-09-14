@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="880" viewBox="0 0 1800 880" role="img" aria-labelledby="title desc">
+  <title id="title">RAG platform technical architecture</title>
+  <desc id="desc">Browser traffic flows through Next.js to FastAPI, PostgreSQL, object storage, and a notification-driven worker connected to Unstructured and Gemini.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
+    <filter id="shadow" x="-15%" y="-20%" width="130%" height="150%"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0f172a" flood-opacity=".08"/></filter>
+    <style>.title{font:700 30px Inter,Segoe UI,Arial,sans-serif;fill:#111827}.subtitle{font:400 16px Inter,Segoe UI,Arial,sans-serif;fill:#64748b}.label{font:700 18px Inter,Segoe UI,Arial,sans-serif;fill:#172033}.small{font:400 14px Inter,Segoe UI,Arial,sans-serif;fill:#64748b}.line{stroke:#64748b;stroke-width:3;fill:none;marker-end:url(#arrow)}.dash{stroke:#94a3b8;stroke-width:2;stroke-dasharray:7 7;fill:#fff}</style>
+  </defs>
+  <rect width="1800" height="1120" fill="#f8fafc"/>
+  <text class="title" x="900" y="58" text-anchor="middle">System architecture</text>
+
+  <circle cx="170" cy="220" r="66" fill="#eef2f7" stroke="#334155" stroke-width="3"/>
+  <text class="label" x="170" y="226" text-anchor="middle">Browser</text>
+  <path class="line" d="M236 220H385"/><text class="small" x="310" y="198" text-anchor="middle">Session cookie</text>
+
+  <rect x="395" y="155" width="340" height="130" rx="18" fill="#dff3ff" stroke="#0878b8" stroke-width="3" filter="url(#shadow)"/>
+  <text class="label" x="565" y="210" text-anchor="middle">Next.js</text><text class="small" x="565" y="241" text-anchor="middle">Pages and server routes</text>
+  <path class="line" d="M735 220H885"/><text class="small" x="810" y="190" text-anchor="middle">API token</text>
+
+  <rect x="895" y="155" width="390" height="130" rx="18" fill="#ffedaa" stroke="#c45f06" stroke-width="3" filter="url(#shadow)"/>
+  <text class="label" x="1090" y="210" text-anchor="middle">FastAPI application</text><text class="small" x="1090" y="241" text-anchor="middle">Controllers, services, repositories</text>
+
+  <path class="line" d="M1090 285V395"/>
+  <rect x="890" y="400" width="400" height="145" rx="18" fill="#e4f8eb" stroke="#168447" stroke-width="3" filter="url(#shadow)"/>
+  <text class="label" x="1090" y="455" text-anchor="middle">PostgreSQL and pgvector</text><text class="small" x="1090" y="488" text-anchor="middle">Application data, jobs, vectors, lineage</text><text class="small" x="1090" y="516" text-anchor="middle">Connection pool</text>
+
+  <path class="line" d="M1285 220H1450"/>
+  <rect x="1460" y="155" width="270" height="130" rx="18" class="dash" filter="url(#shadow)"/>
+  <text class="label" x="1595" y="210" text-anchor="middle">Object storage</text><text class="small" x="1595" y="241" text-anchor="middle">Local development or R2</text>
+
+  <path class="line" d="M1090 545V665"/><text class="small" x="1120" y="615">NOTIFY</text>
+  <rect x="890" y="670" width="400" height="145" rx="18" fill="#eee9ff" stroke="#6d4dc3" stroke-width="3" filter="url(#shadow)"/>
+  <text class="label" x="1090" y="725" text-anchor="middle">Worker</text><text class="small" x="1090" y="758" text-anchor="middle">Leases, retries, resumable jobs</text><text class="small" x="1090" y="786" text-anchor="middle">Notification with polling fallback</text>
+
+  <path class="line" d="M890 742H660"/><path class="line" d="M1290 742H1515"/>
+  <rect x="350" y="680" width="300" height="125" rx="17" class="dash"/>
+  <text class="label" x="500" y="732" text-anchor="middle">Unstructured</text><text class="small" x="500" y="765" text-anchor="middle">Document partitioning</text>
+  <rect x="1525" y="680" width="225" height="125" rx="17" class="dash"/>
+  <text class="label" x="1637" y="732" text-anchor="middle">Gemini</text><text class="small" x="1637" y="765" text-anchor="middle">Embeddings, generation, evaluation</text>
+
+</svg>

@@ -14,7 +14,7 @@ import {
 	X,
 } from 'lucide-react';
 import { SmoothLink } from '@/components/navigation/smooth-link';
-import { formatDateTime } from '@/lib/format';
+import { formatBytes, formatDateTime } from '@/lib/format';
 import type {
 	KnowledgeActivityEvent,
 	KnowledgeBase,
@@ -386,11 +386,7 @@ export function SourceOverview({
 											}
 										</td>
 										<td>
-											{Math.ceil(
-												document.byte_size /
-													1024,
-											)}{' '}
-											KB
+											{formatBytes(document.byte_size)}
 										</td>
 										<td>
 											<time
@@ -649,11 +645,7 @@ export function SourceOverview({
 													}
 												</strong>
 												<small>
-													{Math.ceil(
-														file.size /
-															1024,
-													)}{' '}
-													KB
+													{formatBytes(file.size)}
 												</small>
 											</span>
 											<button
@@ -829,11 +821,7 @@ export function SourceOverview({
 										preview.version
 									}{' '}
 									·{' '}
-									{Math.ceil(
-										preview.byte_size /
-											1024,
-									)}{' '}
-									KB
+									{formatBytes(preview.byte_size)}
 								</p>
 							</div>
 							<button
@@ -863,7 +851,13 @@ export function SourceOverview({
 								/>
 							) : isSafeFramePreview(preview) ? (
 								<iframe
-									sandbox=''
+									sandbox={
+										sourceExtension(
+											preview,
+										) === 'pdf'
+											? undefined
+											: ''
+									}
 									title={
 										preview.display_name
 									}
@@ -978,7 +972,7 @@ function KnowledgeActivity({ events }: { events: KnowledgeActivityEvent[] }) {
 										{event
 											.payload
 											.byte_size
-											? `${Math.ceil(event.payload.byte_size / 1024)} KB`
+											? formatBytes(event.payload.byte_size)
 											: '—'}
 									</td>
 									<td>

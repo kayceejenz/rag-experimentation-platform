@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="800" viewBox="0 0 1600 800" role="img" aria-labelledby="title desc">
+  <title id="title">Project workspace product model</title>
+  <desc id="desc">An account owns a project containing access control, knowledge, indexes, prompts, benchmarks, experiments, assistants, runs, and lineage.</desc>
+  <defs>
+    <filter id="shadow" x="-10%" y="-15%" width="120%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0f172a" flood-opacity=".08"/></filter>
+    <style>
+      .title{font:700 30px Inter,Segoe UI,Arial,sans-serif;fill:#111827}.subtitle{font:400 16px Inter,Segoe UI,Arial,sans-serif;fill:#64748b}.label{font:700 18px Inter,Segoe UI,Arial,sans-serif;fill:#172033}.small{font:400 14px Inter,Segoe UI,Arial,sans-serif;fill:#64748b}.line{stroke:#64748b;stroke-width:2.5;fill:none}.dash{stroke:#94a3b8;stroke-width:2;stroke-dasharray:7 7;fill:#fff}
+    </style>
+  </defs>
+  <rect width="1600" height="1040" fill="#f8fafc"/>
+  <text class="title" x="800" y="58" text-anchor="middle">Project structure</text>
+
+  <circle cx="170" cy="180" r="62" fill="#eef2f7" stroke="#334155" stroke-width="3"/>
+  <text class="label" x="170" y="186" text-anchor="middle">Account</text>
+  <path class="line" d="M232 180H345"/>
+  <polygon points="345,180 326,170 326,190" fill="#64748b"/>
+  <text class="small" x="286" y="161" text-anchor="middle">owns</text>
+
+  <rect x="350" y="120" width="300" height="120" rx="18" fill="#ffedaa" stroke="#c45f06" stroke-width="3" filter="url(#shadow)"/>
+  <text class="label" x="500" y="174" text-anchor="middle">Project</text>
+  <text class="small" x="500" y="202" text-anchor="middle">Workspace and access boundary</text>
+
+  <path class="line" d="M500 240V310M500 310H230M500 310H1370"/>
+  <path class="line" d="M230 310V345M610 310V345M990 310V345M1370 310V345"/>
+  <polygon points="230,345 220,326 240,326" fill="#64748b"/><polygon points="610,345 600,326 620,326" fill="#64748b"/><polygon points="990,345 980,326 1000,326" fill="#64748b"/><polygon points="1370,345 1360,326 1380,326" fill="#64748b"/>
+
+  <g filter="url(#shadow)">
+    <rect x="80" y="350" width="300" height="132" rx="16" fill="#e8edf3" stroke="#475569" stroke-width="2.5"/>
+    <text class="label" x="230" y="403" text-anchor="middle">Members and access</text><text class="small" x="230" y="434" text-anchor="middle">Roles and permissions</text>
+    <rect x="460" y="350" width="300" height="132" rx="16" fill="#dff3ff" stroke="#0878b8" stroke-width="2.5"/>
+    <text class="label" x="610" y="403" text-anchor="middle">Knowledge base</text><text class="small" x="610" y="434" text-anchor="middle">Folders and document versions</text>
+    <rect x="840" y="350" width="300" height="132" rx="16" fill="#e4f8eb" stroke="#168447" stroke-width="2.5"/>
+    <text class="label" x="990" y="403" text-anchor="middle">Vector indexes</text><text class="small" x="990" y="434" text-anchor="middle">Specifications, chunks, embeddings</text>
+    <rect x="1220" y="350" width="300" height="132" rx="16" fill="#eee9ff" stroke="#6d4dc3" stroke-width="2.5"/>
+    <text class="label" x="1370" y="403" text-anchor="middle">Prompts</text><text class="small" x="1370" y="434" text-anchor="middle">Versioned prompt templates</text>
+  </g>
+
+  <path class="line" d="M500 482V555M500 555H230M500 555H1370"/>
+  <path class="line" d="M230 555V590M610 555V590M990 555V590M1370 555V590"/>
+  <polygon points="230,590 220,571 240,571" fill="#64748b"/><polygon points="610,590 600,571 620,571" fill="#64748b"/><polygon points="990,590 980,571 1000,571" fill="#64748b"/><polygon points="1370,590 1360,571 1380,571" fill="#64748b"/>
+
+  <g filter="url(#shadow)">
+    <rect x="80" y="595" width="300" height="132" rx="16" fill="#fff5d6" stroke="#b77900" stroke-width="2.5"/>
+    <text class="label" x="230" y="648" text-anchor="middle">Benchmarks</text><text class="small" x="230" y="679" text-anchor="middle">Dataset versions and test cases</text>
+    <rect x="460" y="595" width="300" height="132" rx="16" fill="#ffe9d6" stroke="#c15a13" stroke-width="2.5"/>
+    <text class="label" x="610" y="648" text-anchor="middle">Experiments</text><text class="small" x="610" y="679" text-anchor="middle">Variants and evaluation runs</text>
+    <rect x="840" y="595" width="300" height="132" rx="16" fill="#dcf8f4" stroke="#087f72" stroke-width="2.5"/>
+    <text class="label" x="990" y="648" text-anchor="middle">Assistants</text><text class="small" x="990" y="679" text-anchor="middle">Revisions and conversations</text>
+    <rect x="1220" y="595" width="300" height="132" rx="16" fill="#f1e8ff" stroke="#7c3fb0" stroke-width="2.5"/>
+    <text class="label" x="1370" y="648" text-anchor="middle">Runs and lineage</text><text class="small" x="1370" y="679" text-anchor="middle">History, traces, relationships</text>
+  </g>
+
+</svg>
