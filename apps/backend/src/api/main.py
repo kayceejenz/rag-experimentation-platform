@@ -11,6 +11,9 @@ from integrations.database import (
     open_database_pools,
 )
 from integrations.http_client import close_http_clients
+from modules.assistants.controllers.assistant_controller import (
+    router as assistant_router,
+)
 from modules.auth.controllers.auth_controller import router as auth_router
 from modules.benchmarks.controllers.benchmark_controller import (
     router as benchmark_router,
@@ -24,9 +27,6 @@ from modules.indexes.controllers.index_controller import router as index_router
 from modules.jobs.controllers.job_controller import router as job_router
 from modules.knowledge_bases.controllers.knowledge_base_controller import (
     router as kb_router,
-)
-from modules.knowledge_bots.controllers.knowledge_bot_controller import (
-    router as knowledge_bot_router,
 )
 from modules.projects.controllers.project_controller import router as project_router
 from modules.prompts.controllers.prompt_controller import router as prompt_router
@@ -66,7 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(kb_router, prefix="/api/v1")
     app.include_router(source_router, prefix="/api/v1")
     app.include_router(job_router, prefix="/api/v1")
-    app.include_router(knowledge_bot_router, prefix="/api/v1")
+    app.include_router(assistant_router, prefix="/api/v1")
     app.include_router(lineage_router, prefix="/api/v1")
     app.include_router(index_router, prefix="/api/v1")
     app.include_router(prompt_router, prefix="/api/v1")

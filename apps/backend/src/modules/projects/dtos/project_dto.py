@@ -1,6 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
+from modules.core.dtos.lineage_dto import ExecutionResponse
 from pydantic import BaseModel, Field
 
 
@@ -29,6 +30,29 @@ class ProjectResponse(BaseModel):
 
 class ProjectListResponse(BaseModel):
     projects: list[ProjectResponse]
+
+
+class WorkspaceProjectStatusResponse(BaseModel):
+    project_id: UUID
+    index_count: int
+    active_runs: int
+    failed_runs: int
+    last_activity: datetime | None
+
+
+class WorkspaceExecutionResponse(ExecutionResponse):
+    project_name: str
+
+
+class WorkspaceOverviewResponse(BaseModel):
+    projects: list[ProjectResponse]
+    index_count: int
+    ready_indexes: int
+    building_indexes: int
+    active_assistants: int
+    failed_runs: int
+    project_statuses: list[WorkspaceProjectStatusResponse]
+    recent_executions: list[WorkspaceExecutionResponse]
 
 
 class FeaturePermission(BaseModel):

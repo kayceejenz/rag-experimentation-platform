@@ -35,9 +35,10 @@ function SignInContent() {
 
 	useEffect(() => {
 		void fetch('/api/auth/me')
-			.then(r => r.ok ? r.json() : null)
+			.then(r => (r.ok ? r.json() : null))
 			.then(data => {
-				if (data?.user) window.location.replace(callbackUrl);
+				if (data?.user)
+					window.location.replace(callbackUrl);
 			})
 			.catch(() => undefined);
 	}, [callbackUrl]);
@@ -89,9 +90,11 @@ function SignInContent() {
 					const registrationError =
 						typeof body.error === 'string'
 							? body.error
-							: body.error?.details?.[0]
+							: (body.error
+									?.details?.[0]
 									?.message ??
-								body.error?.message;
+								body.error
+									?.message);
 					throw new Error(
 						registrationError ??
 							body.detail ??
@@ -111,7 +114,7 @@ function SignInContent() {
 			if (!response.ok) {
 				throw new Error(
 					(body as { error?: string }).error ??
-					'The email or password is incorrect.',
+						'The email or password is incorrect.',
 				);
 			}
 			window.location.replace(callbackUrl);
@@ -205,62 +208,64 @@ function SignInContent() {
 					</div>
 				)}
 
-			<form className='auth-form' onSubmit={submit}>
-				{mode === 'register' && (
+				<form className='auth-form' onSubmit={submit}>
+					{mode === 'register' && (
+						<label>
+							<span>
+								Display name
+							</span>
+							<input
+								autoComplete='name'
+								value={
+									displayName
+								}
+								disabled={
+									loading
+								}
+								onChange={event =>
+									setDisplayName(
+										event
+											.target
+											.value,
+									)
+								}
+								maxLength={160}
+								placeholder='Optional'
+							/>
+						</label>
+					)}
 					<label>
-						<span>
-							Display name
-						</span>
+						<span>Email</span>
 						<input
-							autoComplete='name'
-							value={
-								displayName
-							}
+							type='email'
+							autoComplete='email'
+							value={email}
+							required
 							disabled={loading}
 							onChange={event =>
-								setDisplayName(
+								setEmail(
 									event
 										.target
 										.value,
 								)
 							}
-							maxLength={160}
-							placeholder='Optional'
+							placeholder='you@example.com'
 						/>
 					</label>
-				)}
-				<label>
-					<span>Email</span>
-					<input
-						type='email'
-						autoComplete='email'
-						value={email}
-						required
-						disabled={loading}
-						onChange={event =>
-							setEmail(
-								event
-									.target
-									.value,
-							)
-						}
-						placeholder='you@example.com'
-					/>
-				</label>
-				<label>
-					<span>Password</span>
-					<input
-						type='password'
-						autoComplete={
-							mode ===
-							'signin'
-								? 'current-password'
-								: 'new-password'
-						}
-						value={password}
-						required
-						disabled={loading}
-						minLength={
+					<label>
+						<span>Password</span>
+						<input
+							type='password'
+							autoComplete={
+								mode ===
+								'signin'
+									? 'current-password'
+									: 'new-password'
+							}
+							value={password}
+							required
+							disabled={loading}
+							minLength={
 								mode ===
 								'register'
 									? 12
@@ -277,27 +282,40 @@ function SignInContent() {
 						/>
 						{mode === 'register' && (
 							<small>
-								At least 12 characters.
+								At least 12
+								characters.
 							</small>
 						)}
 					</label>
 					{mode === 'register' && (
 						<label>
-							<span>Invitation code</span>
+							<span>
+								Invitation code
+							</span>
 							<input
 								type='password'
 								autoComplete='off'
-								value={invitationCode}
+								value={
+									invitationCode
+								}
 								required
-								disabled={loading}
+								disabled={
+									loading
+								}
 								maxLength={256}
 								onChange={event =>
-									setInvitationCode(event.target.value)
+									setInvitationCode(
+										event
+											.target
+											.value,
+									)
 								}
 								placeholder='Provided with your invitation'
 							/>
 							<small>
-								Registration is available by invitation.
+								Registration is
+								available by
+								invitation.
 							</small>
 						</label>
 					)}

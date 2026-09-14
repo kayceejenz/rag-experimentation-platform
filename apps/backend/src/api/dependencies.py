@@ -8,6 +8,8 @@ from integrations.assistant_runtime import AssistantRuntimeFactory
 from integrations.embeddings import GeminiEmbedder
 from integrations.gemini_chat import GeminiChatModel
 from integrations.retrieval_store import PgVectorKnowledgeSearch
+from modules.assistants.repos.assistant_repository import AssistantRepository
+from modules.assistants.services.assistant_service import AssistantService
 from modules.auth.helpers.passwords import Argon2idPasswordHasher
 from modules.auth.helpers.tokens import JwtAccessTokenIssuer
 from modules.auth.models.auth_user_model import AuthenticatedUser
@@ -38,8 +40,6 @@ from modules.jobs.repos.job_repo import JobRepository
 from modules.jobs.services.job_service import JobService
 from modules.knowledge_bases.repos.knowledge_base_repo import KnowledgeBaseRepository
 from modules.knowledge_bases.services.knowledge_base_service import KnowledgeBaseService
-from modules.knowledge_bots.repos.knowledge_bot_repository import KnowledgeBotRepository
-from modules.knowledge_bots.services.knowledge_bot_service import KnowledgeBotService
 from modules.projects.repos.project_repo import ProjectRepository
 from modules.projects.services.project_service import ProjectService
 from modules.prompts.repos.prompt_repository import PromptRepository
@@ -113,11 +113,11 @@ def project_service() -> ProjectService:
 
 
 @lru_cache
-def knowledge_bot_service() -> KnowledgeBotService:
+def assistant_service() -> AssistantService:
     if not settings().database_url:
         raise RuntimeError("DATABASE_URL is required")
-    return KnowledgeBotService(
-        KnowledgeBotRepository(settings().database_url), project_service()
+    return AssistantService(
+        AssistantRepository(settings().database_url), project_service()
     )
 
 
@@ -163,7 +163,7 @@ def chat_service() -> ChatService:
             max_output_tokens=c.chat_max_output_tokens,
             thinking_level=c.gemini_thinking_level,
         ),
-        knowledge_bot_service(),
+        assistant_service(),
         AssistantRuntimeFactory(c),
     )
 

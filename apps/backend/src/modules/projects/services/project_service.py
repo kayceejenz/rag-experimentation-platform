@@ -39,6 +39,9 @@ class ProjectService:
     async def list(self, user_id: UUID) -> list[ProjectAccess]:
         return await self.repository.list_for_user(user_id)
 
+    async def workspace_overview(self, user_id: UUID):
+        return await self.repository.workspace_overview(user_id)
+
     async def get(self, project_id: UUID, user_id: UUID) -> ProjectAccess:
         access = await self.repository.get_access(project_id, user_id)
         if not access:
@@ -53,11 +56,9 @@ class ProjectService:
         description: str | None,
         update_description: bool,
     ) -> ProjectAccess:
-        access = await self.get(project_id, user_id)
-        if not await self.repository.has_permission(
+        access = await self.require_permission(
             project_id, user_id, "settings", "manage"
-        ):
-            raise ProjectPermissionError
+        )
         project = await self.repository.update(
             project_id, name.strip() if name else None, description, update_description
         )
@@ -76,9 +77,10 @@ class ProjectService:
         self, project_id, user_id, feature, action="view"
     ) -> ProjectAccess:
         access = await self.get(project_id, user_id)
-        if not await self.repository.has_permission(
-            project_id, user_id, feature, action
-        ):
+        if access.role is ProjectRole.OWNER:
+            return access
+        permission = access.permissions.get(feature, {})
+        if not permission.get(action, False):
             raise ProjectPermissionError
         return access
 

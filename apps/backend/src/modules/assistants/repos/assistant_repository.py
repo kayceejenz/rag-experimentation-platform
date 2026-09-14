@@ -1,10 +1,10 @@
-from modules.knowledge_bots.models.models import KnowledgeBot, KnowledgeBotStatus
+from integrations.database import async_db_connection
+from modules.assistants.models.assistant_model import Assistant, AssistantStatus
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
-from integrations.database import async_db_connection
 
 
-class KnowledgeBotRepository:
+class AssistantRepository:
     def __init__(self, database_url: str) -> None:
         self.database_url = database_url
 
@@ -12,14 +12,14 @@ class KnowledgeBotRepository:
         return async_db_connection(self.database_url, row_factory=dict_row)
 
     @staticmethod
-    def model(row: dict) -> KnowledgeBot:
-        return KnowledgeBot(
+    def model(row: dict) -> Assistant:
+        return Assistant(
             id=row["id"],
             project_id=row["project_id"],
             created_by=row["created_by"],
             name=row["name"],
             description=row["description"],
-            status=KnowledgeBotStatus(row["status"]),
+            status=AssistantStatus(row["status"]),
             settings=row["settings"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
@@ -42,7 +42,9 @@ class KnowledgeBotRepository:
             "left join ragapp.experiments e on e.id=ev.experiment_id "
         )
 
-    async def create(self, project_id, created_by, name, description, experiment_variant_run_id) -> KnowledgeBot:
+    async def create(
+        self, project_id, created_by, name, description, experiment_variant_run_id
+    ) -> Assistant:
         async with self.connect() as db:
             async with db.transaction():
                 cursor = await db.execute(
@@ -74,8 +76,14 @@ class KnowledgeBotRepository:
                     "insert into ragapp.assistant_revisions(project_id,assistant_id,version,"
                     "index_specification_id,created_by,experiment_variant_run_id,configuration) "
                     "values(%s,%s,1,%s,%s,%s,%s) returning id",
-                    (project_id, assistant["id"], source["index_specification_id"], created_by,
-                     experiment_variant_run_id, Jsonb(configuration)),
+                    (
+                        project_id,
+                        assistant["id"],
+                        source["index_specification_id"],
+                        created_by,
+                        experiment_variant_run_id,
+                        Jsonb(configuration),
+                    ),
                 )
                 revision = await cursor.fetchone()
                 await db.execute(
@@ -102,7 +110,7 @@ class KnowledgeBotRepository:
             )
             return await cursor.fetchall()
 
-    async def lineage(self, bot_id, project_id) -> dict | None:
+    async def lineage(self, assistant_id, project_id) -> dict | None:
         async with self.connect() as db:
             cursor = await db.execute(
                 "select b.id assistant_id,b.name assistant_name,ar.id revision_id,ar.version revision_version,"
@@ -124,23 +132,54 @@ class KnowledgeBotRepository:
                 "join ragapp.prompt_versions rpv on rpv.id=(ar.configuration->>'rag_prompt_version_id')::uuid "
                 "join ragapp.prompts rp on rp.id=rpv.prompt_id "
                 "where b.id=%s and b.project_id=%s and b.deleted_at is null",
-                (bot_id, project_id),
+                (assistant_id, project_id),
             )
             row = await cursor.fetchone()
         if not row:
             return None
         return {
             "assistant": {"id": row["assistant_id"], "name": row["assistant_name"]},
-            "revision": {"id": row["revision_id"], "version": row["revision_version"], "created_at": row["revision_created_at"], "configuration": row["revision_configuration"]},
-            "experiment": {"id": row["experiment_id"], "name": row["experiment_name"], "hypothesis": row["hypothesis"]},
-            "run": {"id": row["run_id"], "variant_run_id": row["variant_run_id"], "code_revision": row["code_revision"], "created_at": row["run_created_at"], "completed_at": row["run_completed_at"], "metrics": row["aggregate_metrics"] or {}},
-            "variant": {"id": row["variant_id"], "name": row["variant_name"], "configuration_hash": row["configuration_hash"]},
-            "index": {"id": row["index_id"], "configuration": row["index_configuration"]},
-            "system_prompt": {"version_id": row["system_prompt_version_id"], "name": row["system_prompt_name"], "version": row["system_prompt_version"]},
-            "rag_prompt": {"version_id": row["rag_prompt_version_id"], "name": row["rag_prompt_name"], "version": row["rag_prompt_version"]},
+            "revision": {
+                "id": row["revision_id"],
+                "version": row["revision_version"],
+                "created_at": row["revision_created_at"],
+                "configuration": row["revision_configuration"],
+            },
+            "experiment": {
+                "id": row["experiment_id"],
+                "name": row["experiment_name"],
+                "hypothesis": row["hypothesis"],
+            },
+            "run": {
+                "id": row["run_id"],
+                "variant_run_id": row["variant_run_id"],
+                "code_revision": row["code_revision"],
+                "created_at": row["run_created_at"],
+                "completed_at": row["run_completed_at"],
+                "metrics": row["aggregate_metrics"] or {},
+            },
+            "variant": {
+                "id": row["variant_id"],
+                "name": row["variant_name"],
+                "configuration_hash": row["configuration_hash"],
+            },
+            "index": {
+                "id": row["index_id"],
+                "configuration": row["index_configuration"],
+            },
+            "system_prompt": {
+                "version_id": row["system_prompt_version_id"],
+                "name": row["system_prompt_name"],
+                "version": row["system_prompt_version"],
+            },
+            "rag_prompt": {
+                "version_id": row["rag_prompt_version_id"],
+                "name": row["rag_prompt_name"],
+                "version": row["rag_prompt_version"],
+            },
         }
 
-    async def runtime_configuration(self, bot_id, project_id) -> dict | None:
+    async def runtime_configuration(self, assistant_id, project_id) -> dict | None:
         async with self.connect() as db:
             cursor = await db.execute(
                 "select ar.index_specification_id,ar.configuration,"
@@ -160,7 +199,7 @@ class KnowledgeBotRepository:
                 "join ragapp.prompt_versions spv on spv.id=(ar.configuration->>'system_prompt_version_id')::uuid "
                 "join ragapp.prompt_versions rpv on rpv.id=(ar.configuration->>'rag_prompt_version_id')::uuid "
                 "where b.id=%s and b.project_id=%s and b.status='active' and b.deleted_at is null",
-                (bot_id, project_id),
+                (assistant_id, project_id),
             )
             row = await cursor.fetchone()
         if not row:
@@ -178,22 +217,22 @@ class KnowledgeBotRepository:
             "rag_prompt": row["rag_prompt"],
         }
 
-    async def get(self, bot_id, user_id) -> KnowledgeBot | None:
+    async def get(self, assistant_id, user_id) -> Assistant | None:
         async with self.connect() as db:
             cursor = await db.execute(
-                self.select() +
-                "join ragapp.project_members pm on pm.project_id=b.project_id "
+                self.select()
+                + "join ragapp.project_members pm on pm.project_id=b.project_id "
                 "where b.id=%s and pm.user_id=%s and b.deleted_at is null",
-                (bot_id, user_id),
+                (assistant_id, user_id),
             )
             row = await cursor.fetchone()
         return self.model(row) if row else None
 
-    async def list_for_project(self, project_id, user_id) -> list[KnowledgeBot]:
+    async def list_for_project(self, project_id, user_id) -> list[Assistant]:
         async with self.connect() as db:
             cursor = await db.execute(
-                self.select() +
-                "join ragapp.project_members pm on pm.project_id=b.project_id "
+                self.select()
+                + "join ragapp.project_members pm on pm.project_id=b.project_id "
                 "where b.project_id=%s and pm.user_id=%s and b.deleted_at is null "
                 "order by b.updated_at desc",
                 (project_id, user_id),
@@ -201,7 +240,9 @@ class KnowledgeBotRepository:
             rows = await cursor.fetchall()
         return [self.model(row) for row in rows]
 
-    async def update(self, bot_id, name, description, update_description, bot_status):
+    async def update(
+        self, assistant_id, name, description, update_description, assistant_status
+    ):
         async with self.connect() as db:
             cursor = await db.execute(
                 "update ragapp.assistants set name=coalesce(%s,name), "
@@ -211,23 +252,23 @@ class KnowledgeBotRepository:
                     name,
                     update_description,
                     description,
-                    bot_status.value if bot_status else None,
-                    bot_id,
+                    assistant_status.value if assistant_status else None,
+                    assistant_id,
                 ),
             )
             row = await cursor.fetchone()
         return self.model(row)
 
-    async def delete(self, bot_id) -> None:
+    async def delete(self, assistant_id) -> None:
         async with self.connect() as db:
             async with db.transaction():
                 await db.execute(
                     "update ragapp.conversations set deleted_at=now() "
                     "where assistant_id=%s and deleted_at is null",
-                    (bot_id,),
+                    (assistant_id,),
                 )
                 await db.execute(
                     "update ragapp.assistants set deleted_at=now() "
                     "where id=%s and deleted_at is null",
-                    (bot_id,),
+                    (assistant_id,),
                 )

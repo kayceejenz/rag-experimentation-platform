@@ -1,21 +1,21 @@
 from uuid import UUID
 
-from modules.knowledge_bots.contracts.knowledge_bot_repo_contracts import (
-    KnowledgeBotRepositoryContract,
+from modules.assistants.contracts.assistant_repo_contract import (
+    AssistantRepositoryContract,
 )
-from modules.knowledge_bots.models.models import (
-    KnowledgeBot,
-    KnowledgeBotNotFoundError,
-    KnowledgeBotPermissionError,
-    KnowledgeBotStatus,
+from modules.assistants.models.assistant_model import (
+    Assistant,
+    AssistantNotFoundError,
+    AssistantPermissionError,
+    AssistantStatus,
 )
 from modules.projects.models.project_model import ProjectRole
 from modules.projects.services.project_service import ProjectService
 
 
-class KnowledgeBotService:
+class AssistantService:
     def __init__(
-        self, repository: KnowledgeBotRepositoryContract, projects: ProjectService
+        self, repository: AssistantRepositoryContract, projects: ProjectService
     ) -> None:
         self.repository = repository
         self.projects = projects
@@ -27,84 +27,86 @@ class KnowledgeBotService:
         name: str,
         description: str | None,
         experiment_variant_run_id: UUID,
-    ) -> tuple[KnowledgeBot, ProjectRole]:
+    ) -> tuple[Assistant, ProjectRole]:
         access = await self.projects.require_permission(
             project_id, user_id, "assistants", "manage"
         )
-        bot = await self.repository.create(
+        assistant = await self.repository.create(
             project_id,
             user_id,
             name.strip(),
             self._description(description),
             experiment_variant_run_id,
         )
-        return bot, access.role
+        return assistant, access.role
 
     async def candidates(self, project_id: UUID, user_id: UUID) -> list[dict]:
         await self.projects.require_permission(project_id, user_id, "assistants")
         return await self.repository.completed_run_candidates(project_id)
 
-    async def lineage(self, bot_id: UUID, user_id: UUID) -> dict:
-        bot, _ = await self.get(bot_id, user_id)
-        result = await self.repository.lineage(bot.id, bot.project_id)
+    async def lineage(self, assistant_id: UUID, user_id: UUID) -> dict:
+        assistant, _ = await self.get(assistant_id, user_id)
+        result = await self.repository.lineage(assistant.id, assistant.project_id)
         if not result:
-            raise KnowledgeBotNotFoundError
+            raise AssistantNotFoundError
         return result
 
-    async def runtime_configuration(self, bot_id: UUID, user_id: UUID) -> dict:
-        bot, _ = await self.get(bot_id, user_id)
-        result = await self.repository.runtime_configuration(bot.id, bot.project_id)
+    async def runtime_configuration(self, assistant_id: UUID, user_id: UUID) -> dict:
+        assistant, _ = await self.get(assistant_id, user_id)
+        result = await self.repository.runtime_configuration(
+            assistant.id, assistant.project_id
+        )
         if not result:
             raise ValueError("The assistant has no active experiment-backed revision")
         return result
 
     async def list(
         self, project_id: UUID, user_id: UUID
-    ) -> tuple[list[KnowledgeBot], ProjectRole]:
+    ) -> tuple[list[Assistant], ProjectRole]:
         access = await self.projects.require_permission(
             project_id, user_id, "assistants"
         )
         return await self.repository.list_for_project(project_id, user_id), access.role
 
     async def get(
-        self, bot_id: UUID, user_id: UUID
-    ) -> tuple[KnowledgeBot, ProjectRole]:
-        bot = await self.repository.get(bot_id, user_id)
-        if not bot:
-            raise KnowledgeBotNotFoundError
+        self, assistant_id: UUID, user_id: UUID
+    ) -> tuple[Assistant, ProjectRole]:
+        assistant = await self.repository.get(assistant_id, user_id)
+        if not assistant:
+            raise AssistantNotFoundError
         access = await self.projects.require_permission(
-            bot.project_id, user_id, "assistants"
+            assistant.project_id, user_id, "assistants"
         )
-        return bot, access.role
+        return assistant, access.role
 
     async def update(
         self,
-        bot_id: UUID,
+        assistant_id: UUID,
         user_id: UUID,
         name: str | None,
         description: str | None,
         update_description: bool,
-        bot_status: KnowledgeBotStatus | None,
-    ) -> tuple[KnowledgeBot, ProjectRole]:
-        bot, role = await self.get(bot_id, user_id)
+        assistant_status: AssistantStatus | None,
+    ) -> tuple[Assistant, ProjectRole]:
+        assistant, role = await self.get(assistant_id, user_id)
         await self.projects.require_permission(
-            bot.project_id, user_id, "assistants", "manage"
+            assistant.project_id, user_id, "assistants", "manage"
         )
         updated = await self.repository.update(
-            bot.id,
+            assistant.id,
             name.strip() if name else None,
             self._description(description),
             update_description,
-            bot_status,
+            assistant_status,
         )
         return updated, role
 
-    async def delete(self, bot_id: UUID, user_id: UUID) -> None:
-        (bot,) = await self.get(bot_id, user_id)
+    async def delete(self, assistant_id: UUID, user_id: UUID) -> None:
+        assistant, _ = await self.get(assistant_id, user_id)
         await self.projects.require_permission(
-            bot.project_id, user_id, "assistants", "manage"
+            assistant.project_id, user_id, "assistants", "manage"
         )
-        await self.repository.delete(bot.id)
+        await self.repository.delete(assistant.id)
 
     @staticmethod
     def _description(description: str | None) -> str | None:
@@ -113,4 +115,4 @@ class KnowledgeBotService:
     @staticmethod
     def _require_editor(role: ProjectRole) -> None:
         if role not in {ProjectRole.OWNER, ProjectRole.EDITOR}:
-            raise KnowledgeBotPermissionError
+            raise AssistantPermissionError

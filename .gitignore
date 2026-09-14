@@ -4,6 +4,7 @@
 !.env.example
 !.env.*.example
 node_modules/
+.pnpm-store/
 .next/
 *.tsbuildinfo
 storage/documents/*
@@ -21,5 +22,7 @@ __pycache__/
 .ruff_cache/
 coverage/
 htmlcov/
+playwright-report/
+test-results/
 .idea/
 .vscode/

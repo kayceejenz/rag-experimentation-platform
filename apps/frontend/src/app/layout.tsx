@@ -25,9 +25,7 @@ export default function RootLayout({
 	return (
 		<html lang='en' className={font.variable}>
 			<body>
-				<ClientProviders>
-					{children}
-				</ClientProviders>
+				<ClientProviders>{children}</ClientProviders>
 				<AppVersion />
 			</body>
 		</html>

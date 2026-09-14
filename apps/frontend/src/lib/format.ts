@@ -53,6 +53,7 @@ export function formatBytes(bytes: number): string {
 		units.length - 1,
 	);
 	const value = bytes / 1024 ** unitIndex;
-	const precision = unitIndex === 0 || value >= 100 ? 0 : value >= 10 ? 1 : 2;
+	const precision =
+		unitIndex === 0 || value >= 100 ? 0 : value >= 10 ? 1 : 2;
 	return `${value.toFixed(precision)} ${units[unitIndex]}`;
 }

@@ -4,18 +4,18 @@ from enum import StrEnum
 from uuid import UUID, uuid4
 
 
-class KnowledgeBotStatus(StrEnum):
+class AssistantStatus(StrEnum):
     ACTIVE = "active"
     ARCHIVED = "archived"
 
 
 @dataclass(frozen=True)
-class KnowledgeBot:
+class Assistant:
     project_id: UUID
     created_by: UUID
     name: str
     description: str | None = None
-    status: KnowledgeBotStatus = KnowledgeBotStatus.ACTIVE
+    status: AssistantStatus = AssistantStatus.ACTIVE
     settings: dict = field(default_factory=dict)
     id: UUID = field(default_factory=uuid4)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
@@ -27,9 +27,9 @@ class KnowledgeBot:
     source_variant_name: str | None = None
 
 
-class KnowledgeBotNotFoundError(Exception):
+class AssistantNotFoundError(Exception):
     pass
 
 
-class KnowledgeBotPermissionError(Exception):
+class AssistantPermissionError(Exception):
     pass

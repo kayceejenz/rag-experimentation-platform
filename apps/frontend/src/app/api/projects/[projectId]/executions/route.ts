@@ -8,7 +8,10 @@ type Params = { params: Promise<{ projectId: string }> };
 export async function GET(request: Request, { params }: Params) {
 	const user = await getAuthUser();
 	if (!user)
-		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		return NextResponse.json(
+			{ error: 'Unauthorized' },
+			{ status: 401 },
+		);
 	try {
 		const { projectId } = await params;
 		const query = new URL(request.url).searchParams;

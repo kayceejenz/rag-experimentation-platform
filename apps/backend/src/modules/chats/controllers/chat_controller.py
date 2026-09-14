@@ -25,7 +25,7 @@ from modules.chats.models.error_model import (
 )
 from modules.chats.models.message_model import Message
 from modules.chats.services.chat_service import ChatService
-from modules.knowledge_bots.models.models import KnowledgeBotNotFoundError
+from modules.assistants.models.assistant_model import AssistantNotFoundError
 from modules.projects.models.project_model import (
     ProjectNotFoundError,
     ProjectPermissionError,
@@ -72,7 +72,7 @@ def response(chat: Chat, role: str) -> ChatResponse:
 
 def translate(error: Exception) -> HTTPException:
     if isinstance(
-        error, (ChatNotFoundError, KnowledgeBotNotFoundError, ProjectNotFoundError)
+        error, (ChatNotFoundError, AssistantNotFoundError, ProjectNotFoundError)
     ):
         return HTTPException(status.HTTP_404_NOT_FOUND, "Chat or project not found")
     return HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient project permissions")
@@ -95,7 +95,7 @@ async def create_conversation(
         )
         return response(chat, role.value)
     except (
-        KnowledgeBotNotFoundError,
+        AssistantNotFoundError,
         ProjectNotFoundError,
         ProjectPermissionError,
     ) as error:
@@ -114,7 +114,7 @@ async def list_conversations(
             conversations=[response(chat, role.value) for chat in chats]
         )
     except (
-        KnowledgeBotNotFoundError,
+        AssistantNotFoundError,
         ProjectNotFoundError,
         ProjectPermissionError,
     ) as error:

@@ -16,15 +16,24 @@ export default async function AssistantPage({ params }: Props) {
 			user.accessToken,
 			`/assistants/${assistantId}`,
 		).catch(() => null),
-		backendJson<Project>(user.accessToken, `/projects/${projectId}`).catch(() => null),
+		backendJson<Project>(
+			user.accessToken,
+			`/projects/${projectId}`,
+		).catch(() => null),
 	]);
-	if (project && project.role !== 'owner' && !project.permissions?.assistants?.view) {
-		return <ProjectAccessDenied projectId={projectId} feature='Assistants'/>;
+	if (
+		project &&
+		project.role !== 'owner' &&
+		!project.permissions?.assistants?.view
+	) {
+		return (
+			<ProjectAccessDenied
+				projectId={projectId}
+				feature='Assistants'
+			/>
+		);
 	}
 	if (!assistant || !project || assistant.project_id !== projectId)
 		notFound();
-	return <AssistantOverview
-				project={project}
-				assistant={assistant}
-			/>;
+	return <AssistantOverview project={project} assistant={assistant} />;
 }

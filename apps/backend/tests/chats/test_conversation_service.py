@@ -6,7 +6,7 @@ from uuid import uuid4
 from modules.chats.models.chat_model import Chat, ChatStatus
 from modules.chats.models.retrieval_model import RetrievedChunk
 from modules.chats.services.chat_service import ChatService
-from modules.knowledge_bots.models.models import KnowledgeBot
+from modules.assistants.models.assistant_model import Assistant
 from modules.projects.models.project_model import Project, ProjectAccess, ProjectRole
 
 
@@ -39,18 +39,18 @@ class Conversations:
         self.deleted.append(chat_id)
 
 
-class Bots:
-    def __init__(self, bot, role=ProjectRole.VIEWER) -> None:
-        self.bot = bot
+class Assistants:
+    def __init__(self, assistant, role=ProjectRole.VIEWER) -> None:
+        self.assistant = assistant
         self.role = role
 
-    async def get(self, bot_id, user_id):
-        return self.bot, self.role
+    async def get(self, assistant_id, user_id):
+        return self.assistant, self.role
 
 
 class Projects:
-    def __init__(self, bot, role) -> None:
-        self.bot = bot
+    def __init__(self, assistant, role) -> None:
+        self.assistant = assistant
         self.role = role
 
     async def get(self, project_id, user_id):
@@ -58,7 +58,7 @@ class Projects:
             Project(
                 id=project_id,
                 workspace_id=uuid4(),
-                owner_id=self.bot.created_by,
+                owner_id=self.assistant.created_by,
                 name="Workspace",
                 description=None,
                 created_at=datetime.now(UTC),
@@ -75,68 +75,68 @@ class Unused:
     pass
 
 
-def service(repository, bot, role=ProjectRole.VIEWER):
+def service(repository, assistant, role=ProjectRole.VIEWER):
     return ChatService(
-        repository, Projects(bot, role), Unused(), Unused(), Unused(), Bots(bot, role)
+        repository, Projects(assistant, role), Unused(), Unused(), Unused(), Assistants(assistant, role)
     )
 
 
 class ConversationServiceTests(unittest.TestCase):
-    def test_member_creates_multiple_conversations_for_one_bot(self):
-        bot = KnowledgeBot(project_id=uuid4(), created_by=uuid4(), name="Support")
+    def test_member_creates_multiple_conversations_for_one_assistant(self):
+        assistant = Assistant(project_id=uuid4(), created_by=uuid4(), name="Support")
         repository = Conversations()
-        conversations = service(repository, bot)
+        conversations = service(repository, assistant)
         user_id = uuid4()
 
         first, role = asyncio.run(
-            conversations.create_for_assistant(bot.id, user_id, "First question")
+            conversations.create_for_assistant(assistant.id, user_id, "First question")
         )
         second, _ = asyncio.run(
-            conversations.create_for_assistant(bot.id, user_id, "Second question")
+            conversations.create_for_assistant(assistant.id, user_id, "Second question")
         )
 
         self.assertNotEqual(first.id, second.id)
-        self.assertEqual(first.assistant_id, bot.id)
-        self.assertEqual(second.assistant_id, bot.id)
-        self.assertEqual(first.project_id, bot.project_id)
+        self.assertEqual(first.assistant_id, assistant.id)
+        self.assertEqual(second.assistant_id, assistant.id)
+        self.assertEqual(first.project_id, assistant.project_id)
         self.assertIs(role, ProjectRole.VIEWER)
 
-    def test_bot_conversation_list_excludes_other_bots(self):
-        bot = KnowledgeBot(project_id=uuid4(), created_by=uuid4(), name="Support")
-        other_bot = KnowledgeBot(
-            project_id=bot.project_id,
-            created_by=bot.created_by,
+    def test_assistant_conversation_list_excludes_other_assistants(self):
+        assistant = Assistant(project_id=uuid4(), created_by=uuid4(), name="Support")
+        other_assistant = Assistant(
+            project_id=assistant.project_id,
+            created_by=assistant.created_by,
             name="Finance",
         )
         repository = Conversations()
-        conversations = service(repository, bot)
+        conversations = service(repository, assistant)
         user_id = uuid4()
 
         asyncio.run(
-            repository.create_for_assistant(bot.id, bot.project_id, user_id, "Included")
+            repository.create_for_assistant(assistant.id, assistant.project_id, user_id, "Included")
         )
         asyncio.run(
             repository.create_for_assistant(
-                other_bot.id, bot.project_id, user_id, "Excluded"
+                other_assistant.id, assistant.project_id, user_id, "Excluded"
             )
         )
-        listed, _ = asyncio.run(conversations.list_for_assistant(bot.id, user_id))
+        listed, _ = asyncio.run(conversations.list_for_assistant(assistant.id, user_id))
 
         self.assertEqual([chat.title for chat in listed], ["Included"])
 
     def test_deleting_conversation_only_targets_conversation(self):
-        bot = KnowledgeBot(project_id=uuid4(), created_by=uuid4(), name="Support")
+        assistant = Assistant(project_id=uuid4(), created_by=uuid4(), name="Support")
         repository = Conversations()
-        conversations = service(repository, bot, ProjectRole.EDITOR)
+        conversations = service(repository, assistant, ProjectRole.EDITOR)
         user_id = uuid4()
         chat, _ = asyncio.run(
-            conversations.create_for_assistant(bot.id, user_id, "Temporary")
+            conversations.create_for_assistant(assistant.id, user_id, "Temporary")
         )
 
         asyncio.run(conversations.delete(chat.id, user_id))
 
         self.assertEqual(repository.deleted, [chat.id])
-        self.assertEqual(bot.status.value, "active")
+        self.assertEqual(assistant.status.value, "active")
 
     def test_only_answered_sources_become_citations(self):
         first = RetrievedChunk(

@@ -12,7 +12,9 @@ export async function GET() {
 		);
 
 	try {
-		return proxyResponse(await backendFetch(user.accessToken, '/projects'));
+		return proxyResponse(
+			await backendFetch(user.accessToken, '/projects'),
+		);
 	} catch (error) {
 		return apiError(error);
 	}

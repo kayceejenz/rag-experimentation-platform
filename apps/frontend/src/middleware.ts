@@ -9,7 +9,10 @@ export function middleware(request: NextRequest) {
 		const url = request.nextUrl.clone();
 		url.pathname = '/auth/signin';
 		if (request.nextUrl.pathname !== '/') {
-			url.searchParams.set('callbackUrl', request.nextUrl.pathname);
+			url.searchParams.set(
+				'callbackUrl',
+				request.nextUrl.pathname,
+			);
 		}
 		return NextResponse.redirect(url);
 	}

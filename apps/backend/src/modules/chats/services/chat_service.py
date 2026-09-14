@@ -17,7 +17,7 @@ from modules.chats.models.error_model import (
     ChatPermissionError,
 )
 from modules.chats.models.message_model import Message, MessageRole
-from modules.knowledge_bots.services.knowledge_bot_service import KnowledgeBotService
+from modules.assistants.services.assistant_service import AssistantService
 from modules.projects.models.project_model import ProjectRole
 
 
@@ -29,7 +29,7 @@ class ChatService:
         messages: MessageRepository,
         search: KnowledgeSearch,
         generator: ChatGenerator,
-        bots: KnowledgeBotService,
+        assistants: AssistantService,
         runtime_factory=None,
     ) -> None:
         self.repository = repository
@@ -37,7 +37,7 @@ class ChatService:
         self.messages = messages
         self.search = search
         self.generator = generator
-        self.bots = bots
+        self.assistants = assistants
         self.runtime_factory = runtime_factory
 
     async def list(
@@ -52,18 +52,18 @@ class ChatService:
     async def create_for_assistant(
         self, assistant_id: UUID, user_id: UUID, title: str
     ) -> tuple[Chat, ProjectRole]:
-        bot, role = await self.bots.get(assistant_id, user_id)
-        await self.projects.require_permission(bot.project_id, user_id, "assistants")
+        assistant, role = await self.assistants.get(assistant_id, user_id)
+        await self.projects.require_permission(assistant.project_id, user_id, "assistants")
         chat = await self.repository.create_for_assistant(
-            bot.id, bot.project_id, user_id, title.strip()
+            assistant.id, assistant.project_id, user_id, title.strip()
         )
         return chat, role
 
     async def list_for_assistant(
         self, assistant_id: UUID, user_id: UUID
     ) -> tuple[list[Chat], ProjectRole]:
-        bot, role = await self.bots.get(assistant_id, user_id)
-        chats = await self.repository.list_for_assistant(bot.id, user_id)
+        assistant, role = await self.assistants.get(assistant_id, user_id)
+        chats = await self.repository.list_for_assistant(assistant.id, user_id)
         return chats, role
 
     async def get(self, chat_id: UUID, user_id: UUID) -> tuple[Chat, ProjectRole]:
@@ -200,7 +200,7 @@ class ChatService:
         if not self.runtime_factory:
             raise ChatGenerationError("Assistant runtime is not configured")
         try:
-            configuration = await self.bots.runtime_configuration(
+            configuration = await self.assistants.runtime_configuration(
                 chat.assistant_id, user_id
             )
             search, generator = self.runtime_factory.create(configuration)
