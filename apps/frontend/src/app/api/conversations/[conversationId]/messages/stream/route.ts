@@ -26,12 +26,15 @@ export async function POST(request: Request, { params }: Params) {
 		);
 		if (!response.ok || !response.body) {
 			const body = await response.json().catch(() => ({}));
-			return NextResponse.json(body, { status: response.status });
+			return NextResponse.json(body, {
+				status: response.status,
+			});
 		}
 		return new Response(response.body, {
 			status: response.status,
 			headers: {
-				'content-type': 'text/event-stream; charset=utf-8',
+				'content-type':
+					'text/event-stream; charset=utf-8',
 				'cache-control': 'no-cache, no-transform',
 				'x-accel-buffering': 'no',
 			},

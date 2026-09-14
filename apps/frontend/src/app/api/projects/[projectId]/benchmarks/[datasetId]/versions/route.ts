@@ -10,7 +10,10 @@ type Params = {
 export async function POST(request: Request, { params }: Params) {
 	const user = await getAuthUser();
 	if (!user)
-		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		return NextResponse.json(
+			{ error: 'Unauthorized' },
+			{ status: 401 },
+		);
 	try {
 		const { projectId, datasetId } = await params;
 		return proxyResponse(
@@ -19,8 +22,13 @@ export async function POST(request: Request, { params }: Params) {
 				`/projects/${projectId}/benchmarks/${datasetId}/versions`,
 				{
 					method: 'POST',
-					headers: { 'content-type': 'application/json' },
-					body: JSON.stringify(await request.json()),
+					headers: {
+						'content-type':
+							'application/json',
+					},
+					body: JSON.stringify(
+						await request.json(),
+					),
 				},
 			),
 		);

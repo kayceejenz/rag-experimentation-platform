@@ -98,6 +98,110 @@ class ProjectRepository:
             for row in rows
         ]
 
+    async def workspace_overview(self, user_id, recent_limit=8):
+        """Load workspace navigation and overview metrics in one DB checkout."""
+        async with self.connect() as db:
+            rows = await (
+                await db.execute(
+                    "select p.*,m.role,(p.id=u.default_project_id) is_default,"
+                    "(select jsonb_object_agg(acl.feature,jsonb_build_object('view',acl.can_view,'manage',acl.can_manage)) "
+                    "from ragapp.project_member_permissions acl where acl.project_id=p.id and acl.user_id=m.user_id) permissions "
+                    "from ragapp.projects p "
+                    "join ragapp.project_members m on m.project_id=p.id "
+                    "join ragapp.users u on u.id=m.user_id "
+                    "where m.user_id=%s and p.deleted_at is null "
+                    "order by is_default desc,p.updated_at desc",
+                    (user_id,),
+                )
+            ).fetchall()
+            accesses = [
+                ProjectAccess(
+                    self.project(row),
+                    ProjectRole(row["role"]),
+                    row["permissions"] or {},
+                )
+                for row in rows
+            ]
+            metrics = {
+                access.project.id: {
+                    "index_count": 0,
+                    "ready_indexes": 0,
+                    "building_indexes": 0,
+                    "active_assistants": 0,
+                    "active_runs": 0,
+                    "failed_runs": 0,
+                    "last_activity": None,
+                }
+                for access in accesses
+            }
+
+            def allowed(feature):
+                return [
+                    access.project.id
+                    for access in accesses
+                    if access.role is ProjectRole.OWNER
+                    or access.permissions.get(feature, {}).get("view", False)
+                ]
+
+            index_ids = allowed("indexes")
+            if index_ids:
+                index_rows = await (
+                    await db.execute(
+                        "select s.project_id,count(*) index_count,"
+                        "count(*) filter(where coalesce(j.job_count,0)>0 and j.completed_jobs=j.job_count) ready_indexes,"
+                        "count(*) filter(where coalesce(j.active_jobs,0)>0) building_indexes "
+                        "from ragapp.specifications s "
+                        "left join lateral(select count(*) job_count,"
+                        "count(*) filter(where status='completed') completed_jobs,"
+                        "count(*) filter(where status in('queued','running')) active_jobs "
+                        "from ragapp.ingestion_jobs where specification_id=s.id) j on true "
+                        "where s.project_id=any(%s) and s.kind='pipeline' "
+                        "and not exists(select 1 from ragapp.index_retirements r where r.specification_id=s.id) "
+                        "group by s.project_id",
+                        (index_ids,),
+                    )
+                ).fetchall()
+                for row in index_rows:
+                    metrics[row["project_id"]].update(row)
+
+            assistant_ids = allowed("assistants")
+            if assistant_ids:
+                assistant_rows = await (
+                    await db.execute(
+                        "select project_id,count(*) filter(where status='active') active_assistants "
+                        "from ragapp.assistants where project_id=any(%s) and deleted_at is null "
+                        "group by project_id",
+                        (assistant_ids,),
+                    )
+                ).fetchall()
+                for row in assistant_rows:
+                    metrics[row["project_id"]].update(row)
+
+            run_ids = allowed("runs")
+            recent = []
+            if run_ids:
+                run_rows = await (
+                    await db.execute(
+                        "select project_id,"
+                        "count(*) filter(where status in('pending','running')) active_runs,"
+                        "count(*) filter(where status='failed') failed_runs,"
+                        "max(created_at) last_activity from ragapp.executions "
+                        "where project_id=any(%s) group by project_id",
+                        (run_ids,),
+                    )
+                ).fetchall()
+                for row in run_rows:
+                    metrics[row["project_id"]].update(row)
+                recent = await (
+                    await db.execute(
+                        "select e.*,p.name project_name from ragapp.executions e "
+                        "join ragapp.projects p on p.id=e.project_id "
+                        "where e.project_id=any(%s) order by e.created_at desc,e.id desc limit %s",
+                        (run_ids, recent_limit),
+                    )
+                ).fetchall()
+        return accesses, metrics, recent
+
     async def update(self, project_id, name, description, update_description):
         async with self.connect() as db:
             curr = await db.execute(

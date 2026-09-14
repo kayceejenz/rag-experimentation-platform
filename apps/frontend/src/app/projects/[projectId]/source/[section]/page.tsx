@@ -12,21 +12,42 @@ import type {
 } from '@/types/workspace';
 
 const sections = new Set(['documents', 'activity']);
+
 type Props = { params: Promise<{ projectId: string; section: string }> };
+
 export default async function SourceSectionPage({ params }: Props) {
 	const user = await getAuthUser();
+
 	if (!user) return null;
+
 	const { projectId, section } = await params;
+
 	if (!sections.has(section)) notFound();
+
 	const [project, source] = await Promise.all([
-		backendJson<Project>(user.accessToken, `/projects/${projectId}`).catch(() => null),
-		backendJson<KnowledgeBase>(user.accessToken, `/projects/${projectId}/source`).catch(() => null),
+		backendJson<Project>(
+			user.accessToken,
+			`/projects/${projectId}`,
+		).catch(() => null),
+		backendJson<KnowledgeBase>(
+			user.accessToken,
+			`/projects/${projectId}/source`,
+		).catch(() => null),
 	]);
+
 	if (!project) notFound();
+
 	if (project.role !== 'owner' && !project.permissions?.knowledge?.view) {
-		return <ProjectAccessDenied projectId={projectId} feature='Knowledge Base'/>;
+		return (
+			<ProjectAccessDenied
+				projectId={projectId}
+				feature='Knowledge Base'
+			/>
+		);
 	}
+
 	if (!source) notFound();
+
 	const [documents, activity, folders] = await Promise.all([
 		backendJson<{ sources: Source[] }>(
 			user.accessToken,
@@ -47,12 +68,14 @@ export default async function SourceSectionPage({ params }: Props) {
 			.then(value => value.folders)
 			.catch(() => []),
 	]);
-	return <SourceOverview
-				project={project}
-				source={source}
-				initialDocuments={documents}
-				initialActivity={activity}
-				initialFolders={folders}
-				active={section}
-			/>;
+	return (
+		<SourceOverview
+			project={project}
+			source={source}
+			initialDocuments={documents}
+			initialActivity={activity}
+			initialFolders={folders}
+			active={section}
+		/>
+	);
 }

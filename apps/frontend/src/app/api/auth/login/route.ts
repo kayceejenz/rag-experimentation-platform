@@ -27,16 +27,28 @@ export async function POST(request: Request) {
 			expiresIn,
 		);
 		return NextResponse.json({
-			user: { id: user.id, email: user.email, name: user.name },
+			user: {
+				id: user.id,
+				email: user.email,
+				name: user.name,
+			},
 		});
 	} catch (error) {
 		const message =
-			error instanceof Error ? error.message : 'Login failed.';
-		const status = error instanceof BackendRequestError ? error.status : 500;
+			error instanceof Error
+				? error.message
+				: 'Login failed.';
+		const status =
+			error instanceof BackendRequestError
+				? error.status
+				: 500;
 		const headers =
 			error instanceof BackendRequestError && error.retryAfter
 				? { 'retry-after': error.retryAfter }
 				: undefined;
-		return NextResponse.json({ error: message }, { status, headers });
+		return NextResponse.json(
+			{ error: message },
+			{ status, headers },
+		);
 	}
 }

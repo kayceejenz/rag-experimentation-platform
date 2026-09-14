@@ -10,7 +10,10 @@ type Params = {
 export async function GET(_: Request, { params }: Params) {
 	const user = await getAuthUser();
 	if (!user)
-		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		return NextResponse.json(
+			{ error: 'Unauthorized' },
+			{ status: 401 },
+		);
 	try {
 		const { projectId, datasetId } = await params;
 		return proxyResponse(

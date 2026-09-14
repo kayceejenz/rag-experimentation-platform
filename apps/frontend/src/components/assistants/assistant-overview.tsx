@@ -1,4 +1,4 @@
-import { Bot, Boxes, GitBranch, TestTube2 } from 'lucide-react';
+import { Boxes, GitBranch, TestTube2 } from 'lucide-react';
 import { SmoothLink } from '@/components/navigation/smooth-link';
 import type { Assistant, Project } from '@/types/workspace';
 

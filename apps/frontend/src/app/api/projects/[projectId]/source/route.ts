@@ -4,6 +4,7 @@ import { backendFetch } from '@/lib/api/backend';
 import { apiError, proxyResponse } from '@/lib/api/proxy-response';
 
 type Params = { params: Promise<{ projectId: string }> };
+
 export async function GET(_request: Request, { params }: Params) {
 	const user = await getAuthUser();
 	if (!user)

@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getRefreshToken, refreshTokens, setAuthCookies, getAuthUser } from '@/lib/api/auth';
+import {
+	getRefreshToken,
+	refreshTokens,
+	setAuthCookies,
+	getAuthUser,
+} from '@/lib/api/auth';
 
 export async function POST() {
 	try {

@@ -7,10 +7,19 @@ type Params = { params: Promise<{ projectId: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
 	const user = await getAuthUser();
-	if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+	if (!user)
+		return NextResponse.json(
+			{ error: 'Unauthorized' },
+			{ status: 401 },
+		);
 	try {
 		const { projectId } = await params;
-		return proxyResponse(await backendFetch(user.accessToken, `/projects/${projectId}/assistant-candidates`));
+		return proxyResponse(
+			await backendFetch(
+				user.accessToken,
+				`/projects/${projectId}/assistant-candidates`,
+			),
+		);
 	} catch (error) {
 		return apiError(error);
 	}

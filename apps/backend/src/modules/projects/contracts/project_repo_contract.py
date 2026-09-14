@@ -1,4 +1,4 @@
-from typing import Protocol
+from typing import Any, Protocol
 from uuid import UUID
 
 from modules.projects.models.project_model import Project, ProjectAccess
@@ -8,6 +8,9 @@ class ProjectRepositoryContract(Protocol):
     async def create(self, owner_id: UUID, name: str, description: str | None) -> Project: ...
     async def get_access(self, project_id: UUID, user_id: UUID) -> ProjectAccess | None: ...
     async def list_for_user(self, user_id: UUID) -> list[ProjectAccess]: ...
+    async def workspace_overview(
+        self, user_id: UUID, recent_limit: int = 8
+    ) -> tuple[list[ProjectAccess], dict[UUID, dict[str, Any]], list[dict]]: ...
     async def update(
         self,
         project_id: UUID,

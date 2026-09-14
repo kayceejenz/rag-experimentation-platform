@@ -1,11 +1,11 @@
 from datetime import datetime
 from uuid import UUID
 
-from modules.knowledge_bots.models.models import KnowledgeBotStatus
+from modules.assistants.models.assistant_model import AssistantStatus
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class CreateKnowledgeBotRequest(BaseModel):
+class CreateAssistantRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     name: str = Field(min_length=1, max_length=160)
@@ -13,21 +13,21 @@ class CreateKnowledgeBotRequest(BaseModel):
     experiment_variant_run_id: UUID
 
 
-class UpdateKnowledgeBotRequest(BaseModel):
+class UpdateAssistantRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     name: str | None = Field(default=None, min_length=1, max_length=160)
     description: str | None = Field(default=None, max_length=2000)
-    status: KnowledgeBotStatus | None = None
+    status: AssistantStatus | None = None
 
 
-class KnowledgeBotResponse(BaseModel):
+class AssistantResponse(BaseModel):
     id: UUID
     project_id: UUID
     created_by: UUID
     name: str
     description: str | None
-    status: KnowledgeBotStatus
+    status: AssistantStatus
     role: str
     created_at: datetime
     updated_at: datetime
@@ -49,8 +49,8 @@ class AssistantCandidateResponse(BaseModel):
     aggregate_metrics: dict[str, float]
 
 
-class KnowledgeBotListResponse(BaseModel):
-    assistants: list[KnowledgeBotResponse]
+class AssistantListResponse(BaseModel):
+    assistants: list[AssistantResponse]
 
 
 class AssistantCandidateListResponse(BaseModel):

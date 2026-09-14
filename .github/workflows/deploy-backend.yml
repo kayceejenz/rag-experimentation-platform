@@ -19,7 +19,7 @@ permissions:
 
 jobs:
         validate:
-                name: Validate Python Package
+                name: Test Backend
                 runs-on: ubuntu-latest
                 timeout-minutes: 10
                 steps:
@@ -38,6 +38,10 @@ jobs:
 
                         - name: Compile Python bytecode
                           run: python -m compileall -q apps/backend/src
+
+                        - name: Run backend tests
+                          working-directory: apps/backend
+                          run: PYTHONPATH=src python -m unittest discover -s tests -p 'test_*.py'
 
         build-and-push:
                 name: Build and Push Image to ECR

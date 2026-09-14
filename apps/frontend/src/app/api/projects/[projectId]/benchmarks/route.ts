@@ -8,7 +8,10 @@ type Params = { params: Promise<{ projectId: string }> };
 export async function GET(_: Request, { params }: Params) {
 	const user = await getAuthUser();
 	if (!user)
-		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		return NextResponse.json(
+			{ error: 'Unauthorized' },
+			{ status: 401 },
+		);
 	try {
 		const { projectId } = await params;
 		return proxyResponse(
@@ -25,7 +28,10 @@ export async function GET(_: Request, { params }: Params) {
 export async function POST(request: Request, { params }: Params) {
 	const user = await getAuthUser();
 	if (!user)
-		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		return NextResponse.json(
+			{ error: 'Unauthorized' },
+			{ status: 401 },
+		);
 	try {
 		const { projectId } = await params;
 		return proxyResponse(
@@ -34,8 +40,13 @@ export async function POST(request: Request, { params }: Params) {
 				`/projects/${projectId}/benchmarks`,
 				{
 					method: 'POST',
-					headers: { 'content-type': 'application/json' },
-					body: JSON.stringify(await request.json()),
+					headers: {
+						'content-type':
+							'application/json',
+					},
+					body: JSON.stringify(
+						await request.json(),
+					),
 				},
 			),
 		);

@@ -13,6 +13,9 @@ from modules.projects.dtos.project_dto import (
     ProjectResponse,
     UpdateProjectMemberAccessRequest,
     UpdateProjectRequest,
+    WorkspaceExecutionResponse,
+    WorkspaceOverviewResponse,
+    WorkspaceProjectStatusResponse,
 )
 from modules.projects.models.project_model import (
     DefaultProjectDeletionError,
@@ -74,6 +77,38 @@ async def list_projects(
 ):
     return ProjectListResponse(
         projects=[response(item) for item in await service.list(user.id)]
+    )
+
+
+@router.get("/overview", response_model=WorkspaceOverviewResponse)
+async def workspace_overview(
+    user: Annotated[AuthenticatedUser, Depends(current_user)],
+    service: Annotated[ProjectService, Depends(project_service)],
+):
+    projects, metrics, recent = await service.workspace_overview(user.id)
+    project_statuses = [
+        WorkspaceProjectStatusResponse(
+            project_id=item.project.id,
+            index_count=metrics[item.project.id]["index_count"],
+            active_runs=metrics[item.project.id]["active_runs"],
+            failed_runs=metrics[item.project.id]["failed_runs"],
+            last_activity=metrics[item.project.id]["last_activity"],
+        )
+        for item in projects
+    ]
+    return WorkspaceOverviewResponse(
+        projects=[response(item) for item in projects],
+        index_count=sum(value["index_count"] for value in metrics.values()),
+        ready_indexes=sum(value["ready_indexes"] for value in metrics.values()),
+        building_indexes=sum(value["building_indexes"] for value in metrics.values()),
+        active_assistants=sum(
+            value["active_assistants"] for value in metrics.values()
+        ),
+        failed_runs=sum(value["failed_runs"] for value in metrics.values()),
+        project_statuses=project_statuses,
+        recent_executions=[
+            WorkspaceExecutionResponse.model_validate(row) for row in recent
+        ],
     )
 
 

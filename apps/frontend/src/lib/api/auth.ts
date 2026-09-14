@@ -53,23 +53,33 @@ export async function loginUser(
 		cache: 'no-store',
 	});
 	if (!loginRes.ok) {
-		const body = await loginRes.json().catch(() => ({})) as { detail?: string; error?: { message?: string } };
+		const body = (await loginRes.json().catch(() => ({}))) as {
+			detail?: string;
+			error?: { message?: string };
+		};
 		throw new BackendRequestError(
-			body.error?.message ?? body.detail ?? 'Invalid credentials',
+			body.error?.message ??
+				body.detail ??
+				'Invalid credentials',
 			loginRes.status,
 			loginRes.headers.get('retry-after'),
 		);
 	}
 	const tokens = (await loginRes.json()) as TokenPayload;
 	const refreshToken = extractRefreshToken(loginRes);
-	if (!refreshToken) throw new Error('Backend login did not return a refresh token');
+	if (!refreshToken)
+		throw new Error('Backend login did not return a refresh token');
 
 	const profileRes = await fetch(apiUrl('/me'), {
 		headers: { authorization: `Bearer ${tokens.access_token}` },
 		cache: 'no-store',
 	});
 	if (!profileRes.ok) throw new Error('Unable to load user profile');
-	const profile = (await profileRes.json()) as { id: string; email: string; display_name: string | null };
+	const profile = (await profileRes.json()) as {
+		id: string;
+		email: string;
+		display_name: string | null;
+	};
 
 	return {
 		user: {
@@ -85,17 +95,28 @@ export async function loginUser(
 
 export async function refreshTokens(
 	currentRefreshToken: string,
-): Promise<{ accessToken: string; refreshToken: string; expiresIn: number } | null> {
+): Promise<{
+	accessToken: string;
+	refreshToken: string;
+	expiresIn: number;
+} | null> {
 	try {
 		const response = await fetch(apiUrl('/refresh'), {
 			method: 'POST',
-			headers: { cookie: `refresh_token=${currentRefreshToken}` },
+			headers: {
+				cookie: `refresh_token=${currentRefreshToken}`,
+			},
 			cache: 'no-store',
 		});
 		if (!response.ok) return null;
 		const data = (await response.json()) as TokenPayload;
-		const newRefreshToken = extractRefreshToken(response) ?? currentRefreshToken;
-		return { accessToken: data.access_token, refreshToken: newRefreshToken, expiresIn: data.expires_in };
+		const newRefreshToken =
+			extractRefreshToken(response) ?? currentRefreshToken;
+		return {
+			accessToken: data.access_token,
+			refreshToken: newRefreshToken,
+			expiresIn: data.expires_in,
+		};
 	} catch {
 		return null;
 	}
@@ -169,16 +190,26 @@ export async function registerUser(
 		cache: 'no-store',
 	});
 	if (!res.ok) {
-		const body = await res.json().catch(() => ({})) as { detail?: string; error?: { message?: string; details?: Array<{ message?: string }> } };
+		const body = (await res.json().catch(() => ({}))) as {
+			detail?: string;
+			error?: {
+				message?: string;
+				details?: Array<{ message?: string }>;
+			};
+		};
 		throw new BackendRequestError(
 			body.error?.details?.[0]?.message ??
-			body.error?.message ??
-			body.detail ??
-			'Unable to create the account.',
+				body.error?.message ??
+				body.detail ??
+				'Unable to create the account.',
 			res.status,
 		);
 	}
-	const data = (await res.json()) as { id: string; email: string; display_name: string | null };
+	const data = (await res.json()) as {
+		id: string;
+		email: string;
+		display_name: string | null;
+	};
 	return { id: data.id, email: data.email };
 }
 

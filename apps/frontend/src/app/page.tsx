@@ -1,53 +1,90 @@
 import { AppShell } from '@/components/layout/app-shell';
-import { WorkspaceOverview, type WorkspaceOverviewData } from '@/components/workspace/workspace-overview';
+import {
+	WorkspaceOverview,
+	type WorkspaceOverviewData,
+} from '@/components/workspace/workspace-overview';
 import { getAuthUser } from '@/lib/api/auth';
 import { backendJson } from '@/lib/api/backend';
-import type { Execution } from '@/types/trace';
-import type { Assistant, Project } from '@/types/workspace';
+import type { Project } from '@/types/workspace';
 
-type IndexBuild = { id: string; job_count: number; completed_jobs: number; failed_jobs: number; active_jobs: number };
+type OverviewResponse = {
+	projects: Project[];
+	index_count: number;
+	ready_indexes: number;
+	building_indexes: number;
+	active_assistants: number;
+	failed_runs: number;
+	project_statuses: Array<{
+		project_id: string;
+		index_count: number;
+		active_runs: number;
+		failed_runs: number;
+		last_activity: string | null;
+	}>;
+	recent_executions: Array<
+		WorkspaceOverviewData['recentExecutions'][number] & {
+			project_name: string;
+		}
+	>;
+};
 
-async function overviewData(accessToken: string, projects: Project[]): Promise<WorkspaceOverviewData> {
-	const snapshots = await Promise.all(projects.map(async project => {
-		const [indexes, assistants, executions] = await Promise.all([
-			backendJson<{ indexes: IndexBuild[] }>(accessToken, `/projects/${project.id}/indexes`).catch(() => ({ indexes: [] })),
-			backendJson<{ assistants: Assistant[] }>(accessToken, `/projects/${project.id}/assistants`).catch(() => ({ assistants: [] })),
-			backendJson<{ executions: Execution[] }>(accessToken, `/projects/${project.id}/executions?limit=100`).catch(() => ({ executions: [] })),
-		]);
-		return { project, indexes: indexes.indexes, assistants: assistants.assistants, executions: executions.executions };
-	}));
-	const allIndexes = snapshots.flatMap(snapshot => snapshot.indexes);
-	const allExecutions = snapshots.flatMap(snapshot => snapshot.executions);
-	return {
-		indexCount: allIndexes.length,
-		readyIndexes: allIndexes.filter(index => index.job_count > 0 && index.completed_jobs === index.job_count).length,
-		buildingIndexes: allIndexes.filter(index => index.active_jobs > 0).length,
-		activeAssistants: snapshots.flatMap(snapshot => snapshot.assistants).filter(assistant => assistant.status === 'active').length,
-		failedRuns: allExecutions.filter(execution => execution.status === 'failed').length,
-		projectStatuses: snapshots.map(snapshot => ({
-			projectId: snapshot.project.id,
-			indexCount: snapshot.indexes.length,
-			activeRuns: snapshot.executions.filter(execution => execution.status === 'running' || execution.status === 'pending').length,
-			failedRuns: snapshot.executions.filter(execution => execution.status === 'failed').length,
-			lastActivity: snapshot.executions[0]?.created_at ?? null,
-		})),
-		recentExecutions: snapshots.flatMap(snapshot => snapshot.executions.map(execution => ({ ...execution, projectName: snapshot.project.name }))).sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime()).slice(0, 8),
-	};
-}
+const EMPTY_OVERVIEW: WorkspaceOverviewData = {
+	indexCount: 0,
+	readyIndexes: 0,
+	buildingIndexes: 0,
+	activeAssistants: 0,
+	failedRuns: 0,
+	projectStatuses: [],
+	recentExecutions: [],
+};
 
 export default async function Home() {
 	const user = await getAuthUser();
-	const projects = user
-		? await backendJson<{ projects: Project[] }>(user.accessToken, '/projects')
-				.then(result => result.projects)
-				.catch(() => [])
-		: [];
-	const data: WorkspaceOverviewData = user
-		? await overviewData(user.accessToken, projects)
-		: { indexCount: 0, readyIndexes: 0, buildingIndexes: 0, activeAssistants: 0, failedRuns: 0, projectStatuses: [], recentExecutions: [] };
+	const overview = user
+		? await backendJson<OverviewResponse>(
+				user.accessToken,
+				'/projects/overview',
+			).catch(() => null)
+		: null;
+	const projects = overview?.projects ?? [];
+	const data: WorkspaceOverviewData = overview
+		? {
+				indexCount: overview.index_count,
+				readyIndexes: overview.ready_indexes,
+				buildingIndexes: overview.building_indexes,
+				activeAssistants: overview.active_assistants,
+				failedRuns: overview.failed_runs,
+				projectStatuses: overview.project_statuses.map(
+					status => ({
+						projectId: status.project_id,
+						indexCount: status.index_count,
+						activeRuns: status.active_runs,
+						failedRuns: status.failed_runs,
+						lastActivity:
+							status.last_activity,
+					}),
+				),
+				recentExecutions:
+					overview.recent_executions.map(
+						execution => ({
+							...execution,
+							projectName:
+								execution.project_name,
+						}),
+					),
+			}
+		: EMPTY_OVERVIEW;
 	return (
 		<AppShell
-			user={user ? { id: user.id, email: user.email, name: user.name } : undefined}
+			user={
+				user
+					? {
+							id: user.id,
+							email: user.email,
+							name: user.name,
+						}
+					: undefined
+			}
 			projects={projects}
 			activeNavigation='bots'>
 			<WorkspaceOverview projects={projects} data={data} />

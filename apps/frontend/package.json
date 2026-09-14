@@ -6,7 +6,8 @@
 		"dev": "next dev",
 		"build": "next build",
 		"lint": "eslint .",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"test:e2e": "playwright test"
 	},
 	"dependencies": {
 		"lucide-react": "^0.468.0",
@@ -21,6 +22,7 @@
 	"devDependencies": {
 		"@eslint/eslintrc": "^3.3.6",
 		"@next/eslint-plugin-next": "^15.5.23",
+		"@playwright/test": "^1.63.0",
 		"@types/node": "^22.10.2",
 		"@types/react": "^19.0.1",
 		"@types/react-dom": "^19.0.2",

@@ -21,7 +21,11 @@ export async function GET(request: Request, { params }: Params) {
 			`/knowledge-bases/${knowledgeBaseId}/sources/${sourceId}/file`,
 			{
 				headers: request.headers.has('range')
-					? { range: request.headers.get('range')! }
+					? {
+							range: request.headers.get(
+								'range',
+							)!,
+						}
 					: undefined,
 			},
 		);
@@ -36,7 +40,8 @@ export async function GET(request: Request, { params }: Params) {
 		const headers = new Headers({
 			'content-type': contentType,
 			'content-disposition':
-				upstream.headers.get('content-disposition') ?? 'inline',
+				upstream.headers.get('content-disposition') ??
+				'inline',
 			'x-content-type-options': 'nosniff',
 		});
 		for (const name of [
