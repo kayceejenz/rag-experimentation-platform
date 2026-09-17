@@ -10,17 +10,19 @@ import {
 } from 'lucide-react';
 import type { Project, PromptAsset, PromptVersion } from '@/types/workspace';
 import { formatDateTime } from '@/lib/format';
-type Detail = { prompt: PromptAsset; versions: PromptVersion[] };
+export type PromptDetail = { prompt: PromptAsset; versions: PromptVersion[] };
 type PromptTypeFilter = 'all' | PromptAsset['prompt_type'];
 export function PromptManager({
 	project,
 	initialPrompts,
+	initialDetail = null,
 }: {
 	project: Project;
 	initialPrompts: PromptAsset[];
+	initialDetail?: PromptDetail | null;
 }) {
 	const [prompts, setPrompts] = useState(initialPrompts),
-		[detail, setDetail] = useState<Detail | null>(null),
+		[detail, setDetail] = useState<PromptDetail | null>(initialDetail),
 		[createOpen, setCreateOpen] = useState(false),
 		[versionOpen, setVersionOpen] = useState(false),
 		[typeFilter, setTypeFilter] = useState<PromptTypeFilter>('all'),

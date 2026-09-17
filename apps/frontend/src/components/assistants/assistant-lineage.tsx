@@ -3,11 +3,15 @@ import {
 	Box,
 	Braces,
 	CheckCircle2,
+	ClipboardCheck,
+	ExternalLink,
 	FlaskConical,
 	GitBranch,
 	Layers3,
+	MessageSquareText,
 } from 'lucide-react';
 import { formatDateTime } from '@/lib/format';
+import { SmoothLink } from '@/components/navigation/smooth-link';
 
 export type AssistantLineageData = {
 	assistant: { id: string; name: string };
@@ -20,7 +24,14 @@ export type AssistantLineageData = {
 			generation?: Record<string, unknown>;
 		};
 	};
-	experiment: { id: string; name: string; hypothesis: string };
+	experiment: {
+		id: string;
+		name: string;
+		hypothesis: string;
+		benchmark_id: string;
+		benchmark_name: string;
+		benchmark_version: number;
+	};
 	run: {
 		id: string;
 		variant_run_id: string;
@@ -38,15 +49,28 @@ export type AssistantLineageData = {
 			chunking?: { strategy?: string };
 		};
 	};
-	system_prompt: { version_id: string; name: string; version: number };
-	rag_prompt: { version_id: string; name: string; version: number };
+	system_prompt: {
+		id: string;
+		version_id: string;
+		name: string;
+		version: number;
+	};
+	rag_prompt: {
+		id: string;
+		version_id: string;
+		name: string;
+		version: number;
+	};
 };
 
 export function AssistantLineage({
 	lineage,
+	projectId,
 }: {
 	lineage: AssistantLineageData;
+	projectId: string;
 }) {
+	const projectBase = `/projects/${projectId}`;
 	const nodes = [
 		{
 			label: 'Experiment',
@@ -78,114 +102,119 @@ export function AssistantLineage({
 			<section
 				className='assistant-lineage-flow'
 				aria-label='Assistant lineage flow'>
-				{nodes.map(
-					(
-						{
-							label,
-							value,
-							detail,
-							icon: Icon,
-						},
-						index,
-					) => (
-						<article
-							className='assistant-lineage-step'
-							key={label}>
-							<header>
-								<span className='lineage-step-icon'>
-									<Icon
-										size={
-											15
-										}
-									/>
-								</span>
-								<span className='lineage-step-number'>
-									{String(
-										index +
-											1,
-									).padStart(
-										2,
-										'0',
-									)}
-								</span>
-							</header>
-							<small>{label}</small>
-							<strong>{value}</strong>
-							<p>{detail}</p>
-						</article>
-					),
-				)}
+				{nodes.map(({ label, value, detail, icon: Icon }, index) => (
+					<article
+						className='assistant-lineage-step'
+						key={label}>
+						<header>
+							<span className='lineage-step-icon'>
+								<Icon size={15} />
+							</span>
+							<span className='lineage-step-number'>
+								{String(index + 1).padStart(2, '0')}
+							</span>
+						</header>
+						<small>{label}</small>
+						<strong>{value}</strong>
+						<p>{detail}</p>
+					</article>
+				))}
 			</section>
 			<div className='assistant-lineage-grid'>
 				<LineageTable
-					title='Bound assets'
+					title='Index configuration'
 					icon={Box}
+					href={`${projectBase}/indexes?index=${lineage.index.id}`}
+					linkLabel='Open index configuration'
 					rows={[
-						[
-							'Vector index',
-							lineage.index
-								.configuration
-								.name ||
-								lineage.index
-									.id,
-						],
-						[
-							'Embedding model',
-							lineage.index
-								.configuration
-								.embedding
-								?.model ||
+						{
+							label: 'Vector index',
+							value:
+								lineage.index.configuration.name ||
+								lineage.index.id,
+						},
+						{
+							label: 'Embedding model',
+							value:
+								lineage.index.configuration.embedding?.model ||
 								'Configured index model',
-						],
-						[
-							'Chunking strategy',
-							lineage.index
-								.configuration
-								.chunking
-								?.strategy ||
+						},
+						{
+							label: 'Chunking strategy',
+							value:
+								lineage.index.configuration.chunking?.strategy ||
 								'Configured index strategy',
-						],
-						[
-							'System prompt',
-							`${lineage.system_prompt.name} · v${lineage.system_prompt.version}`,
-						],
-						[
-							'RAG prompt',
-							`${lineage.rag_prompt.name} · v${lineage.rag_prompt.version}`,
-						],
+						},
+					]}
+				/>
+				<LineageTable
+					title='System prompt'
+					icon={MessageSquareText}
+					href={`${projectBase}/prompts?prompt=${lineage.system_prompt.id}`}
+					linkLabel='Open system prompt'
+					rows={[
+						{
+							label: 'Prompt',
+							value: lineage.system_prompt.name,
+						},
+						{
+							label: 'Version',
+							value: `v${lineage.system_prompt.version}`,
+						},
+					]}
+				/>
+				<LineageTable
+					title='RAG prompt'
+					icon={MessageSquareText}
+					href={`${projectBase}/prompts?prompt=${lineage.rag_prompt.id}`}
+					linkLabel='Open RAG prompt'
+					rows={[
+						{ label: 'Prompt', value: lineage.rag_prompt.name },
+						{
+							label: 'Version',
+							value: `v${lineage.rag_prompt.version}`,
+						},
+					]}
+				/>
+				<LineageTable
+					title='Benchmark'
+					icon={ClipboardCheck}
+					href={`${projectBase}/benchmarks?benchmark=${lineage.experiment.benchmark_id}`}
+					linkLabel='Open benchmark'
+					rows={[
+						{
+							label: 'Dataset',
+							value: lineage.experiment.benchmark_name,
+						},
+						{
+							label: 'Version',
+							value: `v${lineage.experiment.benchmark_version}`,
+						},
 					]}
 				/>
 				<LineageTable
 					title='Provenance'
 					icon={Braces}
+					href={`${projectBase}/experiments?experiment=${lineage.experiment.id}&run=${lineage.run.id}`}
+					linkLabel='Open experiment run'
 					rows={[
-						[
-							'Experiment run',
-							lineage.run.id,
-						],
-						[
-							'Variant run',
-							lineage.run
-								.variant_run_id,
-						],
-						[
-							'Code revision',
-							lineage.run
-								.code_revision ||
-								'development',
-						],
-						[
-							'Configuration',
-							lineage.variant
-								.configuration_hash,
-						],
-						[
-							'Promoted',
-							formatDateTime(
-								lineage.revision
-									.created_at,
-							),
-						],
+						{ label: 'Experiment run', value: lineage.run.id },
+						{
+							label: 'Variant run',
+							value: lineage.run.variant_run_id,
+						},
+						{
+							label: 'Code revision',
+							value: lineage.run.code_revision || 'development',
+						},
+						{
+							label: 'Configuration',
+							value: lineage.variant.configuration_hash,
+						},
+						{
+							label: 'Promoted',
+							value: formatDateTime(lineage.revision.created_at),
+						},
 					]}
 					monospace
 				/>
@@ -202,6 +231,10 @@ export function AssistantLineage({
 							revision.
 						</p>
 					</div>
+					<RecordLink
+						href={`${projectBase}/experiments?experiment=${lineage.experiment.id}&run=${lineage.run.id}`}
+						label='Open source run configuration'
+					/>
 				</header>
 				<div>
 					<ConfigTable
@@ -229,12 +262,16 @@ export function AssistantLineage({
 function LineageTable({
 	title,
 	icon: Icon,
+	href,
+	linkLabel,
 	rows,
 	monospace = false,
 }: {
 	title: string;
 	icon: typeof Box;
-	rows: string[][];
+	href: string;
+	linkLabel: string;
+	rows: Array<{ label: string; value: string }>;
 	monospace?: boolean;
 }) {
 	return (
@@ -242,10 +279,11 @@ function LineageTable({
 			<header>
 				<Icon size={15} />
 				<h2>{title}</h2>
+				<RecordLink href={href} label={linkLabel} />
 			</header>
 			<table>
 				<tbody>
-					{rows.map(([label, value]) => (
+					{rows.map(({ label, value }) => (
 						<tr key={label}>
 							<th>{label}</th>
 							<td
@@ -261,6 +299,18 @@ function LineageTable({
 				</tbody>
 			</table>
 		</section>
+	);
+}
+
+function RecordLink({ href, label }: { href: string; label: string }) {
+	return (
+		<SmoothLink
+			className='lineage-record-link'
+			href={href}
+			aria-label={label}
+			title={label}>
+			<ExternalLink size={13} />
+		</SmoothLink>
 	);
 }
 

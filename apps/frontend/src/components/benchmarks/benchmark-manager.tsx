@@ -16,7 +16,7 @@ import type {
 } from '@/types/workspace';
 import { formatDateTime } from '@/lib/format';
 
-type Detail = {
+export type BenchmarkDetail = {
 	dataset: BenchmarkDataset & { content: BenchmarkCase[] };
 	versions: BenchmarkVersion[];
 };
@@ -32,12 +32,14 @@ const emptyCase = (): EditableCase => ({
 export function BenchmarkManager({
 	project,
 	initialDatasets,
+	initialDetail = null,
 }: {
 	project: Project;
 	initialDatasets: BenchmarkDataset[];
+	initialDetail?: BenchmarkDetail | null;
 }) {
 	const [datasets, setDatasets] = useState(initialDatasets);
-	const [detail, setDetail] = useState<Detail | null>(null);
+	const [detail, setDetail] = useState<BenchmarkDetail | null>(initialDetail);
 	const [createOpen, setCreateOpen] = useState(false);
 	const [versionOpen, setVersionOpen] = useState(false);
 	const [busy, setBusy] = useState(false);

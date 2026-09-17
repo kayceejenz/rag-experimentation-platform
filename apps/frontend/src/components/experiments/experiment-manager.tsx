@@ -12,21 +12,21 @@ type Prompt = { name: string; purpose: string | null; prompt_type: string; versi
 export type ExperimentCatalog = { experiments: Experiment[]; datasets: Dataset[]; indexes: Index[]; prompts: Prompt[]; generation_models: string[] };
 type Variant = { id: string; name: string; index_configuration: { name: string }; system_prompt_name: string; system_prompt_version: number; rag_prompt_name: string; rag_prompt_version: number; evaluator_prompt_versions: Record<string, string>; retrieval_configuration: { top_k: number; min_score: number }; generation_configuration: { model: string; temperature: number; max_output_tokens: number }; configuration_hash: string };
 type Run = { id: string; variant_id: string; variant_run_id: string; status: string; run_status: string; created_at: string; error_message: string | null };
-type RunDetail = { run: { status: string; error_message: string | null }; variants: Array<{ id: string; name: string; status: string; aggregate_metrics: Record<string, number>; error_message: string | null }>; cases: Array<{ id: string; variant_run_id: string; position: number; question: string; generated_answer: string | null; metrics: Record<string, unknown> }> };
-type Detail = { experiment: Experiment; variants: Variant[]; runs: Run[] };
+export type ExperimentRunDetail = { run: { status: string; error_message: string | null }; variants: Array<{ id: string; name: string; status: string; aggregate_metrics: Record<string, number>; error_message: string | null }>; cases: Array<{ id: string; variant_run_id: string; position: number; question: string; generated_answer: string | null; metrics: Record<string, unknown> }> };
+export type ExperimentDetail = { experiment: Experiment; variants: Variant[]; runs: Run[] };
 type PanelTab = 'variants' | 'runs' | 'results';
 
 const METRICS = [['context_precision', 'Context precision'], ['context_recall', 'Context recall'], ['faithfulness', 'Faithfulness'], ['answer_relevance', 'Answer relevance'], ['hallucination_detection', 'Hallucination detection'], ['retrieval_latency', 'Retrieval latency'], ['total_latency', 'Total latency'], ['token_count', 'Token count'], ['estimated_cost', 'Estimated cost']] as const;
 const metricLabel = (id: string) => METRICS.find(item => item[0] === id)?.[1] ?? id.replaceAll('_', ' ');
 
-export function ExperimentManager({ project, initialCatalog }: { project: Project; initialCatalog: ExperimentCatalog }) {
+export function ExperimentManager({ project, initialCatalog, initialDetail = null, initialRunDetail = null }: { project: Project; initialCatalog: ExperimentCatalog; initialDetail?: ExperimentDetail | null; initialRunDetail?: ExperimentRunDetail | null }) {
 	const [catalog, setCatalog] = useState(initialCatalog);
-	const [detail, setDetail] = useState<Detail | null>(null);
+	const [detail, setDetail] = useState<ExperimentDetail | null>(initialDetail);
 	const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
 	const [selectedForComparison, setSelectedForComparison] = useState<string[]>([]);
-	const [runDetail, setRunDetail] = useState<RunDetail | null>(null);
+	const [runDetail, setRunDetail] = useState<ExperimentRunDetail | null>(initialRunDetail);
 	const [viewingRunId, setViewingRunId] = useState<string | null>(null);
-	const [activeTab, setActiveTab] = useState<PanelTab>('variants');
+	const [activeTab, setActiveTab] = useState<PanelTab>(initialRunDetail ? 'results' : 'variants');
 	const [createOpen, setCreateOpen] = useState(false);
 	const [variantOpen, setVariantOpen] = useState(false);
 	const [busy, setBusy] = useState(false);
@@ -56,7 +56,7 @@ export function ExperimentManager({ project, initialCatalog }: { project: Projec
 		const response = await fetch(`/api/projects/${project.id}/experiments/${detail.experiment.id}/runs/${runId}`);
 		const body = await response.json();
 		if (!response.ok) throw new Error(responseError(body, 'Could not load run.'));
-		return body as RunDetail;
+		return body as ExperimentRunDetail;
 	}
 	async function openRun(runId: string) {
 		setBusy(true); setViewingRunId(runId); setError(null);
@@ -91,7 +91,7 @@ export function ExperimentManager({ project, initialCatalog }: { project: Projec
 		setBusy(true);
 		try {
 			const runs = selectedForComparison.map(latestCompletedRun).filter((run): run is Run => Boolean(run));
-			const results = (await Promise.all(runs.map(run => inspectRun(run.id)))).filter((result): result is RunDetail => Boolean(result));
+			const results = (await Promise.all(runs.map(run => inspectRun(run.id)))).filter((result): result is ExperimentRunDetail => Boolean(result));
 			setRunDetail({ run: { status: 'comparison', error_message: null }, variants: results.flatMap(result => result.variants), cases: results.flatMap(result => result.cases) });
 			setActiveTab('results');
 			setError(null);

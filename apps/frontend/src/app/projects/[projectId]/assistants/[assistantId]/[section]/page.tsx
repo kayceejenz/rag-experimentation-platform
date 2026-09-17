@@ -95,7 +95,7 @@ export default async function AssistantSection({ params }: Props) {
 			{section === 'playground' ? (
 				<AssistantPlayground assistant={assistant} />
 			) : lineage ? (
-				<AssistantLineage lineage={lineage} />
+				<AssistantLineage lineage={lineage} projectId={projectId} />
 			) : (
 				<section className='foundation-placeholder'>
 					<h2>No lineage available</h2>

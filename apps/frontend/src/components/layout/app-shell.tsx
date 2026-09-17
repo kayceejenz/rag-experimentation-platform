@@ -34,7 +34,7 @@ export function AppShell({
 					className='rail-brand'
 					aria-label='kayceejenz.ai'>
 					<span className='rail-brand-text'>
-						kayceejenz.ai
+						kayceejenz.ai RAG
 					</span>
 				</SmoothLink>
 				<details className='mobile-workspace-menu'>

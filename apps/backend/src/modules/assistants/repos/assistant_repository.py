@@ -116,16 +116,18 @@ class AssistantRepository:
                 "select b.id assistant_id,b.name assistant_name,ar.id revision_id,ar.version revision_version,"
                 "ar.created_at revision_created_at,ar.configuration revision_configuration,"
                 "e.id experiment_id,e.name experiment_name,e.hypothesis,"
+                "bm.id benchmark_id,bm.name benchmark_name,bm.version benchmark_version,"
                 "er.id run_id,er.code_revision,er.created_at run_created_at,er.completed_at run_completed_at,"
                 "evr.id variant_run_id,evr.aggregate_metrics,ev.id variant_id,ev.name variant_name,"
                 "ev.configuration_hash,s.id index_id,s.configuration index_configuration,"
-                "spv.id system_prompt_version_id,sp.name system_prompt_name,spv.version system_prompt_version,"
-                "rpv.id rag_prompt_version_id,rp.name rag_prompt_name,rpv.version rag_prompt_version "
+                "sp.id system_prompt_id,spv.id system_prompt_version_id,sp.name system_prompt_name,spv.version system_prompt_version,"
+                "rp.id rag_prompt_id,rpv.id rag_prompt_version_id,rp.name rag_prompt_name,rpv.version rag_prompt_version "
                 "from ragapp.assistants b join ragapp.assistant_revisions ar on ar.id=b.active_revision_id "
                 "join ragapp.experiment_variant_runs evr on evr.id=ar.experiment_variant_run_id "
                 "join ragapp.experiment_runs er on er.id=evr.run_id "
                 "join ragapp.experiment_variants ev on ev.id=evr.variant_id "
                 "join ragapp.experiments e on e.id=ev.experiment_id "
+                "join ragapp.benchmark_datasets bm on bm.id=e.benchmark_dataset_id "
                 "join ragapp.specifications s on s.id=ar.index_specification_id "
                 "join ragapp.prompt_versions spv on spv.id=(ar.configuration->>'system_prompt_version_id')::uuid "
                 "join ragapp.prompts sp on sp.id=spv.prompt_id "
@@ -149,6 +151,9 @@ class AssistantRepository:
                 "id": row["experiment_id"],
                 "name": row["experiment_name"],
                 "hypothesis": row["hypothesis"],
+                "benchmark_id": row["benchmark_id"],
+                "benchmark_name": row["benchmark_name"],
+                "benchmark_version": row["benchmark_version"],
             },
             "run": {
                 "id": row["run_id"],
@@ -168,11 +173,13 @@ class AssistantRepository:
                 "configuration": row["index_configuration"],
             },
             "system_prompt": {
+                "id": row["system_prompt_id"],
                 "version_id": row["system_prompt_version_id"],
                 "name": row["system_prompt_name"],
                 "version": row["system_prompt_version"],
             },
             "rag_prompt": {
+                "id": row["rag_prompt_id"],
                 "version_id": row["rag_prompt_version_id"],
                 "name": row["rag_prompt_name"],
                 "version": row["rag_prompt_version"],

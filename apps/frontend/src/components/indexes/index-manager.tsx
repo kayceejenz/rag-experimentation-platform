@@ -62,19 +62,21 @@ export function IndexManager({
 	folders,
 	sources,
 	initialCatalog,
+	initialDetail = null,
 }: {
 	project: Project;
 	knowledgeBase: KnowledgeBase;
 	folders: KnowledgeFolder[];
 	sources: Source[];
 	initialCatalog: IndexCatalog;
+	initialDetail?: IndexDetail | null;
 }) {
 	const [catalog, setCatalog] = useState(initialCatalog);
 	const [showCreate, setShowCreate] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
-	const [detail, setDetail] = useState<IndexDetail | null>(null);
+	const [detail, setDetail] = useState<IndexDetail | null>(initialDetail);
 	const [detailTab, setDetailTab] = useState<
 		'overview' | 'inputs' | 'outputs' | 'traces'
 	>('overview');
