@@ -1,10 +1,6 @@
 'use client';
 
-import {
-	CircleCheck,
-	CircleAlert,
-	LoaderCircle,
-} from 'lucide-react';
+import { CircleCheck, CircleAlert, LoaderCircle } from 'lucide-react';
 import type { ToolCall } from '@/types/workspace';
 
 export function ToolCallStep({ step }: { step: ToolCall }) {
@@ -66,10 +62,10 @@ export function ToolCallStep({ step }: { step: ToolCall }) {
 					!isRunning && (
 						<div className='tool-step-empty'>
 							Step completed
-												{isFailed
-														? ' with error'
-														: ''}
-												.
+							{isFailed
+								? ' with error'
+								: ''}
+							.
 						</div>
 					)}
 			</div>
@@ -77,11 +73,7 @@ export function ToolCallStep({ step }: { step: ToolCall }) {
 	);
 }
 
-export function ToolCallSteps({
-	steps,
-}: {
-	steps: ToolCall[];
-}) {
+export function ToolCallSteps({ steps }: { steps: ToolCall[] }) {
 	if (!steps || steps.length === 0) return null;
 
 	return (

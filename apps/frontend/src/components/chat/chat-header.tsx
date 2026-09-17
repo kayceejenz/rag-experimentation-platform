@@ -38,12 +38,9 @@ export function ChatHeader({
 					</>
 				) : (
 					<>
-						<Library
-							size={15}
-						/>
+						<Library size={15} />
 						Knowledge Base
-						{sourcesCount >
-							0 && (
+						{sourcesCount > 0 && (
 							<span className='sources-badge'>
 								{sourcesCount}
 							</span>

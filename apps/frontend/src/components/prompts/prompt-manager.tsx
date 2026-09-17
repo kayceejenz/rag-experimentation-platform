@@ -10,8 +10,11 @@ import {
 } from 'lucide-react';
 import type { Project, PromptAsset, PromptVersion } from '@/types/workspace';
 import { formatDateTime } from '@/lib/format';
+
 export type PromptDetail = { prompt: PromptAsset; versions: PromptVersion[] };
+
 type PromptTypeFilter = 'all' | PromptAsset['prompt_type'];
+
 export function PromptManager({
 	project,
 	initialPrompts,
@@ -22,18 +25,25 @@ export function PromptManager({
 	initialDetail?: PromptDetail | null;
 }) {
 	const [prompts, setPrompts] = useState(initialPrompts),
-		[detail, setDetail] = useState<PromptDetail | null>(initialDetail),
+		[detail, setDetail] = useState<PromptDetail | null>(
+			initialDetail,
+		),
 		[createOpen, setCreateOpen] = useState(false),
 		[versionOpen, setVersionOpen] = useState(false),
 		[typeFilter, setTypeFilter] = useState<PromptTypeFilter>('all'),
 		[busy, setBusy] = useState(false),
 		[error, setError] = useState<string | null>(null);
 	const canManage =
-		project.role === 'owner' || project.permissions?.prompts?.manage;
+		project.role === 'owner' ||
+		project.permissions?.prompts?.manage;
 	const visiblePrompts =
 		typeFilter === 'all'
 			? prompts
-			: prompts.filter(prompt => prompt.prompt_type === typeFilter);
+			: prompts.filter(
+					prompt =>
+						prompt.prompt_type ===
+						typeFilter,
+				);
 	async function inspect(id: string) {
 		setBusy(true);
 		setError(null);
@@ -189,8 +199,15 @@ export function PromptManager({
 					<div>
 						<h2>Prompt registry</h2>
 						<p>
-							{prompts.length} prompts ·{' '}
-							{prompts.filter(p => p.origin === 'preinstalled').length}{' '}
+							{prompts.length} prompts
+							·{' '}
+							{
+								prompts.filter(
+									p =>
+										p.origin ===
+										'preinstalled',
+								).length
+							}{' '}
 							preinstalled
 						</p>
 					</div>
@@ -201,13 +218,23 @@ export function PromptManager({
 							value={typeFilter}
 							onChange={event =>
 								setTypeFilter(
-									event.target.value as PromptTypeFilter,
+									event
+										.target
+										.value as PromptTypeFilter,
 								)
 							}>
-							<option value='all'>All types</option>
-							<option value='system'>System</option>
-							<option value='rag_answer'>RAG answer</option>
-							<option value='evaluation'>Evaluation</option>
+							<option value='all'>
+								All types
+							</option>
+							<option value='system'>
+								System
+							</option>
+							<option value='rag_answer'>
+								RAG answer
+							</option>
+							<option value='evaluation'>
+								Evaluation
+							</option>
 						</select>
 					</label>
 				</header>
@@ -231,76 +258,81 @@ export function PromptManager({
 							</tr>
 						</thead>
 						<tbody>
-							{visiblePrompts.map(p => (
-								<tr
-									key={
-										p.id
-									}
-									onClick={() =>
-										inspect(
-											p.id,
-										)
-									}>
-									<td>
-										<span className='catalog-primary'>
-											<FileCode2
+							{visiblePrompts.map(
+								p => (
+									<tr
+										key={
+											p.id
+										}
+										onClick={() =>
+											inspect(
+												p.id,
+											)
+										}>
+										<td>
+											<span className='catalog-primary'>
+												<FileCode2
+													size={
+														14
+													}
+												/>
+												<strong>
+													{
+														p.name
+													}
+												</strong>
+											</span>
+										</td>
+										<td>
+											{p.prompt_type.replace(
+												'_',
+												' ',
+											)}
+										</td>
+										<td>
+											{p.origin ===
+											'preinstalled'
+												? 'Preinstalled'
+												: 'Custom'}
+										</td>
+										<td>
+											v
+											{
+												p.latest_version
+											}
+										</td>
+										<td>
+											{p
+												.variables
+												?.length
+												? p.variables.join(
+														', ',
+													)
+												: 'None'}
+										</td>
+										<td>
+											<span
+												className={`catalog-state ${p.status}`}>
+												{
+													p.status
+												}
+											</span>
+										</td>
+										<td>
+											{formatDateTime(
+												p.updated_at,
+											)}
+										</td>
+										<td>
+											<ChevronRight
 												size={
 													14
 												}
 											/>
-											<strong>
-												{
-													p.name
-												}
-											</strong>
-										</span>
-									</td>
-									<td>
-										{p.prompt_type.replace(
-											'_',
-											' ',
-										)}
-									</td>
-									<td>
-										{p.origin === 'preinstalled'
-											? 'Preinstalled'
-											: 'Custom'}
-									</td>
-									<td>
-										v
-										{
-											p.latest_version
-										}
-									</td>
-									<td>
-										{p
-											.variables
-											?.length
-											? p.variables.join(
-													', ',
-												)
-											: 'None'}
-									</td>
-									<td>
-										<span
-											className={`catalog-state ${p.status}`}>
-											{
-												p.status
-											}
-										</span>
-									</td>
-									<td>
-										{formatDateTime(p.updated_at)}
-									</td>
-									<td>
-										<ChevronRight
-											size={
-												14
-											}
-										/>
-									</td>
-								</tr>
-							))}
+										</td>
+									</tr>
+								),
+							)}
 						</tbody>
 					</table>
 					{!visiblePrompts.length && (
@@ -337,18 +369,24 @@ export function PromptManager({
 									}
 								</h2>
 								<p>
-									{detail.prompt.description ||
+									{detail
+										.prompt
+										.description ||
 										'No description'}
 								</p>
 							</div>
 							<button
-									onClick={closeDetail}>
+								onClick={
+									closeDetail
+								}>
 								<X size={18} />
 							</button>
 						</header>
 						<div className='prompt-detail-actions'>
 							<span className='catalog-state active'>
-								{detail.prompt.origin === 'preinstalled'
+								{detail.prompt
+									.origin ===
+								'preinstalled'
 									? 'Preinstalled'
 									: 'Custom'}
 							</span>
@@ -402,7 +440,9 @@ export function PromptManager({
 												}
 											</strong>
 											<span>
-												{formatDateTime(v.created_at)}
+												{formatDateTime(
+													v.created_at,
+												)}
 											</span>
 										</header>
 										<div className='prompt-variable-list'>

@@ -102,23 +102,43 @@ export function AssistantLineage({
 			<section
 				className='assistant-lineage-flow'
 				aria-label='Assistant lineage flow'>
-				{nodes.map(({ label, value, detail, icon: Icon }, index) => (
-					<article
-						className='assistant-lineage-step'
-						key={label}>
-						<header>
-							<span className='lineage-step-icon'>
-								<Icon size={15} />
-							</span>
-							<span className='lineage-step-number'>
-								{String(index + 1).padStart(2, '0')}
-							</span>
-						</header>
-						<small>{label}</small>
-						<strong>{value}</strong>
-						<p>{detail}</p>
-					</article>
-				))}
+				{nodes.map(
+					(
+						{
+							label,
+							value,
+							detail,
+							icon: Icon,
+						},
+						index,
+					) => (
+						<article
+							className='assistant-lineage-step'
+							key={label}>
+							<header>
+								<span className='lineage-step-icon'>
+									<Icon
+										size={
+											15
+										}
+									/>
+								</span>
+								<span className='lineage-step-number'>
+									{String(
+										index +
+											1,
+									).padStart(
+										2,
+										'0',
+									)}
+								</span>
+							</header>
+							<small>{label}</small>
+							<strong>{value}</strong>
+							<p>{detail}</p>
+						</article>
+					),
+				)}
 			</section>
 			<div className='assistant-lineage-grid'>
 				<LineageTable
@@ -130,19 +150,28 @@ export function AssistantLineage({
 						{
 							label: 'Vector index',
 							value:
-								lineage.index.configuration.name ||
-								lineage.index.id,
+								lineage.index
+									.configuration
+									.name ||
+								lineage.index
+									.id,
 						},
 						{
 							label: 'Embedding model',
 							value:
-								lineage.index.configuration.embedding?.model ||
+								lineage.index
+									.configuration
+									.embedding
+									?.model ||
 								'Configured index model',
 						},
 						{
 							label: 'Chunking strategy',
 							value:
-								lineage.index.configuration.chunking?.strategy ||
+								lineage.index
+									.configuration
+									.chunking
+									?.strategy ||
 								'Configured index strategy',
 						},
 					]}
@@ -155,7 +184,9 @@ export function AssistantLineage({
 					rows={[
 						{
 							label: 'Prompt',
-							value: lineage.system_prompt.name,
+							value: lineage
+								.system_prompt
+								.name,
 						},
 						{
 							label: 'Version',
@@ -169,7 +200,12 @@ export function AssistantLineage({
 					href={`${projectBase}/prompts?prompt=${lineage.rag_prompt.id}`}
 					linkLabel='Open RAG prompt'
 					rows={[
-						{ label: 'Prompt', value: lineage.rag_prompt.name },
+						{
+							label: 'Prompt',
+							value: lineage
+								.rag_prompt
+								.name,
+						},
 						{
 							label: 'Version',
 							value: `v${lineage.rag_prompt.version}`,
@@ -184,7 +220,9 @@ export function AssistantLineage({
 					rows={[
 						{
 							label: 'Dataset',
-							value: lineage.experiment.benchmark_name,
+							value: lineage
+								.experiment
+								.benchmark_name,
 						},
 						{
 							label: 'Version',
@@ -198,22 +236,33 @@ export function AssistantLineage({
 					href={`${projectBase}/experiments?experiment=${lineage.experiment.id}&run=${lineage.run.id}`}
 					linkLabel='Open experiment run'
 					rows={[
-						{ label: 'Experiment run', value: lineage.run.id },
+						{
+							label: 'Experiment run',
+							value: lineage.run.id,
+						},
 						{
 							label: 'Variant run',
-							value: lineage.run.variant_run_id,
+							value: lineage.run
+								.variant_run_id,
 						},
 						{
 							label: 'Code revision',
-							value: lineage.run.code_revision || 'development',
+							value:
+								lineage.run
+									.code_revision ||
+								'development',
 						},
 						{
 							label: 'Configuration',
-							value: lineage.variant.configuration_hash,
+							value: lineage.variant
+								.configuration_hash,
 						},
 						{
 							label: 'Promoted',
-							value: formatDateTime(lineage.revision.created_at),
+							value: formatDateTime(
+								lineage.revision
+									.created_at,
+							),
 						},
 					]}
 					monospace

@@ -1,12 +1,6 @@
 'use client';
 
-import {
-	FormEvent,
-	KeyboardEvent,
-	forwardRef,
-	useEffect,
-	useRef,
-} from 'react';
+import { FormEvent, KeyboardEvent, forwardRef, useEffect, useRef } from 'react';
 import { ArrowUp, Square } from 'lucide-react';
 
 export const MessageComposer = forwardRef<
@@ -31,9 +25,7 @@ export const MessageComposer = forwardRef<
 		textarea.style.height = `${Math.min(textarea.scrollHeight, window.innerHeight * 0.5)}px`;
 	}, [defaultValue]);
 
-	function handleKeyDown(
-		event: KeyboardEvent<HTMLTextAreaElement>,
-	) {
+	function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
 		if (
 			event.key === 'Enter' &&
 			!event.shiftKey &&
@@ -83,15 +75,10 @@ export const MessageComposer = forwardRef<
 					type='button'
 					onClick={onStop}
 					aria-label='Stop generating'>
-					<Square
-						size={15}
-						fill='currentColor'
-					/>
+					<Square size={15} fill='currentColor' />
 				</button>
 			) : (
-				<button
-					type='submit'
-					aria-label='Send message'>
+				<button type='submit' aria-label='Send message'>
 					<ArrowUp size={20} />
 				</button>
 			)}
