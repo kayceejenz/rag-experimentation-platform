@@ -13,7 +13,8 @@ type StreamEvent =
 	| { type: 'error'; message: string };
 
 function errorMessage(value: unknown): string {
-	if (!value || typeof value !== 'object') return 'The request could not be completed.';
+	if (!value || typeof value !== 'object')
+		return 'The request could not be completed.';
 	const body = value as { error?: unknown; detail?: unknown };
 	const candidate = body.error ?? body.detail;
 	if (typeof candidate === 'string') return candidate;
@@ -32,7 +33,9 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export function AssistantPlayground({ assistant }: { assistant: Assistant }) {
-	const [conversationId, setConversationId] = useState<string | null>(null);
+	const [conversationId, setConversationId] = useState<string | null>(
+		null,
+	);
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [sending, setSending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -53,7 +56,10 @@ export function AssistantPlayground({ assistant }: { assistant: Assistant }) {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
-					title: content.length > 72 ? `${content.slice(0, 69)}…` : content,
+					title:
+						content.length > 72
+							? `${content.slice(0, 69)}…`
+							: content,
 				}),
 			},
 		);
@@ -85,7 +91,11 @@ export function AssistantPlayground({ assistant }: { assistant: Assistant }) {
 			tool_calls: [],
 			created_at: new Date().toISOString(),
 		};
-		setMessages(current => [...current, optimistic, assistantPlaceholder]);
+		setMessages(current => [
+			...current,
+			optimistic,
+			assistantPlaceholder,
+		]);
 		setStreamingId(assistantId);
 		const controller = new AbortController();
 		abortRef.current = controller;
@@ -95,13 +105,20 @@ export function AssistantPlayground({ assistant }: { assistant: Assistant }) {
 				`/api/conversations/${id}/messages/stream`,
 				{
 					method: 'POST',
-					headers: { 'content-type': 'application/json' },
-					body: JSON.stringify({ content: question }),
+					headers: {
+						'content-type':
+							'application/json',
+					},
+					body: JSON.stringify({
+						content: question,
+					}),
 					signal: controller.signal,
 				},
 			);
 			if (!response.ok || !response.body) {
-				const body = await response.json().catch(() => null);
+				const body = await response
+					.json()
+					.catch(() => null);
 				throw new Error(errorMessage(body));
 			}
 
@@ -110,51 +127,113 @@ export function AssistantPlayground({ assistant }: { assistant: Assistant }) {
 			let buffer = '';
 			while (true) {
 				const { value, done } = await reader.read();
-				buffer += decoder.decode(value, { stream: !done });
+				buffer += decoder.decode(value, {
+					stream: !done,
+				});
 				const frames = buffer.split(/\r?\n\r?\n/);
 				buffer = frames.pop() ?? '';
 				for (const frame of frames) {
 					const data = frame
 						.split(/\r?\n/)
-						.filter(line => line.startsWith('data:'))
-						.map(line => line.slice(5).trimStart())
+						.filter(line =>
+							line.startsWith(
+								'data:',
+							),
+						)
+						.map(line =>
+							line
+								.slice(5)
+								.trimStart(),
+						)
 						.join('\n');
 					if (!data) continue;
-					const event = JSON.parse(data) as StreamEvent;
+					const event = JSON.parse(
+						data,
+					) as StreamEvent;
 					if (event.type === 'token') {
-						setMessages(current => current.map(message =>
-							message.id === assistantId
-								? { ...message, content: message.content + event.content }
-								: message,
-						));
-					} else if (event.type === 'thinking_delta') {
-						setMessages(current => current.map(message =>
-							message.id === assistantId
-								? { ...message, reasoning: (message.reasoning ?? '') + event.content }
-								: message,
-						));
+						setMessages(current =>
+							current.map(message =>
+								message.id ===
+								assistantId
+									? {
+											...message,
+											content:
+												message.content +
+												event.content,
+										}
+									: message,
+							),
+						);
+					} else if (
+						event.type === 'thinking_delta'
+					) {
+						setMessages(current =>
+							current.map(message =>
+								message.id ===
+								assistantId
+									? {
+											...message,
+											reasoning:
+												(message.reasoning ??
+													'') +
+												event.content,
+										}
+									: message,
+							),
+						);
 					} else if (event.type === 'tool_step') {
-						setMessages(current => current.map(message => {
-							if (message.id !== assistantId) return message;
-							const tools = message.tool_calls ?? [];
-							const exists = tools.some(tool => tool.id === event.tool.id);
-							return {
-								...message,
-								tool_calls: exists
-									? tools.map(tool => tool.id === event.tool.id ? event.tool : tool)
-									: [...tools, event.tool],
-							};
-						}));
+						setMessages(current =>
+							current.map(message => {
+								if (
+									message.id !==
+									assistantId
+								)
+									return message;
+								const tools =
+									message.tool_calls ??
+									[];
+								const exists =
+									tools.some(
+										tool =>
+											tool.id ===
+											event
+												.tool
+												.id,
+									);
+								return {
+									...message,
+									tool_calls: exists
+										? tools.map(
+												tool =>
+													tool.id ===
+													event
+														.tool
+														.id
+														? event.tool
+														: tool,
+											)
+										: [
+												...tools,
+												event.tool,
+											],
+								};
+							}),
+						);
 					} else if (event.type === 'done') {
-						setMessages(current => current.map(message =>
-							message.id === assistantId
-								? {
-									...event.message,
-									reasoning: event.reasoning ?? message.reasoning,
-									tool_calls: [],
-								}
-								: message,
-						));
+						setMessages(current =>
+							current.map(message =>
+								message.id ===
+								assistantId
+									? {
+											...event.message,
+											reasoning:
+												event.reasoning ??
+												message.reasoning,
+											tool_calls: [],
+										}
+									: message,
+							),
+						);
 					} else {
 						throw new Error(event.message);
 					}
@@ -162,15 +241,34 @@ export function AssistantPlayground({ assistant }: { assistant: Assistant }) {
 				if (done) break;
 			}
 		} catch (requestError) {
-			if (requestError instanceof DOMException && requestError.name === 'AbortError') {
-				setMessages(current => current.map(message =>
-					message.id === assistantId && !message.content
-						? { ...message, content: '_Response stopped._' }
-						: message,
-				));
+			if (
+				requestError instanceof DOMException &&
+				requestError.name === 'AbortError'
+			) {
+				setMessages(current =>
+					current.map(message =>
+						message.id === assistantId &&
+						!message.content
+							? {
+									...message,
+									content: '_Response stopped._',
+								}
+							: message,
+					),
+				);
 			} else {
-				setMessages(current => current.filter(message => message.id !== assistantId));
-				setError(requestError instanceof Error ? requestError.message : 'The assistant could not respond.');
+				setMessages(current =>
+					current.filter(
+						message =>
+							message.id !==
+							assistantId,
+					),
+				);
+				setError(
+					requestError instanceof Error
+						? requestError.message
+						: 'The assistant could not respond.',
+				);
 			}
 		} finally {
 			abortRef.current = null;
@@ -196,21 +294,38 @@ export function AssistantPlayground({ assistant }: { assistant: Assistant }) {
 	}
 
 	return (
-		<section className='assistant-playground' aria-label={`${assistant.name} playground`}>
+		<section
+			className='assistant-playground'
+			aria-label={`${assistant.name} playground`}>
 			<div className='assistant-playground-context'>
 				<div>
 					<strong>{assistant.name}</strong>
-					<span>Active revision v{assistant.active_revision_version ?? '—'}</span>
+					<span>
+						Active revision v
+						{assistant.active_revision_version ??
+							'—'}
+					</span>
 				</div>
-				<button type='button' disabled={messages.length === 0} onClick={() => {
-					abortRef.current?.abort();
-					setConversationId(null);
-					setMessages([]);
-					setError(null);
-				}}>New conversation</button>
+				<button
+					type='button'
+					disabled={messages.length === 0}
+					onClick={() => {
+						abortRef.current?.abort();
+						setConversationId(null);
+						setMessages([]);
+						setError(null);
+					}}>
+					New conversation
+				</button>
 			</div>
 			<div className='assistant-playground-chat'>
-				{error && <div className='workspace-error' role='alert'>{error}</div>}
+				{error && (
+					<div
+						className='workspace-error'
+						role='alert'>
+						{error}
+					</div>
+				)}
 				<MessageList
 					messages={messages}
 					streamingId={streamingId}
@@ -224,9 +339,14 @@ export function AssistantPlayground({ assistant }: { assistant: Assistant }) {
 						sending={sending}
 						placeholder={`Ask ${assistant.name} about its indexed knowledge…`}
 						onSubmit={submit}
-						onStop={() => abortRef.current?.abort()}
+						onStop={() =>
+							abortRef.current?.abort()
+						}
 					/>
-					<p>Answers use the active revision and may contain mistakes.</p>
+					<p>
+						Answers use the active revision
+						and may contain mistakes.
+					</p>
 				</div>
 			</div>
 		</section>

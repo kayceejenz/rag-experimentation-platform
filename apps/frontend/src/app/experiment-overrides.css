@@ -1035,10 +1035,34 @@
 	overflow-wrap: anywhere;
 }
 
+.lineage-record-link {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	margin-left: 8px;
+	border: 1px solid var(--line);
+	border-radius: 7px;
+	color: var(--muted);
+	vertical-align: middle;
+}
+
+.lineage-record-link:hover,
+.lineage-record-link:focus-visible {
+	border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+	background: color-mix(in srgb, var(--accent) 8%, transparent);
+	color: var(--accent);
+}
+
 .assistant-lineage-grid {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
 	gap: 14px;
+}
+
+.assistant-lineage-grid > .assistant-lineage-table:last-child {
+	grid-column: 1 / -1;
 }
 
 .assistant-lineage-table,
@@ -1056,6 +1080,11 @@
 	gap: 8px;
 	padding: 11px 13px;
 	border-bottom: 1px solid var(--line);
+}
+
+.assistant-lineage-table > header > .lineage-record-link,
+.assistant-lineage-config > header > .lineage-record-link {
+	margin-left: auto;
 }
 
 .assistant-lineage-table h2,
@@ -1128,6 +1157,10 @@
 	.assistant-lineage-grid,
 	.assistant-lineage-config > div {
 		grid-template-columns: 1fr;
+	}
+
+	.assistant-lineage-grid > .assistant-lineage-table:last-child {
+		grid-column: auto;
 	}
 
 	.assistant-lineage-flow {

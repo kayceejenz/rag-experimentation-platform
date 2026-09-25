@@ -15,7 +15,11 @@ export type IndexBuild = {
 		name: string;
 		chunking: { strategy: string };
 		knowledge?: { scope: 'root' | 'folders'; folder_ids: string[] };
-		embedding: { provider: string; model: string; dimensions: number };
+		embedding: {
+			provider: string;
+			model: string;
+			dimensions: number;
+		};
 	};
 	configuration_hash: string;
 	created_at: string;

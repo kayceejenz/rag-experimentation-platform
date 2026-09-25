@@ -6,9 +6,21 @@ import type { Message } from '@/types/workspace';
 import { MessageRow } from './message-row';
 
 const SUGGESTIONS = [
-	{ icon: FileText, label: 'Summarize my documents', prompt: 'Summarize the key points from all uploaded documents.' },
-	{ icon: MessageCircle, label: 'Explain a concept', prompt: 'Explain the main concept covered in my sources.' },
-	{ icon: BookOpen, label: 'Find insights', prompt: 'What are the most important insights from my documents?' },
+	{
+		icon: FileText,
+		label: 'Summarize my documents',
+		prompt: 'Summarize the key points from all uploaded documents.',
+	},
+	{
+		icon: MessageCircle,
+		label: 'Explain a concept',
+		prompt: 'Explain the main concept covered in my sources.',
+	},
+	{
+		icon: BookOpen,
+		label: 'Find insights',
+		prompt: 'What are the most important insights from my documents?',
+	},
 ];
 
 export function MessageList({
@@ -36,18 +48,30 @@ export function MessageList({
 					</div>
 					<h2>What can I help with?</h2>
 					<p>
-						Ask anything about your uploaded documents,
-						or try a suggestion below.
+						Ask anything about your uploaded
+						documents, or try a suggestion
+						below.
 					</p>
 					<div className='empty-suggestions'>
 						{SUGGESTIONS.map(s => (
 							<button
 								key={s.label}
 								className='suggestion-chip'
-								onClick={() => onSuggest(s.prompt)}
-							>
-								<s.icon size={15} />
-								<span>{s.label}</span>
+								onClick={() =>
+									onSuggest(
+										s.prompt,
+									)
+								}>
+								<s.icon
+									size={
+										15
+									}
+								/>
+								<span>
+									{
+										s.label
+									}
+								</span>
 							</button>
 						))}
 					</div>

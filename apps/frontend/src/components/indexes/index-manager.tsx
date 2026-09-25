@@ -6,7 +6,6 @@ import {
 	Braces,
 	Eye,
 	FileText,
-	Layers3,
 	Plus,
 	RefreshCw,
 	Trash2,
@@ -19,10 +18,12 @@ import type {
 	Source,
 } from '@/types/workspace';
 import { formatDateTime } from '@/lib/format';
+import { IndexArtifactPreview } from '@/components/indexes/index-artifact-preview';
+import { IndexCatalogTable } from '@/components/indexes/index-catalog-table';
+import { CreateIndexDialog } from '@/components/indexes/create-index-dialog';
 import type {
 	Artifact,
 	ArtifactPreview,
-	IndexBuild,
 	IndexCatalog,
 	IndexDetail,
 	IndexTrace,
@@ -33,14 +34,6 @@ export type { IndexCatalog } from '@/components/indexes/index-types';
 function shortId(value: unknown) {
 	const id = String(value ?? '—');
 	return id.length > 14 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id;
-}
-
-function vectorPreview(value: unknown) {
-	const vector = String(value ?? '[]');
-	const values = vector.slice(1, -1).split(',');
-	return values.length > 8
-		? `[${values.slice(0, 8).join(', ')}, …]`
-		: vector;
 }
 
 function traceDuration(trace: IndexTrace) {
@@ -63,209 +56,27 @@ function traceOperation(kind: string) {
 	return kind.replaceAll('_', ' ');
 }
 
-function ArtifactPreviewTable({ preview }: { preview: ArtifactPreview }) {
-	if (!preview.records.length)
-		return (
-			<p className='artifact-preview-empty'>
-				This output contains no records.
-			</p>
-		);
-	if (preview.artifact.kind === 'element_dataset')
-		return (
-			<table>
-				<thead>
-					<tr>
-						<th>#</th>
-						<th>Category</th>
-						<th>Content</th>
-						<th>Page</th>
-						<th>Element ID</th>
-					</tr>
-				</thead>
-				<tbody>
-					{preview.records.map(
-						(record, position) => (
-							<tr
-								key={String(
-									record.element_id ??
-										position,
-								)}>
-								<td>
-									{Number(
-										record.sequence_number ??
-											position,
-									) + 1}
-								</td>
-								<td>
-									<span className='artifact-type-value'>
-										{String(
-											record.category ??
-												'Text',
-										)}
-									</span>
-								</td>
-								<td className='artifact-content-cell'>
-									{String(
-										record.content ??
-											'—',
-									)}
-								</td>
-								<td>
-									{String(
-										record.page_number ??
-											'—',
-									)}
-								</td>
-								<td>
-									<code>
-										{shortId(
-											record.element_id,
-										)}
-									</code>
-								</td>
-							</tr>
-						),
-					)}
-				</tbody>
-			</table>
-		);
-	if (preview.artifact.kind === 'chunk_dataset')
-		return (
-			<table>
-				<thead>
-					<tr>
-						<th>#</th>
-						<th>Content</th>
-						<th>Pages</th>
-						<th>Chunk ID</th>
-					</tr>
-				</thead>
-				<tbody>
-					{preview.records.map(
-						(record, position) => (
-							<tr
-								key={String(
-									record.id ??
-										position,
-								)}>
-								<td>
-									{Number(
-										record.position ??
-											position,
-									) + 1}
-								</td>
-								<td className='artifact-content-cell'>
-									{String(
-										record.content ??
-											'—',
-									)}
-								</td>
-								<td>
-									{record.page_from ==
-									null
-										? '—'
-										: record.page_from ===
-											  record.page_to
-											? String(
-													record.page_from,
-												)
-											: `${String(record.page_from)}–${String(record.page_to)}`}
-								</td>
-								<td>
-									<code>
-										{shortId(
-											record.id,
-										)}
-									</code>
-								</td>
-							</tr>
-						),
-					)}
-				</tbody>
-			</table>
-		);
-	return (
-		<table>
-			<thead>
-				<tr>
-					<th>#</th>
-					<th>Model</th>
-					<th>Dimensions</th>
-					<th>Vector preview</th>
-					<th>Chunk ID</th>
-				</tr>
-			</thead>
-			<tbody>
-				{preview.records.map((record, position) => (
-					<tr
-						key={String(
-							record.chunk_id ??
-								position,
-						)}>
-						<td>{position + 1}</td>
-						<td>
-							<span className='artifact-model-value'>
-								{String(
-									record.provider ??
-										'—',
-								)}{' '}
-								/{' '}
-								{String(
-									record.model_name ??
-										'—',
-								)}
-							</span>
-						</td>
-						<td>
-							{String(
-								record.dimensions ??
-									'—',
-							)}
-						</td>
-						<td className='artifact-vector-cell'>
-							<code
-								title={String(
-									record.embedding ??
-										'',
-								)}>
-								{vectorPreview(
-									record.embedding,
-								)}
-							</code>
-						</td>
-						<td>
-							<code>
-								{shortId(
-									record.chunk_id,
-								)}
-							</code>
-						</td>
-					</tr>
-				))}
-			</tbody>
-		</table>
-	);
-}
-
 export function IndexManager({
 	project,
 	knowledgeBase,
 	folders,
 	sources,
 	initialCatalog,
+	initialDetail = null,
 }: {
 	project: Project;
 	knowledgeBase: KnowledgeBase;
 	folders: KnowledgeFolder[];
 	sources: Source[];
 	initialCatalog: IndexCatalog;
+	initialDetail?: IndexDetail | null;
 }) {
 	const [catalog, setCatalog] = useState(initialCatalog);
 	const [showCreate, setShowCreate] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
-	const [detail, setDetail] = useState<IndexDetail | null>(null);
+	const [detail, setDetail] = useState<IndexDetail | null>(initialDetail);
 	const [detailTab, setDetailTab] = useState<
 		'overview' | 'inputs' | 'outputs' | 'traces'
 	>('overview');
@@ -273,21 +84,6 @@ export function IndexManager({
 	const [confirmDelete, setConfirmDelete] = useState(false);
 	const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>(
 		[],
-	);
-	const folderById = new Map(folders.map(folder => [folder.id, folder]));
-	function folderLabel(folder: KnowledgeFolder) {
-		const names = [folder.name];
-		let parentId = folder.parent_id;
-		while (parentId) {
-			const parent = folderById.get(parentId);
-			if (!parent) break;
-			names.unshift(parent.name);
-			parentId = parent.parent_id;
-		}
-		return names.join(' / ');
-	}
-	const orderedFolders = [...folders].sort((left, right) =>
-		folderLabel(left).localeCompare(folderLabel(right)),
 	);
 	async function inspect(indexId: string) {
 		setBusy(true);
@@ -493,13 +289,6 @@ export function IndexManager({
 		}
 	}
 
-	function buildStatus(build: IndexBuild) {
-		if (build.failed_jobs) return 'Failed';
-		if (build.active_jobs) return 'Building';
-		if (build.job_count && build.completed_jobs === build.job_count)
-			return 'Ready';
-		return 'Pending';
-	}
 	return (
 		<div className='catalog-page index-manager'>
 			<header className='product-page-header'>
@@ -529,432 +318,28 @@ export function IndexManager({
 			{notice && !detail && (
 				<div className='workspace-notice'>{notice}</div>
 			)}
-			<section className='catalog-table-panel'>
-				<header>
-					<div>
-						<h2>Vector indexes</h2>
-						<p>
-							{catalog.indexes.length}{' '}
-							configured
-						</p>
-					</div>
-				</header>
-				<div className='catalog-table-wrap'>
-					<table>
-						<thead>
-							<tr>
-								<th>Name</th>
-								<th>
-									Embedding
-									model
-								</th>
-								<th>
-									Dimensions
-								</th>
-								<th>
-									Chunking
-								</th>
-								<th>Jobs</th>
-								<th>Status</th>
-								<th>Created</th>
-								<th aria-label='Actions' />
-							</tr>
-						</thead>
-						<tbody>
-							{catalog.indexes.map(
-								build => (
-									<tr
-										key={
-											build.id
-										}>
-										<td>
-											<span className='catalog-primary'>
-												<Layers3
-													size={
-														14
-													}
-												/>
-												<strong>
-													{
-														build
-															.configuration
-															.name
-													}
-												</strong>
-											</span>
-										</td>
-										<td>
-											{
-												build
-													.configuration
-													.embedding
-													.model
-											}
-										</td>
-										<td>
-											{
-												build
-													.configuration
-													.embedding
-													.dimensions
-											}
-										</td>
-										<td>
-											Unstructured
-											/{' '}
-											{
-												build
-													.configuration
-													.chunking
-													.strategy
-											}
-										</td>
-										<td>
-											{
-												build.completed_jobs
-											}
-
-											/
-											{
-												build.job_count
-											}
-										</td>
-										<td>
-											<span
-												className={`catalog-state ${buildStatus(build).toLowerCase()}`}>
-												{buildStatus(
-													build,
-												)}
-											</span>
-										</td>
-										<td>
-											{formatDateTime(build.created_at)}
-										</td>
-										<td className='catalog-open'>
-											<button
-												onClick={() =>
-													inspect(
-														build.id,
-													)
-												}
-												disabled={
-													busy
-												}
-												aria-label={`Inspect ${build.configuration.name}`}>
-												<Eye
-													size={
-														14
-													}
-												/>
-											</button>
-										</td>
-									</tr>
-								),
-							)}
-							{!catalog.indexes
-								.length && (
-								<tr>
-									<td
-										colSpan={
-											8
-										}
-										className='mock-empty'>
-										No
-										indexes
-										configured
-										yet.
-									</td>
-								</tr>
-							)}
-						</tbody>
-					</table>
-				</div>
-			</section>
+			<IndexCatalogTable
+				indexes={catalog.indexes}
+				busy={busy}
+				onInspect={inspect}
+			/>
 			{showCreate && (
-				<div
-					className='modal-backdrop'
-					role='dialog'
-					aria-modal='true'>
-					<form
-						className='workspace-modal index-create-modal'
-						onSubmit={create}>
-						<div className='modal-title'>
-							<div>
-								<h2>
-									Create
-									index
-								</h2>
-								<p>
-									The
-									configuration
-									is saved
-									as an
-									immutable
-									specification.
-								</p>
-							</div>
-							<button
-								type='button'
-								className='icon-action'
-								onClick={() => {
-									setShowCreate(
-										false,
-									);
-									setSelectedFolderIds(
-										[],
-									);
-								}}
-								aria-label='Close'>
-								<X size={18} />
-							</button>
-						</div>
-						<div className='project-form-fields'>
-							<label>
-								Index name
-								<input
-									name='name'
-									required
-									minLength={
-										2
-									}
-									maxLength={
-										160
-									}
-									autoFocus
-								/>
-							</label>
-							<label>
-								Knowledge Base
-								<input
-									value={
-										knowledgeBase.name
-									}
-									disabled
-								/>
-							</label>
-							<fieldset className='index-folder-selector'>
-								<legend>
-									Knowledge
-									folders
-								</legend>
-								<p>
-									Select
-									Root for
-									every
-									file, or
-									choose
-									the
-									folders
-									this
-									Index
-									should
-									contain.
-								</p>
-								<label className='index-folder-option root'>
-									<input
-										type='checkbox'
-										checked={
-											!selectedFolderIds.length
-										}
-										onChange={() =>
-											setSelectedFolderIds(
-												[],
-											)
-										}
-									/>
-									<span>
-										<strong>
-											Root
-										</strong>
-										<small>
-											{
-												sources.length
-											}{' '}
-											files
-											across
-											the
-											Knowledge
-											Base
-										</small>
-									</span>
-								</label>
-								<div className='index-folder-options'>
-									{orderedFolders.map(
-										folder => {
-											const directFiles =
-												sources.filter(
-													source =>
-														source.folder_id ===
-														folder.id,
-												).length;
-											return (
-												<label
-													className='index-folder-option'
-													key={
-														folder.id
-													}>
-													<input
-														type='checkbox'
-														checked={selectedFolderIds.includes(
-															folder.id,
-														)}
-														onChange={() =>
-															setSelectedFolderIds(
-																current =>
-																	current.includes(
-																		folder.id,
-																	)
-																		? current.filter(
-																				id =>
-																					id !==
-																					folder.id,
-																			)
-																		: [
-																				...current,
-																				folder.id,
-																			],
-															)
-														}
-													/>
-													<span>
-														<strong>
-															{folderLabel(
-																folder,
-															)}
-														</strong>
-														<small>
-															{
-																directFiles
-															}{' '}
-															direct
-															file
-															{directFiles ===
-															1
-																? ''
-																: 's'}{' '}
-															·
-															includes
-															subfolders
-														</small>
-													</span>
-												</label>
-											);
-										},
-									)}
-									{!orderedFolders.length && (
-										<p className='artifact-preview-empty'>
-											No
-											folders
-											yet.
-											Root
-											will
-											index
-											the
-											full
-											Knowledge
-											Base.
-										</p>
-									)}
-								</div>
-							</fieldset>
-							<label>
-								Embedding model
-								<select
-									name='embedding_model_id'
-									required>
-									{catalog.embedding_models.map(
-										model => (
-											<option
-												key={
-													model.id
-												}
-												value={
-													model.id
-												}>
-												{
-													model.model_name
-												}{' '}
-												·{' '}
-												{
-													model.dimensions
-												}{' '}
-												dimensions
-												·{' '}
-												{
-													model.distance_metric
-												}
-											</option>
-										),
-									)}
-								</select>
-							</label>
-							<label>
-								Chunking
-								strategy
-								<select
-									name='chunking_strategy'
-									required
-									defaultValue='by_title'>
-									{catalog.chunking_strategies.map(
-										strategy => (
-											<option
-												key={
-													strategy.id
-												}
-												value={
-													strategy.id
-												}>
-												{
-													strategy.provider
-												}{' '}
-												/{' '}
-												{
-													strategy.name
-												}
-											</option>
-										),
-									)}
-								</select>
-							</label>
-						</div>
-						<div className='index-spec-summary'>
-							<strong>
-								Build flow
-							</strong>
-							<span>
-								{selectedFolderIds.length
-									? `${selectedFolderIds.length} selected folder${selectedFolderIds.length === 1 ? '' : 's'}`
-									: 'Knowledge Base Root'}{' '}
-								→ Unstructured
-								chunking →
-								Embeddings →
-								Vector index
-							</span>
-						</div>
-						<div className='project-form-actions'>
-							<button
-								type='button'
-								className='secondary-action'
-								onClick={() => {
-									setShowCreate(
-										false,
-									);
-									setSelectedFolderIds(
-										[],
-									);
-								}}>
-								Cancel
-							</button>
-							<button
-								className='primary-action'
-								disabled={busy}>
-								{busy
-									? 'Starting…'
-									: 'Create and build'}
-							</button>
-						</div>
-					</form>
-				</div>
+				<CreateIndexDialog
+					knowledgeBase={knowledgeBase}
+					folders={folders}
+					sources={sources}
+					catalog={catalog}
+					selectedFolderIds={selectedFolderIds}
+					busy={busy}
+					onSelectedFolderIdsChange={
+						setSelectedFolderIds
+					}
+					onClose={() => {
+						setShowCreate(false);
+						setSelectedFolderIds([]);
+					}}
+					onSubmit={create}
+				/>
 			)}
 			{detail && (
 				<div
@@ -1406,9 +791,9 @@ export function IndexManager({
 															</td>
 															<td>
 																{trace.started_at
-																			? formatDateTime(
-																					trace.started_at,
-																				)
+																	? formatDateTime(
+																			trace.started_at,
+																		)
 																	: 'Not started'}
 															</td>
 															<td>
@@ -1499,7 +884,7 @@ export function IndexManager({
 								</div>
 							)}
 							<div className='artifact-preview-table-wrap'>
-								<ArtifactPreviewTable
+								<IndexArtifactPreview
 									preview={
 										preview
 									}

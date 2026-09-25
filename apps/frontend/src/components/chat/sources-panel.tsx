@@ -1,11 +1,6 @@
 'use client';
 
-import {
-	Dispatch,
-	FormEvent,
-	ChangeEvent,
-	SetStateAction,
-} from 'react';
+import { Dispatch, FormEvent, ChangeEvent, SetStateAction } from 'react';
 import {
 	LoaderCircle,
 	Paperclip,
@@ -18,11 +13,7 @@ import {
 import type { Source } from '@/types/workspace';
 import { formatBytes } from '@/lib/format';
 
-const activeStatuses = new Set([
-	'uploaded',
-	'queued',
-	'processing',
-]);
+const activeStatuses = new Set(['uploaded', 'queued', 'processing']);
 
 export function SourcesPanel({
 	sources,
@@ -38,18 +29,12 @@ export function SourcesPanel({
 	sources: Source[];
 	selectedUploadFiles: File[];
 	uploading: boolean;
-	onChooseFiles: (
-		event: ChangeEvent<HTMLInputElement>,
-	) => void;
+	onChooseFiles: (event: ChangeEvent<HTMLInputElement>) => void;
 	onRemoveFile: (index: number) => void;
 	onClearSelected: () => void;
-	onUpload: (
-		event: FormEvent<HTMLFormElement>,
-	) => void;
+	onUpload: (event: FormEvent<HTMLFormElement>) => void;
 	onInspect: (source: Source) => void;
-	setSourceToDelete: Dispatch<
-		SetStateAction<Source | null>
-	>;
+	setSourceToDelete: Dispatch<SetStateAction<Source | null>>;
 }) {
 	const hasFiles = selectedUploadFiles.length > 0;
 	const canAddMore = selectedUploadFiles.length < 5;
@@ -64,9 +49,7 @@ export function SourcesPanel({
 					{sources.length}
 				</span>
 			</div>
-			<form
-				className='source-upload'
-				onSubmit={onUpload}>
+			<form className='source-upload' onSubmit={onUpload}>
 				<input
 					id='source-file'
 					name='file'
@@ -90,11 +73,15 @@ export function SourcesPanel({
 									key={`${file.name}-${i}`}
 									className='selected-file-row'>
 									<FileText
-										size={14}
+										size={
+											14
+										}
 										className='file-row-icon'
 									/>
 									<span className='file-row-name'>
-										{file.name}
+										{
+											file.name
+										}
 									</span>
 									<span className='file-row-size'>
 										{formatBytes(
@@ -110,7 +97,11 @@ export function SourcesPanel({
 											)
 										}
 										aria-label={`Remove ${file.name}`}>
-										<X size={13} />
+										<X
+											size={
+												13
+											}
+										/>
 									</button>
 								</div>
 							),
@@ -136,7 +127,9 @@ export function SourcesPanel({
 						<button
 							type='button'
 							className='secondary-action'
-							onClick={onClearSelected}>
+							onClick={
+								onClearSelected
+							}>
 							Clear all
 						</button>
 						<button
@@ -145,10 +138,16 @@ export function SourcesPanel({
 							{uploading ? (
 								<LoaderCircle
 									className='spin'
-									size={15}
+									size={
+										15
+									}
 								/>
 							) : (
-								<Paperclip size={15} />
+								<Paperclip
+									size={
+										15
+									}
+								/>
 							)}{' '}
 							{uploading
 								? 'Uploading…'
@@ -164,11 +163,16 @@ export function SourcesPanel({
 						key={source.id}>
 						<div className='source-info'>
 							<div className='source-name'>
-								{source.filename}
+								{
+									source.filename
+								}
 							</div>
 							<div className='source-meta'>
 								<span className='source-version'>
-									Version{' '}{source.version}
+									Version{' '}
+									{
+										source.version
+									}
 								</span>
 								<span className='source-meta-dot' />
 								{activeStatuses.has(
@@ -176,7 +180,9 @@ export function SourcesPanel({
 								) ? (
 									<span className='source-status-active'>
 										<LoaderCircle
-											size={11}
+											size={
+												11
+											}
 											className='spin'
 										/>{' '}
 										Processing
@@ -192,7 +198,11 @@ export function SourcesPanel({
 										Ready
 									</span>
 								) : (
-									<span>{source.status}</span>
+									<span>
+										{
+											source.status
+										}
+									</span>
 								)}
 							</div>
 						</div>
@@ -207,7 +217,11 @@ export function SourcesPanel({
 										)
 									}
 									aria-label='Inspect source'>
-									<ScanEye size={15} />
+									<ScanEye
+										size={
+											15
+										}
+									/>
 								</button>
 							)}
 							<button
@@ -218,7 +232,11 @@ export function SourcesPanel({
 									)
 								}
 								aria-label='Delete source'>
-								<Trash size={15} />
+								<Trash
+									size={
+										15
+									}
+								/>
 							</button>
 						</div>
 					</article>

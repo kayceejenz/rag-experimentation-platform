@@ -10,10 +10,23 @@ import { SmoothLink } from '@/components/navigation/smooth-link';
 import type { Project } from '@/types/workspace';
 import type { ExperimentRun } from '@/types/trace';
 
-export function ProjectOverview({ project, experimentRuns = [] }: { project: Project; experimentRuns?: ExperimentRun[] }) {
-	const experiments = new Set(experimentRuns.map(run => run.experiment_id)).size;
-	const variants = new Set(experimentRuns.map(run => run.variant_id)).size;
-	const assistants = new Set(experimentRuns.flatMap(run => run.assistant_id ? [run.assistant_id] : [])).size;
+export function ProjectOverview({
+	project,
+	experimentRuns = [],
+}: {
+	project: Project;
+	experimentRuns?: ExperimentRun[];
+}) {
+	const experiments = new Set(
+		experimentRuns.map(run => run.experiment_id),
+	).size;
+	const variants = new Set(experimentRuns.map(run => run.variant_id))
+		.size;
+	const assistants = new Set(
+		experimentRuns.flatMap(run =>
+			run.assistant_id ? [run.assistant_id] : [],
+		),
+	).size;
 	const latest = experimentRuns[0];
 	const assets = [
 		{
@@ -72,13 +85,32 @@ export function ProjectOverview({ project, experimentRuns = [] }: { project: Pro
 					)}
 				</div>
 			</header>
-			<section className='project-lineage-summary' aria-label='Experiment lineage summary'>
-				<div><strong>{experiments}</strong><span>Experiments run</span></div>
-				<div><strong>{variants}</strong><span>Variants evaluated</span></div>
-				<div><strong>{assistants}</strong><span>Assistants promoted</span></div>
+			<section
+				className='project-lineage-summary'
+				aria-label='Experiment lineage summary'>
+				<div>
+					<strong>{experiments}</strong>
+					<span>Experiments run</span>
+				</div>
+				<div>
+					<strong>{variants}</strong>
+					<span>Variants evaluated</span>
+				</div>
+				<div>
+					<strong>{assistants}</strong>
+					<span>Assistants promoted</span>
+				</div>
 				<div className='project-lineage-latest'>
-					<strong>{latest ? latest.variant_name : 'No runs yet'}</strong>
-					<span>{latest ? `${latest.experiment_name} · ${latest.assistant_name ?? 'Not promoted'}` : 'Run a variant to establish lineage'}</span>
+					<strong>
+						{latest
+							? latest.variant_name
+							: 'No runs yet'}
+					</strong>
+					<span>
+						{latest
+							? `${latest.experiment_name} · ${latest.assistant_name ?? 'Not promoted'}`
+							: 'Run a variant to establish lineage'}
+					</span>
 				</div>
 			</section>
 			<div className='foundation-grid project-foundation-grid'>

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { SmoothLink } from '@/components/navigation/smooth-link';
 import { formatBytes, formatDateTime } from '@/lib/format';
+
 import type {
 	KnowledgeActivityEvent,
 	KnowledgeBase,
@@ -338,7 +339,9 @@ export function SourceOverview({
 												dateTime={
 													folder.created_at
 												}>
-												{formatDateTime(folder.created_at)}
+												{formatDateTime(
+													folder.created_at,
+												)}
 											</time>
 										</td>
 										<td />
@@ -386,14 +389,18 @@ export function SourceOverview({
 											}
 										</td>
 										<td>
-											{formatBytes(document.byte_size)}
+											{formatBytes(
+												document.byte_size,
+											)}
 										</td>
 										<td>
 											<time
 												dateTime={
 													document.created_at
 												}>
-												{formatDateTime(document.created_at)}
+												{formatDateTime(
+													document.created_at,
+												)}
 											</time>
 										</td>
 										<td className='document-row-action'>
@@ -645,7 +652,9 @@ export function SourceOverview({
 													}
 												</strong>
 												<small>
-													{formatBytes(file.size)}
+													{formatBytes(
+														file.size,
+													)}
 												</small>
 											</span>
 											<button
@@ -821,7 +830,9 @@ export function SourceOverview({
 										preview.version
 									}{' '}
 									·{' '}
-									{formatBytes(preview.byte_size)}
+									{formatBytes(
+										preview.byte_size,
+									)}
 								</p>
 							</div>
 							<button
@@ -835,7 +846,9 @@ export function SourceOverview({
 							</button>
 						</header>
 						<div className='document-preview-content'>
-							{isSafeImagePreview(preview) ? (
+							{isSafeImagePreview(
+								preview,
+							) ? (
 								<Image
 									unoptimized
 									width={
@@ -849,12 +862,15 @@ export function SourceOverview({
 										preview.display_name
 									}
 								/>
-							) : isSafeFramePreview(preview) ? (
+							) : isSafeFramePreview(
+									preview,
+							  ) ? (
 								<iframe
 									sandbox={
 										sourceExtension(
 											preview,
-										) === 'pdf'
+										) ===
+										'pdf'
 											? undefined
 											: ''
 									}
@@ -865,7 +881,13 @@ export function SourceOverview({
 								/>
 							) : (
 								<div className='mock-empty'>
-									This document type cannot be previewed safely.
+									This
+									document
+									type
+									cannot
+									be
+									previewed
+									safely.
 								</div>
 							)}
 						</div>
@@ -972,7 +994,11 @@ function KnowledgeActivity({ events }: { events: KnowledgeActivityEvent[] }) {
 										{event
 											.payload
 											.byte_size
-											? formatBytes(event.payload.byte_size)
+											? formatBytes(
+													event
+														.payload
+														.byte_size,
+												)
 											: '—'}
 									</td>
 									<td>
@@ -980,7 +1006,9 @@ function KnowledgeActivity({ events }: { events: KnowledgeActivityEvent[] }) {
 											dateTime={
 												event.occurred_at
 											}>
-											{formatDateTime(event.occurred_at)}
+											{formatDateTime(
+												event.occurred_at,
+											)}
 										</time>
 									</td>
 								</tr>

@@ -7,14 +7,23 @@ import {
 	IndexManager,
 	type IndexCatalog,
 } from '@/components/indexes/index-manager';
+import type { IndexDetail } from '@/components/indexes/index-types';
 import { TraceExplorer } from '@/components/traces/trace-explorer';
 import { ProjectSettings } from '@/components/projects/project-settings';
 import { ProjectAccessDenied } from '@/components/projects/project-access-denied';
-import { PromptManager } from '@/components/prompts/prompt-manager';
-import { BenchmarkManager } from '@/components/benchmarks/benchmark-manager';
+import {
+	PromptManager,
+	type PromptDetail,
+} from '@/components/prompts/prompt-manager';
+import {
+	BenchmarkManager,
+	type BenchmarkDetail,
+} from '@/components/benchmarks/benchmark-manager';
 import {
 	ExperimentManager,
 	type ExperimentCatalog,
+	type ExperimentDetail,
+	type ExperimentRunDetail,
 } from '@/components/experiments/experiment-manager';
 import {
 	AssistantManager,
@@ -44,12 +53,22 @@ const sections = new Set<ProjectSection>([
 	'settings',
 ]);
 
-type Props = { params: Promise<{ projectId: string; section: string }> };
+type Props = {
+	params: Promise<{ projectId: string; section: string }>;
+	searchParams: Promise<{
+		index?: string;
+		prompt?: string;
+		benchmark?: string;
+		experiment?: string;
+		run?: string;
+	}>;
+};
 
-export default async function ProjectSectionPage({ params }: Props) {
+export default async function ProjectSectionPage({ params, searchParams }: Props) {
 	const user = await getAuthUser();
 	if (!user) return null;
 	const { projectId, section } = await params;
+	const query = await searchParams;
 	if (!sections.has(section as ProjectSection)) notFound();
 	const project = await backendJson<Project>(
 		user.accessToken,
@@ -73,7 +92,7 @@ export default async function ProjectSectionPage({ params }: Props) {
 		);
 	}
 	if (section === 'indexes') {
-		const [catalog, knowledgeBase] = await Promise.all([
+		const [catalog, knowledgeBase, initialDetail] = await Promise.all([
 			backendJson<IndexCatalog>(
 				user.accessToken,
 				`/projects/${projectId}/indexes`,
@@ -82,6 +101,12 @@ export default async function ProjectSectionPage({ params }: Props) {
 				user.accessToken,
 				`/projects/${projectId}/source`,
 			),
+			query.index
+				? backendJson<IndexDetail>(
+						user.accessToken,
+						`/projects/${projectId}/indexes/${query.index}`,
+					).catch(() => null)
+				: Promise.resolve(null),
 		]);
 		const [folders, sources] = await Promise.all([
 			backendJson<{ folders: KnowledgeFolder[] }>(
@@ -104,43 +129,78 @@ export default async function ProjectSectionPage({ params }: Props) {
 				folders={folders}
 				sources={sources}
 				initialCatalog={catalog}
+				initialDetail={initialDetail}
 			/>
 		);
 	}
 	if (section === 'prompts') {
-		const prompts = await backendJson<{ prompts: PromptAsset[] }>(
-			user.accessToken,
-			`/projects/${projectId}/prompts`,
-		).then(value => value.prompts);
+		const [prompts, initialDetail] = await Promise.all([
+			backendJson<{ prompts: PromptAsset[] }>(
+				user.accessToken,
+				`/projects/${projectId}/prompts`,
+			).then(value => value.prompts),
+			query.prompt
+				? backendJson<PromptDetail>(
+						user.accessToken,
+						`/projects/${projectId}/prompts/${query.prompt}`,
+					).catch(() => null)
+				: Promise.resolve(null),
+		]);
 		return (
 			<PromptManager
 				project={project}
 				initialPrompts={prompts}
+				initialDetail={initialDetail}
 			/>
 		);
 	}
 	if (section === 'benchmarks') {
-		const datasets = await backendJson<{
-			datasets: BenchmarkDataset[];
-		}>(user.accessToken, `/projects/${projectId}/benchmarks`).then(
-			value => value.datasets,
-		);
+		const [datasets, initialDetail] = await Promise.all([
+			backendJson<{ datasets: BenchmarkDataset[] }>(
+				user.accessToken,
+				`/projects/${projectId}/benchmarks`,
+			).then(value => value.datasets),
+			query.benchmark
+				? backendJson<BenchmarkDetail>(
+						user.accessToken,
+						`/projects/${projectId}/benchmarks/${query.benchmark}`,
+					).catch(() => null)
+				: Promise.resolve(null),
+		]);
 		return (
 			<BenchmarkManager
 				project={project}
 				initialDatasets={datasets}
+				initialDetail={initialDetail}
 			/>
 		);
 	}
 	if (section === 'experiments') {
-		const catalog = await backendJson<ExperimentCatalog>(
-			user.accessToken,
-			`/projects/${projectId}/experiments`,
-		);
+		const [catalog, initialDetail] = await Promise.all([
+			backendJson<ExperimentCatalog>(
+				user.accessToken,
+				`/projects/${projectId}/experiments`,
+			),
+			query.experiment
+				? backendJson<ExperimentDetail>(
+						user.accessToken,
+						`/projects/${projectId}/experiments/${query.experiment}`,
+					).catch(() => null)
+				: Promise.resolve(null),
+		]);
+		const initialRunDetail =
+			query.run && initialDetail
+				? await backendJson<ExperimentRunDetail>(
+						user.accessToken,
+						`/projects/${projectId}/experiments/${initialDetail.experiment.id}/runs/${query.run}`,
+					).catch(() => null)
+				: null;
 		return (
 			<ExperimentManager
 				project={project}
 				initialCatalog={catalog}
+				initialDetail={initialDetail}
+				initialRunDetail={initialRunDetail}
 			/>
 		);
 	}

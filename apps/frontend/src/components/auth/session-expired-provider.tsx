@@ -13,20 +13,15 @@ interface SessionExpiredContextValue {
 	showSessionExpired: () => void;
 }
 
-const SessionExpiredContext =
-	createContext<SessionExpiredContextValue>({
-		showSessionExpired: () => {},
-	});
+const SessionExpiredContext = createContext<SessionExpiredContextValue>({
+	showSessionExpired: () => {},
+});
 
 export function useSessionExpired() {
 	return useContext(SessionExpiredContext);
 }
 
-export function SessionExpiredProvider({
-	children,
-}: {
-	children: ReactNode;
-}) {
+export function SessionExpiredProvider({ children }: { children: ReactNode }) {
 	const [open, setOpen] = useState(false);
 
 	const showSessionExpired = useCallback(() => {
@@ -34,7 +29,9 @@ export function SessionExpiredProvider({
 	}, []);
 
 	async function handleGoToLogin() {
-		await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
+		await fetch('/api/auth/logout', { method: 'POST' }).catch(
+			() => undefined,
+		);
 		const callbackUrl = `${window.location.pathname}${window.location.search}`;
 		window.location.replace(
 			`/auth/signin?error=SessionExpired&callbackUrl=${encodeURIComponent(callbackUrl)}`,
@@ -42,8 +39,7 @@ export function SessionExpiredProvider({
 	}
 
 	return (
-		<SessionExpiredContext.Provider
-			value={{ showSessionExpired }}>
+		<SessionExpiredContext.Provider value={{ showSessionExpired }}>
 			{children}
 			{open && (
 				<div
@@ -53,7 +49,9 @@ export function SessionExpiredProvider({
 					aria-labelledby='session-expired-title'>
 					<section className='workspace-modal session-expired-modal'>
 						<div className='session-expired-icon'>
-							<AlertTriangle size={28} />
+							<AlertTriangle
+								size={28}
+							/>
 						</div>
 						<div className='modal-title'>
 							<div>
@@ -68,10 +66,8 @@ export function SessionExpiredProvider({
 									has
 									expired.
 									Please
-									sign
-									in
-									again
-									to
+									sign in
+									again to
 									continue.
 								</p>
 							</div>
@@ -83,9 +79,7 @@ export function SessionExpiredProvider({
 								onClick={
 									handleGoToLogin
 								}>
-								Go
-								to
-								login
+								Go to login
 								<ArrowRight
 									size={
 										16

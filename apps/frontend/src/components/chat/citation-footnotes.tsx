@@ -4,11 +4,7 @@ import { useState } from 'react';
 import { FileText, ChevronDown } from 'lucide-react';
 import type { Citation } from '@/types/workspace';
 
-export function CitationFootnotes({
-	citations,
-}: {
-	citations: Citation[];
-}) {
+export function CitationFootnotes({ citations }: { citations: Citation[] }) {
 	const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
 	if (citations.length === 0) return null;
@@ -40,9 +36,7 @@ export function CitationFootnotes({
 							onClick={() =>
 								toggle(index)
 							}
-							aria-expanded={
-								isActive
-							}
+							aria-expanded={isActive}
 							aria-label={`Citation ${index + 1}: ${citation.source_filename}${citation.page_number != null ? ` page ${citation.page_number}` : ''}`}>
 							<span className='cite-chip-index'>
 								{index + 1}
@@ -64,16 +58,17 @@ export function CitationFootnotes({
 							<div
 								className='citation-excerpt-inline'
 								key={`excerpt-${citation.chunk_id}-${index}`}>
-							<div className='excerpt-header'>
-								<span className='excerpt-index'>
-									{index + 1}
-								</span>
-								<FileText
-									size={
-										11
-									}
-								/>
-								<span className='excerpt-source'>
+								<div className='excerpt-header'>
+									<span className='excerpt-index'>
+										{index +
+											1}
+									</span>
+									<FileText
+										size={
+											11
+										}
+									/>
+									<span className='excerpt-source'>
 										{
 											citation.source_filename
 										}
