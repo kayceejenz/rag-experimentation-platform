@@ -1,7 +1,7 @@
 'use client';
 
 import { RefObject } from 'react';
-import { Sparkles, FileText, MessageCircle, BookOpen } from 'lucide-react';
+import { FileText, MessageCircle, BookOpen } from 'lucide-react';
 import type { Message } from '@/types/workspace';
 import { MessageRow } from './message-row';
 
@@ -43,9 +43,6 @@ export function MessageList({
 			{messages.length === 0 && (
 				<div className='conversation-empty'>
 					<div className='empty-glow' />
-					<div className='empty-icon-large'>
-						<Sparkles size={32} />
-					</div>
 					<h2>What can I help with?</h2>
 					<p>
 						Ask anything about your uploaded

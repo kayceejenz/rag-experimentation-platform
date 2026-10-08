@@ -13,8 +13,8 @@ const font = Outfit({
 });
 
 export const metadata: Metadata = {
-	title: 'kayceejenz.ai',
-	description: 'Your AI assistant',
+	title: 'RAG Experimentation Platform',
+	description: 'Build, evaluate, and deploy traceable RAG assistants.',
 };
 
 export default function RootLayout({

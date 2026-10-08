@@ -32,9 +32,9 @@ export function AppShell({
 				<SmoothLink
 					href='/'
 					className='rail-brand'
-					aria-label='kayceejenz.ai'>
+					aria-label='RAG Experimentation Platform'>
 					<span className='rail-brand-text'>
-						kayceejenz.ai RAG
+						RAG Experimentation Platform
 					</span>
 				</SmoothLink>
 				<details className='mobile-workspace-menu'>

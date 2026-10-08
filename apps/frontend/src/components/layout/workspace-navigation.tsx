@@ -10,51 +10,35 @@ import {
 	Gauge,
 	Home,
 	Layers3,
-	PlayCircle,
 	FileCode2,
 	Settings,
 } from 'lucide-react';
 import { SmoothLink, useSmoothNavigation } from '@/components/navigation/smooth-link';
 import type { Project, ProjectFeature } from '@/types/workspace';
 
-const groups = [
+const projectItems = [
 	{
-		label: 'Data',
-		items: [
-			{
-				label: 'Knowledge Base',
-				slug: 'knowledge',
-				icon: Database,
-			},
-			{ label: 'Indexes', slug: 'indexes', icon: Layers3 },
-		],
+		label: 'Knowledge Base',
+		slug: 'knowledge',
+		icon: Database,
 	},
 	{
-		label: 'Development',
-		items: [
-			{
-				label: 'Experiments',
-				slug: 'experiments',
-				icon: FlaskConical,
-			},
-			{
-				label: 'Benchmarks',
-				slug: 'benchmarks',
-				icon: Gauge,
-			},
-		],
+		label: 'Indexes',
+		slug: 'indexes',
+		icon: Layers3,
 	},
 	{
-		label: 'AI applications',
-		items: [
-			{ label: 'Prompts', slug: 'prompts', icon: FileCode2 },
-			{ label: 'Assistants', slug: 'assistants', icon: Bot },
-		],
+		label: 'Experiments',
+		slug: 'experiments',
+		icon: FlaskConical,
 	},
 	{
-		label: 'Operations',
-		items: [{ label: 'Runs', slug: 'runs', icon: PlayCircle }],
+		label: 'Benchmarks',
+		slug: 'benchmarks',
+		icon: Gauge,
 	},
+	{ label: 'Prompts', slug: 'prompts', icon: FileCode2 },
+	{ label: 'Assistants', slug: 'assistants', icon: Bot },
 ];
 
 export function WorkspaceNavigation({
@@ -87,9 +71,6 @@ export function WorkspaceNavigation({
 			}
 			aria-label='Workspace navigation'>
 			<div className='nav-group'>
-				<span className='nav-group-label'>
-					Workspace
-				</span>
 				<SmoothLink
 					href='/'
 					className={
@@ -173,73 +154,45 @@ export function WorkspaceNavigation({
 			)}
 			{activeProject && (
 				<div className='nav-project-context'>
-					{groups.map(group => {
-						const visibleItems =
-							group.items.filter(
-								item =>
-									canView(
-										item.slug as ProjectFeature,
-									),
-							);
-						if (!visibleItems.length)
-							return null;
-						return (
-							<div
-								className='nav-group'
-								key={
-									group.label
-								}>
-								<span className='nav-group-label'>
-									{
-										group.label
-									}
-								</span>
-								{visibleItems.map(
-									({
-										label,
-										slug,
-										icon: Icon,
-									}) => {
-										const href = `/projects/${activeProject.id}/${slug === 'knowledge' ? 'source/documents' : slug}`;
-										const isActive =
-											slug ===
-											'knowledge'
-												? pathname.startsWith(
-														`/projects/${activeProject.id}/source`,
-													)
-												: pathname.startsWith(
-														href,
-													);
-										return (
-											<SmoothLink
-												href={
-													href
-												}
-												key={
-													slug
-												}
-												className={
-													isActive
-														? 'active'
-														: ''
-												}>
-												<Icon
-													size={
-														16
-													}
-												/>
-												<span>
-													{
-														label
-													}
-												</span>
-											</SmoothLink>
-										);
-									},
-								)}
-							</div>
-						);
-					})}
+					<div className='nav-group'>
+						{projectItems
+							.filter(item =>
+								canView(
+									item.slug as ProjectFeature,
+								),
+							)
+							.map(
+								({
+									label,
+									slug,
+									icon: Icon,
+								}) => {
+									const href = `/projects/${activeProject.id}/${slug === 'knowledge' ? 'source/documents' : slug}`;
+									const isActive =
+										slug ===
+										'knowledge'
+											? pathname.startsWith(
+													`/projects/${activeProject.id}/source`,
+												)
+											: pathname.startsWith(
+													href,
+												);
+									return (
+										<SmoothLink
+											href={href}
+											key={slug}
+											className={
+												isActive
+													? 'active'
+													: ''
+											}>
+											<Icon size={16} />
+											<span>{label}</span>
+										</SmoothLink>
+									);
+								},
+							)}
+					</div>
 					{canView('settings') && (
 						<div className='nav-group nav-settings'>
 							<SmoothLink
