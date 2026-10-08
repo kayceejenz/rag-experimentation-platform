@@ -59,7 +59,7 @@ export function ChatSidebar({
 						href='/'
 						aria-label='Projects'>
 						<strong className='editorial-brand-text'>
-							kayceejenz.ai
+							RAG Experimentation Platform
 						</strong>
 					</SmoothLink>
 					<button

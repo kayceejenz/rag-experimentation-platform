@@ -139,7 +139,7 @@ function SignInContent() {
 				<div className='signin-card-header'>
 					<div className='signin-brand'>
 						<span className='signin-brand-text'>
-							kayceejenz.ai
+							RAG Experimentation Platform
 						</span>
 					</div>
 					<ThemeToggle disabled={loading} />
